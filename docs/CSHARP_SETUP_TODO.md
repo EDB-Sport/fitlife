@@ -310,13 +310,17 @@ The project description's test terms map onto this as: *unit tests* = Unit, *int
   *Why:* proves the tests catch changes to the code, which a coverage number alone doesn't. The project description still asks for coverage reports, so CI produces both (section 10, job 4). It also answers the course question "if you remove the rule from the model, does the test fail?" (M4.02) for every rule at once.
 - [ ] **Adopt the tdd-check workflow** (`.github/workflows/tdd-check.yml`):
   - `TEST_CMD="dotnet test -c Release"`
-  - `SRC_DIR=src/`, `TEST_DIR=tests/`
+  - `SRC_DIR=src/`, `TEST_DIR=tests/`, and a second step with `SRC_DIR=tools/Analyzers/Team.Analyzers/`, `TEST_DIR=tools/Analyzers/Team.Analyzers.Tests/`, so a new TEAM rule is checked the same way (#49)
   - `SRC_FILE_REGEX='\.cs$'` and `TEST_FILE_REGEX='\.cs$'`, so a `CONTEXT.md`, Dockerfile or `.razor` change under `src/` needs no new test, and a PR that only adds Postman collections isn't judged by `dotnet test`
-  - add the NUnit markers `[[,][[:space:]]*(Ignore|Explicit)\b|Assert\.(Ignore|Inconclusive)` to `SKIP_MARKERS`
+  - add the NUnit markers `[[,][[:space:]]*(Ignore|Explicit)\b|\bIgnoreReason\b|Assert\.(Ignore|Inconclusive)|\bAssume\.` to `SKIP_MARKERS`
+  - take `BASE_SHA` from `git rev-parse HEAD^1` (the checked-out merge commit's first parent), not from the event's base sha, which can lag behind
+  - pass the PR's labels in `PR_LABELS` and re-run on `labeled`/`unlabeled`: a PR labelled `refactor` is checked by the opposite rule (METHODOLOGY §8), no file under `tests/` may change and the tests must pass
   - add `actions/setup-dotnet` with `global-json-file: global.json` as the toolchain step
   - make it a required check on `develop` **and** `main` (PRs target `develop` under Git Flow)
 
-  *Why:* it checks mechanically that production changes come with tests, that no test is deleted or skipped, and that the PR's tests fail without the change. A test that references a type that doesn't exist yet fails to compile on the base, and that counts as red.
+  *Why:* it checks mechanically that production changes come with tests, that no test is deleted or skipped (commented-out test attributes don't count), and that the PR's tests fail without the change. A test that references a type that doesn't exist yet fails to compile on the base, and that counts as red. A run on the base that stops before any test is built (no project or solution found, `MSB1003`/`MSB1009`, or a restore error `NU1xxx`: `SETUP_ERRORS` in the script) doesn't count as red, and the check fails (#49). Its fixture tests are in `tools/ci/tdd-check.test.sh`.
+
+  *Limits:* it proves the PR's tests **depend on the change**, not that they were written first: a test written after the code also fails on base. The optional `red:`/`green:` commits (METHODOLOGY §2) are the evidence of order. Only the suite's exit code on base is checked, so one real red test lets untested production code through, and because a compile error counts as red, a PR that adds a new project under `src/` always passes the red-on-base step. Stryker (above) is meant to cover both. Merging several `[TestCase]` lines into one `[TestCaseSource]` lowers the test count, so that cleanup fails the check.
 - [ ] **A test that loads each `NLog.config`** with `throwConfigExceptions` on, and asserts that the Loki target exists, the `app` label equals the service name, and only the allowed labels from section 7 are present.
   *Why:* NLog swallows config errors by default, so a typo makes logs disappear from Grafana without any error.
 
@@ -464,7 +468,7 @@ The project description says the solution runs container-based, with monitoring,
 
 ## 10. CI pipeline
 
-**`ci.yml`**, on every push and PR. Each job is a required check (section 9).
+**`ci.yml`**, on every PR and on every push to `develop` and `main`. Other branches get CI through their PR, so a PR head runs once, not twice with `diff-scan` skipped in the push run (GitHub reports a skipped job as passing). Each job is a required check (section 9).
 
 | # | Job | Command or tool |
 |---|---|---|
@@ -503,10 +507,10 @@ The project description says the solution runs container-based, with monitoring,
 | Switching rules off in a project | `<NoWarn>`, `<TreatWarningsAsErrors>false`, `<Nullable>disable` in a `.csproj` | Strictness sits in `Directory.Build.targets`, which is imported after the `.csproj` and overwrites it |
 | Loosening a rule | Editing the root `.editorconfig` or `.globalconfig`, or adding a nested one in a subfolder | CODEOWNERS on the root files; diff-scan rejects nested ones |
 | Hiding nulls | `!`, `null!`, `default!` | Nullable.Extended.Analyzer |
-| Deleting or skipping tests | Removed test files, `[Ignore]`, `[Explicit]`, `Assert.Ignore` | tdd-check steps 1–2 |
+| Deleting or skipping tests | Removed or commented-out tests, `[Ignore]`, `[Explicit]`, `IgnoreReason`, `Assert.Ignore`, `Assume.That` | tdd-check steps 1–3 |
 | Tests that check nothing | No assertion in a `[Test]` | TEAM006 |
 | Integration tests disguised as unit tests | A `*.Tests` project starting a real database | Unit-test isolation check in `Directory.Build.targets` |
-| Tests written after the code | Tests that pass even without the change | tdd-check step 4 |
+| Tests written after the code | Tests that pass even without the change | tdd-check step 4 catches tests that don't depend on the change; only `red:`/`green:` commits show the order |
 | Weak tests | Assertions that pass whatever the code does | Stryker threshold in a code-owned config |
 | Changing the expected value to match buggy output | An edited `Is.EqualTo(...)` in an existing test | `tests-modified` label + review rule in METHODOLOGY §3 |
 | Hiding code from measurement | `[ExcludeFromCodeCoverage]`, editing Stryker's `mutate` or thresholds | diff-scan, CODEOWNERS on `stryker-config.json` |

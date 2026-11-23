@@ -1,0 +1,120 @@
+# CI on every PR and on every push to develop and main (issue #5, docs/CSHARP_SETUP_TODO.md section 10).
+# Pushes to other branches get CI through their PR, so a PR head has one run, not a push run
+# plus a PR run with diff-scan skipped (GitHub reports a skipped job as passing).
+# Every job here is meant to be a required check on develop and main, by its job name (section 9).
+# tdd-check and pr-description have their own workflows; security, deploy-check and api-tests
+# come through their own issues (#20, #21, #22).
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore from the lock files
+        run: dotnet restore --locked-mode
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore --locked-mode
+      - name: Build (compiler, analyzers, TEAM rules)
+        run: dotnet build -c Release --no-restore -v q -clp:NoSummary -tl:off
+
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore --locked-mode
+      - name: Check formatting
+        run: dotnet format --verify-no-changes --no-restore
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore --locked-mode
+      - run: dotnet build -c Release --no-restore -v q -clp:NoSummary -tl:off
+      - name: Test with coverage
+        run: dotnet test -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
+      - name: Coverage report
+        uses: danielpalme/ReportGenerator-GitHub-Action@5
+        with:
+          reports: TestResults/**/coverage.cobertura.xml
+          targetdir: coverage-report
+          reporttypes: Html
+      - name: Upload the coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage-report
+
+  # Runs the tests of the CI scripts themselves, so a change to a script fails its own tests.
+  ci-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run every tools/ci/*.test.sh
+        run: |
+          status=0
+          for test in tools/ci/*.test.sh; do
+            echo "::group::$test"
+            "$test" || status=1
+            echo "::endgroup::"
+          done
+          exit "$status"
+
+  diff-scan:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the diff needs the base commit
+      - name: Scan the lines this PR adds
+        id: scan
+        run: tools/ci/diff-scan.sh
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      - name: Add the review labels
+        # Labels are added even when the scan fails, so reviewers see them either way
+        if: ${{ !cancelled() && steps.scan.outputs.labels != '' }}
+        run: gh pr edit "$PR" -R "$GITHUB_REPOSITORY" --add-label "$LABELS"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          LABELS: ${{ steps.scan.outputs.labels }}

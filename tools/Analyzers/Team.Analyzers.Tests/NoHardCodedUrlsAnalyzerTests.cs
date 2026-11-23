@@ -70,6 +70,7 @@ public sealed class NoHardCodedUrlsAnalyzerTests
 
     [TestCase("/repo/src/BookingService/Program.cs")]
     [TestCase(@"C:\repo\src\BookingService\Program.cs")]
+    [TestCase("/home/dev/src/fitlife/src/BookingService/Program.cs")]
     public Task AnyFileUnderSrc_ReportsTeam010(string path)
     {
         const string source = """
@@ -101,6 +102,8 @@ public sealed class NoHardCodedUrlsAnalyzerTests
     [TestCase("/repo/tests/BookingService.Tests/MemberClientTests.cs")]
     [TestCase("/repo/tools/Analyzers/Team.Analyzers/Rule.cs")]
     [TestCase("/repo/sources/BookingService/MemberClient.cs")]
+    [TestCase("/home/dev/src/fitlife/tests/BookingService.Tests/MemberClientTests.cs")]
+    [TestCase("/home/dev/src/fitlife/tools/Analyzers/Team.Analyzers/Rule.cs")]
     public Task UrlOutsideSrc_ReportsNothing(string path)
     {
         const string source = """

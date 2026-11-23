@@ -464,7 +464,7 @@ The project description says the solution runs container-based, with monitoring,
 
 ## 10. CI pipeline
 
-**`ci.yml`**, on every push and PR. Each job is a required check (section 9).
+**`ci.yml`**, on every PR and on every push to `develop` and `main`. Other branches get CI through their PR, so a PR head runs once, not twice with `diff-scan` skipped in the push run (GitHub reports a skipped job as passing). Each job is a required check (section 9).
 
 | # | Job | Command or tool |
 |---|---|---|

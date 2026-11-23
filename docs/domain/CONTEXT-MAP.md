@@ -1,7 +1,7 @@
 # Context map: FitLife Digital
 
 > **Status: proposed, not decided.** Draft for the group session on issue #2. The answers below are Jesper's proposal (2026-11-23) and must be confirmed by the group. Nothing here is decided until ADR 007 says `accepted`. Open questions: [ADR 007](../adr/007-bounded-contexts.md#questions-for-the-group-session).
-> **Agents:** don't build on rows marked with an open question (Q5, Q6, Q8, Q9). Which context the PoC builds first is decided in #18, not here.
+> **Agents:** don't build on rows marked with an open question (Q5, Q6, Q8–Q12). Which context the PoC builds first is decided in #18, not here.
 > This file is a **group decision**. To change it, open an issue and write an ADR (`METHODOLOGY.md` section 11).
 > Method: IT-arkitektur M4, *Læringsguide M4.01* (its examples use the course's practice company HaaV; we apply the method to FitLife) and the worksheet *HaaV-domænemodel (Skabelon)*.
 
@@ -15,7 +15,7 @@ Agents: keep these apart. Most wrong code comes from mixing them.
 |---|---|---|
 | The case (AS-IS) | What does FitLife have today? | A membership system from 2012 handles payment and key fobs [PB p. 4] |
 | The target architecture (TO-BE) | What have we decided FitLife should have? | Our own Membership and Access contexts, built from scratch. The 2012 system is retired after a one-time migration of the members |
-| The PoC | What actually runs in our code? | No 2012 system and no integration with it. Members are created in our own Membership service; until it exists, a Postman Mock Server stands in for member registration (#35) |
+| The PoC | What actually runs in our code? | No 2012 system and no integration with it. Members are created in our own Membership service; until it exists, a Postman Mock Server stands in for member registration (#35; Q11) |
 
 ## 1. Core capability and core subdomains
 

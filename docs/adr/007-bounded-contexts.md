@@ -1,6 +1,6 @@
 # ADR 007: Bounded contexts for FitLife Digital
 
-- **Status:** proposed. Jesper's answers (2026-11-23) are filled in and must be confirmed by the group; Q5, Q6, Q8 and Q9 are open.
+- **Status:** proposed. Jesper's answers (2026-11-23) are filled in and must be confirmed by the group; Q5, Q6 and Q8–Q12 are open.
 - **Date:** 2026-11-23
 - **Deciders:** to be filled in at the group session (issue #2)
 
@@ -44,7 +44,7 @@ Forces:
 
 - Each context becomes one service in `src/<Service>/` with its own database and its own `CONTEXT.md` (DDD_PLAN step 3).
 - The cross-boundary events in context map section 5 each need a JSON Schema in `contracts/events/` before the services that use them are built.
-- The Postman MockServer requirement [PB p. 9] is covered by mocks of the payment provider and, until Membership exists, of member registration (#35).
+- The Postman MockServer requirement [PB p. 9] is covered by mocks of the payment provider and, until Membership exists, of member registration (#35). How sign-up is split between Identity and Membership is Q11.
 - Building everything ourselves conflicts with principle P5 in part 1. Q8 must be settled before this ADR is accepted, and the target architecture (parts 2, 4 and 6) must be changed to match whichever way it goes.
 - The report must argue why booking is core (the local class with a known instructor, not the software) and why online classes are left out.
 - Moving a boundary later is its own issue with a new ADR that supersedes this one.
@@ -64,5 +64,8 @@ The answer column holds Jesper's proposal (2026-11-23). The group confirms or ch
 | Q7 | What does the PoC build, and which context first? | Moved to #18; the PoC scope is not fixed yet | Moved |
 | Q8 | "We build it ourselves" vs principle P5 in part 1 ("payment, key fobs and messaging channels are bought or integrated") | Either keep P5 for FitLife in operation and only build ourselves in the PoC, or change P5 and parts 2, 4 and 6 with a new row in the decision log. For changing it: the case's business model canvas has a development team as key resource [PB p. 7]. Against: the case says FitLife lacks digital skills [PB p. 5] | **Open** |
 | Q9 | What does the MCP server have to do with wearables? | Two directions: MCP lets an AI assistant use *our* API; a wearables integration is *us* fetching data from vendors. Is the idea that the member's AI assistant connects the two, so we don't integrate with wearables directly? | **Open** |
+| Q10 | How does a new member get through the door in the NOW phase? Membership is NOW and Access is NEXT, and today the 2012 system handles payment and key fobs [PB p. 4] (review on #33) | No proposal yet. Options: (a) Membership and Access replace the 2012 system together; it stays authoritative until then, and the members are migrated when Access goes live. (b) Access moves to NOW. (c) A temporary ACL towards the 2012 system for key fobs until Access is live, which reopens the alternative rejected above | **Open** |
+| Q11 | Who owns sign-up? Joining creates a `Konto` (Identity) and a `Medlem` (Membership), and the context map has no relation or event between the two (review on #33) | No proposal yet. Options: (a) Membership drives: it calls Identity to create the account. (b) Identity first: the person creates an account and then joins in Membership with the token. (c) The member app calls both. Each answer adds a relation and an event for the new member to the context map, and the `user-registration` mock from #35 is split or renamed to match | **Open** |
+| Q12 | "Samtykke" has two meanings: the membership status *Afventer samtykke* waits for a parent's approval of a member under 18 (TO-BE context document section 8), and the term Samtykke is consent to share health data (review on #33) | No proposal yet. Options: (a) rename the status, so Samtykke has one meaning. (b) Keep both and add a line to the language test. (c) Leave the under-18 status out of this version | **Open** |
 | – | Consent for health data | Designed together with Training (principle P4); minimal or absent in the PoC, but described | To confirm |
 | – | Online classes and videos | Left out of this version, with the reason in context map section 2 | To confirm |

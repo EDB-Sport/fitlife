@@ -1,0 +1,50 @@
+# The API gateway. One template for compose and Azure (docs/CSHARP_SETUP_TODO.md section 9a).
+# The nginx image renders it with envsubst at start, so ${...} comes from the container's environment
+# and the upstream addresses are configuration, not code (course rule #13).
+#
+# The upstreams are kept in variables, so Nginx starts even when a service isn't running yet.
+# That service's route then answers 502 until it is up.
+
+resolver ${NGINX_RESOLVER} valid=10s ipv6=off;
+
+# Keep the caller's correlation ID, or create one (section 7). Every service logs it.
+map $http_x_correlation_id $correlation_id {
+    ""      $request_id;
+    default $http_x_correlation_id;
+}
+
+server {
+    listen 80;
+
+    proxy_set_header Host              $host;
+    proxy_set_header X-Correlation-ID  $correlation_id;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    add_header X-Correlation-ID $correlation_id always;
+
+    # The gateway's own health check (compose healthcheck, Azure probe).
+    location = /health {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    # One block per service: /api/<context>/<path> reaches the service as /<path>.
+    location /api/booking/ {
+        set $booking_upstream ${BOOKING_URL};
+        rewrite ^/api/booking/(.*)$ /$1 break;
+        proxy_pass $booking_upstream;
+    }
+
+    location /api/membership/ {
+        set $membership_upstream ${MEMBERSHIP_URL};
+        rewrite ^/api/membership/(.*)$ /$1 break;
+        proxy_pass $membership_upstream;
+    }
+
+    location /api/identity/ {
+        set $identity_upstream ${IDENTITY_URL};
+        rewrite ^/api/identity/(.*)$ /$1 break;
+        proxy_pass $identity_upstream;
+    }
+}

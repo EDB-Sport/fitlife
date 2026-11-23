@@ -1,12 +1,21 @@
 <Project>
   <!--
-    Central Package Management: every package version lives here, one version per package across all services.
-    A Version= on a PackageReference in a .csproj is error NU1008 (docs/CSHARP_SETUP_TODO.md section 1).
-    Issue #3 adds the analyzers here as GlobalPackageReference.
+    Central Package Management (docs/CSHARP_SETUP_TODO.md sections 1 and 3).
+    Every package version lives here, one version per package across all services.
+    A Version= on a PackageReference in a .csproj is error NU1008.
+    Code-owned: changes need a review from the maintainers.
   -->
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
+
+  <!-- Analyzers for every project, tests included -->
+  <ItemGroup Label="Analyzers">
+    <GlobalPackageReference Include="SonarAnalyzer.CSharp" Version="10.37.0.15768" />
+    <GlobalPackageReference Include="Meziantou.Analyzer" Version="3.0.342" />
+    <GlobalPackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0" />
+    <GlobalPackageReference Include="Nullable.Extended.Analyzer" Version="1.19.0" />
+  </ItemGroup>
 
   <!-- Added to every test project automatically by tests/Directory.Build.props. -->
   <ItemGroup Label="Test framework">

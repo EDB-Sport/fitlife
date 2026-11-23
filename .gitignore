@@ -496,3 +496,6 @@ StrykerOutput/
 .env.*
 !.env.example
 *.secrets.json
+# Throwaway projects from tools/ci/check-build-rules.sh
+src/BuildCheck*/
+tests/BuildCheck*/

@@ -28,7 +28,7 @@ issue → failing test → simplest implementation → refactor (if small) → P
 - **Issue:** states the behaviour, the acceptance criteria and which glossary terms it touches. Issues live on the group's GitHub Projects board (To Do → In Progress → Review → Done), and each one belongs to the milestone of the release it is meant for.
 - **Branch:** created from `develop` and named after the issue, e.g. `feature/12-reserve-class-session`.
 - **Commit:** small and focused. Don't commit generated noise, local agent config or logs. Optionally, prefix commits with `red:`, `green:` or `refactor:` so the TDD cycle shows in the history.
-- **PR:** targets `develop`. It says `Closes #<issue>`, which links and auto-closes the issue, and says in one or two lines what changed and why. It also says whether any existing test was changed, and why.
+- **PR:** targets `develop`. It says `Closes #<issue>`, which links and auto-closes the issue, or `Refs #<issue>` when the PR is only part of the issue. Release and hotfix PRs into `main` have no issue. It says in one or two lines what changed and why. It also says whether any existing test was changed, and why.
 
 ### 2.1 Branching: Git Flow
 

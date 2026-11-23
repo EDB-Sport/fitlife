@@ -2,14 +2,14 @@
 # Acceptance check for #17: Vault in dev mode in the compose stack, seeded from the .env values.
 #
 # Run it from anywhere in the repo:  deploy/compose/vault/seed.test.sh
-# Needs Docker with Compose v2. It starts only Vault and the seed job, in a separate compose project
+# Needs Docker with Compose v2 and jq. It starts only Vault, in a separate compose project
 # (fitlife-vault-test) so it doesn't touch your own stack, and removes them again at the end.
 #
 # Checks:
 #   1. the Vault image is pinned, and no token or secret is written in the compose files
 #   2. every service in SERVICE_DATABASES has its secrets at secret/<name>-svc, with the values from the
 #      env file: MongoDb:Password, RabbitMq:Username, RabbitMq:Password, Jwt:SigningKey
-#   3. the seed job can run again on a seeded Vault (a restart of the stack runs it again)
+#   3. after a restart, which empties dev-mode Vault, the container is healthy only with the secrets back
 set -euo pipefail
 
 ROOT=$(git rev-parse --show-toplevel)
@@ -52,16 +52,16 @@ elif [[ $vault_image != hashicorp/vault:[0-9]* ]]; then
 else
   ok "Vault image $vault_image"
 fi
-if grep -nE 'VAULT_(DEV_ROOT_)?TOKEN(_ID)?: *[^$ ]' "$COMPOSE_DIR"/*.yml; then
+if grep -nE '^[[:space:]]*VAULT_(DEV_ROOT_)?TOKEN(_ID)?:[[:space:]]*[^$[:space:]]' "$COMPOSE_DIR"/*.yml; then
   fail "a Vault token is written in a compose file; it must come from .env"
 else
   ok "no Vault token in the compose files"
 fi
 
-# 2. Start Vault and the seed job, then read every service's secrets back.
-if ! compose up -d --wait vault vault-seed; then
-  fail "vault and vault-seed didn't start"
-  compose logs vault vault-seed >&2 || true
+# 2. Start Vault, then read every service's secrets back.
+if ! compose up -d --wait vault; then
+  fail "vault didn't become healthy"
+  compose logs vault >&2 || true
   exit 1
 fi
 
@@ -91,11 +91,13 @@ for service in $services; do
   done
 done
 
-# 3. Seeding again works, so `docker compose up` on an existing stack doesn't fail.
-if compose run --rm -T vault-seed >/dev/null; then
-  ok "the seed job runs again on a seeded Vault"
+# 3. A restart empties dev-mode Vault. Once it's healthy again, the secrets must be back.
+first_service=${services%% *}
+if compose restart vault >/dev/null && compose up -d --wait vault >/dev/null &&
+  [[ -n $(read_secret "$first_service-svc" MongoDb:Password 2>/dev/null) ]]; then
+  ok "secrets are back after a restart"
 else
-  fail "the seed job fails when Vault is already seeded"
+  fail "after a restart, Vault is healthy without its secrets"
 fi
 
 if ((failures > 0)); then

@@ -11,7 +11,10 @@ namespace Team.Analyzers.Tests;
 internal static class AnalyzerVerifier
 {
     /// <summary>Compiles <paramref name="source"/> against .NET 10 and fails if the diagnostics differ from the markup.</summary>
-    public static Task VerifyAsync<TAnalyzer>(string source)
+    /// <param name="source">The snippet, with markup for every expected diagnostic.</param>
+    /// <param name="analyzerConfigFile">Optional .editorconfig or .globalconfig file (path and content) next to the snippet.</param>
+    /// <param name="behaviors">Checks of the test framework to skip, for a rule that needs it.</param>
+    public static Task VerifyAsync<TAnalyzer>(string source, (string Path, string Content)? analyzerConfigFile = null, TestBehaviors behaviors = TestBehaviors.None)
         where TAnalyzer : DiagnosticAnalyzer, new()
     {
         var test = new CSharpAnalyzerTest<TAnalyzer, DefaultVerifier>
@@ -19,7 +22,13 @@ internal static class AnalyzerVerifier
             TestCode = source,
             // The services target net10.0, so the snippets compile against the same reference assemblies
             ReferenceAssemblies = ReferenceAssemblies.Net.Net100,
+            TestBehaviors = behaviors,
         };
+        if (analyzerConfigFile is { } file)
+        {
+            test.TestState.AnalyzerConfigFiles.Add((file.Path, file.Content));
+        }
+
         return test.RunAsync();
     }
 }

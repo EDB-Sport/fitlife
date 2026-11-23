@@ -1,3 +1,5 @@
+using Microsoft.CodeAnalysis.Testing;
+
 namespace Team.Analyzers.Tests;
 
 /// <summary>
@@ -7,6 +9,11 @@ namespace Team.Analyzers.Tests;
 [TestFixture]
 public sealed class JustifiedSuppressionAnalyzerTests
 {
+    // The framework's suppression check wraps each snippet in a bare '#pragma warning disable' and expects silence.
+    // TEAM004 reports that pragma, and TEAM004 itself can't be suppressed (tested below), so the check is skipped.
+    private static Task VerifyAsync(string source, (string Path, string Content)? analyzerConfigFile = null) =>
+        AnalyzerVerifier.VerifyAsync<JustifiedSuppressionAnalyzer>(source, analyzerConfigFile, TestBehaviors.SkipSuppressionCheck);
+
     // --- #pragma warning disable ---
 
     [TestCase("")]
@@ -21,7 +28,7 @@ public sealed class JustifiedSuppressionAnalyzerTests
             {|TEAM004:#pragma warning disable CS0168|}{{comment}}
             class C { }
             """;
-        return AnalyzerVerifier.VerifyAsync<JustifiedSuppressionAnalyzer>(source);
+        return VerifyAsync(source);
     }
 
     [Test]
@@ -31,7 +38,7 @@ public sealed class JustifiedSuppressionAnalyzerTests
             {|TEAM004:#pragma warning disable|}
             class C { }
             """;
-        return AnalyzerVerifier.VerifyAsync<JustifiedSuppressionAnalyzer>(source);
+        return VerifyAsync(source);
     }
 
     [Test]
@@ -42,7 +49,7 @@ public sealed class JustifiedSuppressionAnalyzerTests
             {|TEAM004:#pragma warning disable CS0168, CS0219|}
             class C { }
             """;
-        return AnalyzerVerifier.VerifyAsync<JustifiedSuppressionAnalyzer>(source);
+        return VerifyAsync(source);
     }
 
     [Test]
@@ -59,7 +66,7 @@ public sealed class JustifiedSuppressionAnalyzerTests
                 }
             }
             """;
-        return AnalyzerVerifier.VerifyAsync<JustifiedSuppressionAnalyzer>(source);
+        return VerifyAsync(source);
     }
 
     [TestCase(" // #12: Razor needs the generated field")]
@@ -70,7 +77,7 @@ public sealed class JustifiedSuppressionAnalyzerTests
             #pragma warning disable CS0168{{comment}}
             class C { }
             """;
-        return AnalyzerVerifier.VerifyAsync<JustifiedSuppressionAnalyzer>(source);
+        return VerifyAsync(source);
     }
 
     [Test]
@@ -80,7 +87,7 @@ public sealed class JustifiedSuppressionAnalyzerTests
             #pragma warning restore CS0168
             class C { }
             """;
-        return AnalyzerVerifier.VerifyAsync<JustifiedSuppressionAnalyzer>(source);
+        return VerifyAsync(source);
     }
 
     // --- #nullable disable ---
@@ -95,7 +102,7 @@ public sealed class JustifiedSuppressionAnalyzerTests
             {|TEAM004:{{directive}}|}{{comment}}
             class C { }
             """;
-        return AnalyzerVerifier.VerifyAsync<JustifiedSuppressionAnalyzer>(source);
+        return VerifyAsync(source);
     }
 
     [Test]
@@ -105,7 +112,7 @@ public sealed class JustifiedSuppressionAnalyzerTests
             #nullable disable // #12: generated client, nullable annotations come in #13
             class C { }
             """;
-        return AnalyzerVerifier.VerifyAsync<JustifiedSuppressionAnalyzer>(source);
+        return VerifyAsync(source);
     }
 
     [TestCase("#nullable enable")]
@@ -117,7 +124,7 @@ public sealed class JustifiedSuppressionAnalyzerTests
             {{directive}}
             class C { }
             """;
-        return AnalyzerVerifier.VerifyAsync<JustifiedSuppressionAnalyzer>(source);
+        return VerifyAsync(source);
     }
 
     // --- [SuppressMessage] ---
@@ -138,7 +145,7 @@ public sealed class JustifiedSuppressionAnalyzerTests
             [{|TEAM004:{{attribute}}|}]
             class C { }
             """;
-        return AnalyzerVerifier.VerifyAsync<JustifiedSuppressionAnalyzer>(source);
+        return VerifyAsync(source);
     }
 
     [Test]
@@ -151,7 +158,7 @@ public sealed class JustifiedSuppressionAnalyzerTests
 
             class C { }
             """;
-        return AnalyzerVerifier.VerifyAsync<JustifiedSuppressionAnalyzer>(source);
+        return VerifyAsync(source);
     }
 
     [TestCase("SuppressMessage(\"Style\", \"IDE0060\", Justification = \"#12: the parameter is part of the public contract\")")]
@@ -170,7 +177,7 @@ public sealed class JustifiedSuppressionAnalyzerTests
                 public const string Contract = "#12: the parameter is part of the public contract";
             }
             """;
-        return AnalyzerVerifier.VerifyAsync<JustifiedSuppressionAnalyzer>(source);
+        return VerifyAsync(source);
     }
 
     [Test]
@@ -189,7 +196,7 @@ public sealed class JustifiedSuppressionAnalyzerTests
                 class C { }
             }
             """;
-        return AnalyzerVerifier.VerifyAsync<JustifiedSuppressionAnalyzer>(source);
+        return VerifyAsync(source);
     }
 
     // --- Generated code ---
@@ -206,6 +213,69 @@ public sealed class JustifiedSuppressionAnalyzerTests
             [SuppressMessage("Style", "IDE0060")]
             class C { }
             """;
-        return AnalyzerVerifier.VerifyAsync<JustifiedSuppressionAnalyzer>(source);
+        return VerifyAsync(source);
+    }
+
+    // --- TEAM004 can't switch itself off ---
+
+    [Test]
+    public Task PragmaDisablingTeam004_LaterSuppression_StillReportsTeam004()
+    {
+        const string source = """
+            #pragma warning disable TEAM004 // #12: an agent tries to switch the rule off
+            {|TEAM004:#pragma warning disable CS0168|}
+            class C { }
+            """;
+        return VerifyAsync(source);
+    }
+
+    [Test]
+    public Task SuppressMessageForTeam004_JustifiedOnClass_StillReportsTeam004Inside()
+    {
+        const string source = """
+            using System.Diagnostics.CodeAnalysis;
+
+            [SuppressMessage("Maintainability", "TEAM004", Justification = "#12: an agent tries to switch the rule off")]
+            class C
+            {
+                [{|TEAM004:SuppressMessage("Style", "IDE0060")|}]
+                void M(int unused) { }
+            }
+            """;
+        return VerifyAsync(source);
+    }
+
+    [TestCase("/.editorconfig", "root = true\n[*.cs]\ndotnet_diagnostic.TEAM004.severity = none")]
+    [TestCase("/.globalconfig", "is_global = true\ndotnet_diagnostic.TEAM004.severity = none")]
+    public Task AnalyzerConfigSeverityNone_ForTeam004_StillReportsTeam004(string path, string content)
+    {
+        const string source = """
+            {|TEAM004:#pragma warning disable CS0168|}
+            class C { }
+            """;
+        return VerifyAsync(source, (path, content));
+    }
+
+    [Test]
+    public Task SuppressMessageForTeam004_WithoutJustification_ReportsItself()
+    {
+        const string source = """
+            using System.Diagnostics.CodeAnalysis;
+
+            [{|TEAM004:SuppressMessage("Maintainability", "TEAM004")|}]
+            class C { }
+            """;
+        return VerifyAsync(source);
+    }
+
+    [Test]
+    public Task SuppressMessageForTeam004_AssemblyLevelWithoutJustification_ReportsItself()
+    {
+        const string source = """
+            using System.Diagnostics.CodeAnalysis;
+
+            [assembly: {|TEAM004:SuppressMessage("Maintainability", "TEAM004", Scope = "module")|}]
+            """;
+        return VerifyAsync(source);
     }
 }

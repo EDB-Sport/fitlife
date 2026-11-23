@@ -26,7 +26,8 @@ public sealed class NlogOnlyInProgramAnalyzerTests
         }
         namespace Microsoft.Extensions.Logging
         {
-            public interface ILogger<T> { }
+            public interface ILogger { }
+            public interface ILogger<T> : ILogger { }
         }
         """;
 
@@ -79,6 +80,31 @@ public sealed class NlogOnlyInProgramAnalyzerTests
             class Service
             {
                 private readonly NLog.{|TEAM002:Logger|} _logger = null!;
+            }
+            """;
+        return VerifyAsync(source, "Service.cs");
+    }
+
+    [Test]
+    public Task NlogILoggerParameter_InService_ReportsTeam002()
+    {
+        const string source = """
+            class Service
+            {
+                void Run(NLog.{|TEAM002:ILogger|} logger) { }
+            }
+            """;
+        return VerifyAsync(source, "Service.cs");
+    }
+
+    [Test]
+    public Task MicrosoftNonGenericILogger_InService_ReportsNothing()
+    {
+        const string source = """
+            using Microsoft.Extensions.Logging;
+            class Service
+            {
+                void Run(ILogger logger) { }
             }
             """;
         return VerifyAsync(source, "Service.cs");

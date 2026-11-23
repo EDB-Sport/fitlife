@@ -46,11 +46,6 @@ dotnet_diagnostic.IDE0011.severity = error
 csharp_style_expression_bodied_methods = false:error
 dotnet_diagnostic.IDE0022.severity = error
 
-# if/return instead of a conditional expression: IDE0045 and IDE0046 stop suggesting the rewrite.
-# No analyzer flags a conditional expression itself, so this one is a convention, checked in review.
-dotnet_style_prefer_conditional_expression_over_assignment = false:error
-dotnet_style_prefer_conditional_expression_over_return = false:error
-
 # File-scoped namespaces (IDE0161)
 csharp_style_namespace_declarations = file_scoped:error
 dotnet_diagnostic.IDE0161.severity = error

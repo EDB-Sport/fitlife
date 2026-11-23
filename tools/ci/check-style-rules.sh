@@ -187,50 +187,7 @@ public static class Sample
 }
 EOF
 
-# 5. if/return instead of a conditional expression. IDE0045 and IDE0046 only flag the other direction
-#    (an if that could be a conditional expression), so this checks that the build doesn't push towards it.
-expect_pass "if/else assignment and if/return are not rewritten to conditional expressions" <<'EOF2'
-namespace StyleCheck;
-
-/// <summary>Sample.</summary>
-public static class Sample
-{
-    /// <summary>Returns the larger number.</summary>
-    /// <param name="left">The first number.</param>
-    /// <param name="right">The second number.</param>
-    /// <returns>The larger number.</returns>
-    public static int Larger(int left, int right)
-    {
-        int larger;
-        if (left > right)
-        {
-            larger = left;
-        }
-        else
-        {
-            larger = right;
-        }
-
-        return larger;
-    }
-
-    /// <summary>Returns the smaller number.</summary>
-    /// <param name="left">The first number.</param>
-    /// <param name="right">The second number.</param>
-    /// <returns>The smaller number.</returns>
-    public static int Smaller(int left, int right)
-    {
-        if (left < right)
-        {
-            return left;
-        }
-
-        return right;
-    }
-}
-EOF2
-
-# 6. File-scoped namespaces
+# 5. File-scoped namespaces
 expect_error "block-scoped namespace fails (IDE0161)" IDE0161 <<'EOF'
 namespace StyleCheck
 {
@@ -241,7 +198,7 @@ namespace StyleCheck
 }
 EOF
 
-# 7. Naming rules
+# 6. Naming rules
 expect_error "lower-case public method fails (IDE1006)" IDE1006 <<'EOF'
 namespace StyleCheck;
 
@@ -301,7 +258,7 @@ public interface Sample
 }
 EOF
 
-# 8. Repo-level criteria
+# 7. Repo-level criteria
 expect_text ".editorconfig has an empty Blazor section" .editorconfig '^\[src/\*\.Web/\*\*\.cs\]'
 expect_text ".editorconfig is code-owned" .github/CODEOWNERS '^/\.editorconfig[[:space:]]+@EDB-Sport/edb-team'
 expect_text "README names the format fixer" README.md 'dotnet format style --diagnostics'

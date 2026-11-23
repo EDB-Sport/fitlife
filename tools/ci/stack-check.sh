@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 # Fails a pull request that targets develop but is built on another open PR's branch (issue #110).
-# A branch counts as the parent when its tip is in this PR's history and not yet on develop.
+# Another open PR is a parent when it has a lower number than this PR and shares commits with
+# it that aren't on develop (their merge base isn't on develop). It doesn't matter whether the
+# parent has moved on since: shared commits, not the parent's current tip, are what a reviewer
+# sees twice. The lower-number rule keeps the bottom of a stack passing while its child is open.
+# A stack whose child has the lower number is not caught.
 # Inputs (environment):
 #   BASE_REF     the PR's base branch; only a PR whose base is develop is checked
 #   HEAD_SHA     the PR's head commit
+#   PR_NUMBER    this PR's number
 #   HEAD_BRANCH  the PR's head branch (never its own parent)
 #   OPEN_PRS     the open PRs, one "<number> <head branch>" per line; when unset, read with gh
 #                (needs GH_TOKEN and GITHUB_REPOSITORY)
@@ -31,11 +36,11 @@ while read -r number branch; do
   [ -n "${number:-}" ] && [ -n "${branch:-}" ] || continue
   [ "$branch" = "${HEAD_BRANCH:-}" ] && continue
   tip=$(git rev-parse --verify --quiet "${prefix}${branch}^{commit}") || continue
-  [ "$tip" = "$HEAD_SHA" ] && continue
-  git merge-base --is-ancestor "$tip" "$develop_ref" && continue # parent already merged
-  git merge-base --is-ancestor "$tip" "$HEAD_SHA" || continue    # not in this PR's history
+  [ "$number" -lt "${PR_NUMBER:?}" ] || continue # only a lower-numbered PR is a parent
+  shared=$(git merge-base "$tip" "$HEAD_SHA") || continue # no common history
+  git merge-base --is-ancestor "$shared" "$develop_ref" && continue # only develop in common
   echo "::error::This PR targets develop but contains the commits of #$number ($branch), which aren't on develop."
-  echo "Either merge #$number first, or set the base to $branch (retarget to develop after #$number merges)."
+  echo "Either merge #$number first, or set the base to $branch (retarget to develop after #$number merges). After you change the base, re-run this check: a base change does not start it."
   failed=1
 done <<<"${OPEN_PRS:-}"
 

@@ -308,7 +308,7 @@ The project description's test terms map onto this as: *unit tests* = Unit, *int
   *Why:* the project description asks for exactly these four kinds of Postman evidence (integration, API, mock server, end-to-end), and the Agil udvikling course: most real bugs live in error paths, and a wrong status code should turn the build red just like a failing unit test.
 - [ ] **Stryker.NET mutation testing on PRs:** `dotnet stryker --since:origin/${{ github.base_ref }}` (usually `develop`), with `"thresholds": { "break": 60 }` in a code-owned `stryker-config.json`. Raise the threshold over time.
   *Why:* proves the tests catch changes to the code, which a coverage number alone doesn't. The project description still asks for coverage reports, so CI produces both (section 10, job 4). It also answers the course question "if you remove the rule from the model, does the test fail?" (M4.02) for every rule at once.
-- [ ] **Adopt the tdd-check workflow** (`openrig_notes/workflows/tdd-check.yml`):
+- [ ] **Adopt the tdd-check workflow** (`.github/workflows/tdd-check.yml`):
   - `TEST_CMD="dotnet test -c Release"`
   - `SRC_DIR=src/`, `TEST_DIR=tests/`
   - `SRC_FILE_REGEX='\.cs$'` and `TEST_FILE_REGEX='\.cs$'`, so a `CONTEXT.md`, Dockerfile or `.razor` change under `src/` needs no new test, and a PR that only adds Postman collections isn't judged by `dotnet test`
@@ -464,7 +464,7 @@ The project description says the solution runs container-based, with monitoring,
 
 ## 10. CI pipeline
 
-**`ci.yml`**, on every push and PR. Each job is a required check (section 9).
+**`ci.yml`**, on every PR and on every push to `develop` and `main`. Other branches get CI through their PR, so a PR head runs once, not twice with `diff-scan` skipped in the push run (GitHub reports a skipped job as passing). Each job is a required check (section 9).
 
 | # | Job | Command or tool |
 |---|---|---|

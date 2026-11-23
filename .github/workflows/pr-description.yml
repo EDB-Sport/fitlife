@@ -1,0 +1,32 @@
+# Checks that every PR description follows .github/pull_request_template.md (issue #34).
+# Runs again when the description is edited, so fixing the text turns the check green.
+name: PR description
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-description-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-description:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            tools/ci
+            .github
+      - name: Test the check
+        run: tools/ci/check-pr-body.test.sh
+      - name: Check the PR description
+        # The body and branch are passed through environment variables, never pasted into the script
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: tools/ci/check-pr-body.sh

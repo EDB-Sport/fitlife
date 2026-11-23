@@ -13,7 +13,7 @@ People and agents use these words, and only these words, in code, tests, issues,
 - **Term is the Danish word the business uses** (proposed, Q5 in ADR 007, open). It is the word in the report, the user journey and conversations with FitLife. **In code** is the English name we use in C#, APIs and event names. Where a Danish Term is spelled like an English name in its own **Avoid** cell (Booking), Avoid means the name in code: the Danish text says *booking*, the code says `Reservation`.
 - **Avoid** lists the synonyms nobody may use for this concept. If an agent writes one of them, the reviewer asks for the glossary name.
 - **schema.org** is the type the English name is taken from (course rule #5). Write `–` if none fits.
-- **Kind** is one of: `Aggregate root`, `Entity`, `Value object`, `Domain event`, `Command`, `Query`, `Domain service`, or `Term` for a word that is not a type.
+- **Kind** is one of: `Aggregate root`, `Entity`, `Value object`, `Domain event`, `Command`, `Query`, `Domain service`, or `Term` for a word that is not a type. A `Term` has `–` in **In code**; it gets a code name when it becomes a type.
 
 ## Terms
 
@@ -31,7 +31,7 @@ People and agents use these words, and only these words, in code, tests, issues,
 | Kapacitet | How many members can have a reservation on one class session | `Capacity` | – | Booking | Value object | Seats, Size, Max, Limit |
 | Booking | A member's seat on one class session | `Reservation` | Reservation | Booking | Entity | Booking (as a name in code), Signup, Enrollment, Tilmelding |
 | Ventelisteplads | A member's place in the queue for a full class session, first come first served | `WaitlistEntry` | – | Booking | Entity | Queue, Standby, Waiting |
-| Sen afmelding | A cancellation less than two hours before the class session starts. Statistics only, no consequence | `LateCancellation` | – | Booking | Term | Late cancel, No-show |
+| Sen afmelding | A cancellation less than two hours before the class session starts. Statistics only, no consequence | – | – | Booking | Term | Late cancel, No-show |
 | Instruktør | The trainer who leads a class session. Booking only knows the instructor's id and name | `Instructor` | Person | Booking | Value object | Trainer, Coach, Teacher |
 | Personlig træner | A trainer in a personal training programme with one member (NEXT) | `PersonalTrainer` | Person | Training | Entity | Instructor, Coach, PT |
 | Træningspas | One completed training session in a personal training programme (NEXT) | `TrainingSession` | ExerciseAction | Training | Entity | Session, Workout, Visit |

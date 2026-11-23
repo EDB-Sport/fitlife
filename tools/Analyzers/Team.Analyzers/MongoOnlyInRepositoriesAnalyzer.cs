@@ -1,5 +1,7 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Team.Analyzers;
@@ -31,5 +33,43 @@ public sealed class MongoOnlyInRepositoriesAnalyzer : DiagnosticAnalyzer
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
+        context.RegisterSyntaxNodeAction(AnalyzeName, SyntaxKind.IdentifierName, SyntaxKind.GenericName);
     }
+
+    private static void AnalyzeName(SyntaxNodeAnalysisContext context)
+    {
+        SimpleNameSyntax name = (SimpleNameSyntax)context.Node;
+        if (context.SemanticModel.GetSymbolInfo(name, context.CancellationToken).Symbol is not INamedTypeSymbol type
+            || !IsDriverNamespace(type.ContainingNamespace))
+        {
+            return;
+        }
+
+        INamespaceSymbol? where = context.ContainingSymbol as INamespaceSymbol ?? context.ContainingSymbol?.ContainingNamespace;
+        // The repositories may use the driver, and so may the driver's own code
+        if (where is null || IsRepositoriesNamespace(where) || IsDriverNamespace(where))
+        {
+            return;
+        }
+
+        string whereText = where.ToDisplayString();
+        if (where.IsGlobalNamespace)
+        {
+            whereText = "the global namespace";
+        }
+
+        context.ReportDiagnostic(Diagnostic.Create(Rule, name.GetLocation(), type.Name, whereText));
+    }
+
+    // MongoDB.Driver and its sub-namespaces (MongoDB.Driver.Linq, ...), not MongoDB.Bson
+    private static bool IsDriverNamespace(INamespaceSymbol? ns)
+    {
+        string text = ns?.ToDisplayString() ?? string.Empty;
+        return string.Equals(text, "MongoDB.Driver", StringComparison.Ordinal)
+            || text.StartsWith("MongoDB.Driver.", StringComparison.Ordinal);
+    }
+
+    // BookingService.Repositories: the last segment of the namespace
+    private static bool IsRepositoriesNamespace(INamespaceSymbol ns) =>
+        string.Equals(ns.Name, "Repositories", StringComparison.Ordinal);
 }

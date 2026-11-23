@@ -151,7 +151,7 @@ public sealed class MongoOnlyInRepositoriesAnalyzerTests
             }
             """;
         DiagnosticResult expected = new DiagnosticResult(MongoOnlyInRepositoriesAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
-            .WithSpan(5, 61, 5, 75)
+            .WithSpan(5, 55, 5, 69)
             .WithMessage("Found MongoDB.Driver type 'IMongoDatabase' in BookingService.Controllers. Do the database work in a repository class in a *.Repositories namespace, and use its interface here.");
         return VerifyAsync(source, expected);
     }

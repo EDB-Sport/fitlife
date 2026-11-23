@@ -11,6 +11,7 @@ The project's own Roslyn rules (`docs/CSHARP_SETUP_TODO.md` section 4). Each rul
 
 | ID | Rule | Analyzer |
 |---|---|---|
+| TEAM001 | Types from `MongoDB.Driver` (and its sub-namespaces) are used only in a namespace whose last segment is `Repositories`. `MongoDB.Bson` attributes on models are allowed. | `MongoOnlyInRepositoriesAnalyzer` |
 | TEAM004 | `#pragma warning disable` and `#nullable disable` end with `// #<issue>: <reason>` on the same line. `[SuppressMessage]` and `[UnconditionalSuppressMessage]` have `Justification = "#<issue>: <reason>"`. | `JustifiedSuppressionAnalyzer` |
 
 The other rules in section 4 come one PR at a time (issue #9 and its sub-issues).

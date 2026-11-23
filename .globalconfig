@@ -1,0 +1,29 @@
+# Analyzer settings for every project (docs/CSHARP_SETUP_TODO.md sections 2 and 3).
+# Every disabled rule has a reason. Code-owned: changes need a review from the maintainers.
+is_global = true
+
+# --- Disabled rules ---
+
+# CA2007 ConfigureAwait: ASP.NET Core has no synchronization context
+dotnet_diagnostic.CA2007.severity = none
+# CA1303 localization of literals: not needed
+dotnet_diagnostic.CA1303.severity = none
+# CA1062 argument null checks: nullable reference types cover them
+dotnet_diagnostic.CA1062.severity = none
+# CA1848 LoggerMessage delegates: plain ILogger templates are what the course teaches, and read better (CA2254 stays on)
+dotnet_diagnostic.CA1848.severity = none
+# CA1515 make public types internal: public types are needed for XML comments and WebApplicationFactory<Program>
+dotnet_diagnostic.CA1515.severity = none
+
+# --- Rules that are off by default and must be on ---
+
+# Sonar size limits; the thresholds are in SonarLint.xml
+dotnet_diagnostic.S3776.severity = error
+dotnet_diagnostic.S134.severity = error
+dotnet_diagnostic.S107.severity = error
+dotnet_diagnostic.S138.severity = error
+dotnet_diagnostic.S104.severity = error
+dotnet_diagnostic.S1067.severity = error
+
+# IDE0079 unnecessary suppression: suppressions whose warning has gone away are removed
+dotnet_diagnostic.IDE0079.severity = error

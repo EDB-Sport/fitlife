@@ -6,9 +6,9 @@
 set -uo pipefail
 
 root=$(cd "$(dirname "$0")/../.." && pwd)
-a="$root/src/__BuildCheckA"
-b="$root/src/__BuildCheckB"
-t="$root/tests/__BuildCheck.Tests"
+a="$root/src/BuildCheckA"
+b="$root/src/BuildCheckB"
+t="$root/tests/BuildCheck.Tests"
 trap 'rm -rf "$a" "$b" "$t"' EXIT
 failures=0
 
@@ -26,9 +26,9 @@ write_project() {
 EOF
 }
 
-# write_code <dir>   (C# source on stdin)
+# write_code <dir> <type name>   (C# source on stdin; the file is named after the type, MA0048)
 write_code() {
-  cat > "$1/Code.cs"
+  cat > "$1/$2.cs"
 }
 
 build() {
@@ -62,7 +62,7 @@ expect_error() {
 }
 
 clean_code() {
-  write_code "$1" <<'EOF'
+  write_code "$1" Calculator <<'EOF'
 namespace BuildCheck;
 
 /// <summary>Adds numbers.</summary>
@@ -81,7 +81,7 @@ EOF
 }
 
 undocumented_code() {
-  write_code "$1" <<'EOF'
+  write_code "$1" Calculator <<'EOF'
 namespace BuildCheck;
 
 public static class Calculator
@@ -114,9 +114,14 @@ write_project "$a" "<PropertyGroup><TreatWarningsAsErrors>false</TreatWarningsAs
 undocumented_code "$a"
 expect_error "TreatWarningsAsErrors=false in a .csproj is overridden" "$a" "CS1591"
 
-# 5. Nullable can't be switched off per project
+# 5. XML documentation can't be switched off per project
+write_project "$a" "<PropertyGroup><GenerateDocumentationFile>false</GenerateDocumentationFile></PropertyGroup>"
+undocumented_code "$a"
+expect_error "GenerateDocumentationFile=false in a .csproj is overridden" "$a" "CS1591"
+
+# 6. Nullable can't be switched off per project
 write_project "$a" "<PropertyGroup><Nullable>disable</Nullable></PropertyGroup>"
-write_code "$a" <<'EOF'
+write_code "$a" Names <<'EOF'
 namespace BuildCheck;
 
 /// <summary>Names.</summary>
@@ -132,9 +137,9 @@ public static class Names
 EOF
 expect_error "Nullable=disable in a .csproj is overridden" "$a" "CS8603"
 
-# 6. Banned APIs (BannedSymbols.txt)
+# 7. Banned APIs (BannedSymbols.txt)
 write_project "$a"
-write_code "$a" <<'EOF'
+write_code "$a" Clock <<'EOF'
 namespace BuildCheck;
 
 /// <summary>Clock.</summary>
@@ -150,9 +155,9 @@ public static class Clock
 EOF
 expect_error "DateTime.Now is banned" "$a" "RS0030"
 
-# 7. Null-forgiving operator without justification (Nullable.Extended.Analyzer)
+# 8. Null-forgiving operator without justification (Nullable.Extended.Analyzer)
 write_project "$a"
-write_code "$a" <<'EOF'
+write_code "$a" Names <<'EOF'
 namespace BuildCheck;
 
 /// <summary>Names.</summary>
@@ -168,9 +173,9 @@ public static class Names
 EOF
 expect_error "null! without justification fails" "$a" "NX000"
 
-# 8. Sonar limits from SonarLint.xml: at most 5 parameters (Sonar's default is 7)
+# 9. Sonar limits from SonarLint.xml: at most 5 parameters (Sonar's default is 7)
 write_project "$a"
-write_code "$a" <<'EOF'
+write_code "$a" Calculator <<'EOF'
 namespace BuildCheck;
 
 /// <summary>Adds numbers.</summary>
@@ -192,22 +197,22 @@ public static class Calculator
 EOF
 expect_error "6 parameters fails (S107, max 5)" "$a" "S107"
 
-# 9. Central Package Management: no versions in a .csproj
+# 10. Central Package Management: no versions in a .csproj
 write_project "$a" '<ItemGroup><PackageReference Include="Newtonsoft.Json" Version="13.0.3" /></ItemGroup>'
 clean_code "$a"
 expect_error "Version= on a PackageReference fails" "$a" "NU1008"
 
-# 10. No references between services
+# 11. No references between services
 write_project "$b"
 clean_code "$b"
-write_project "$a" '<ItemGroup><ProjectReference Include="../__BuildCheckB/__BuildCheckB.csproj" /></ItemGroup>'
+write_project "$a" '<ItemGroup><ProjectReference Include="../BuildCheckB/BuildCheckB.csproj" /></ItemGroup>'
 clean_code "$a"
 expect_error "ProjectReference into another service fails" "$a" "FITLIFE001"
 rm -rf "$b"
 
-# 11. Test projects: no XML comments needed, underscores allowed in test names
+# 12. Test projects: no XML comments needed, underscores allowed in test names
 write_project "$t"
-write_code "$t" <<'EOF'
+write_code "$t" CalculatorTests <<'EOF'
 namespace BuildCheck.Tests;
 
 public static class CalculatorTests

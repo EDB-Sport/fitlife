@@ -10,7 +10,7 @@ People and agents use these words, and only these words, in code, tests, issues,
 - **Add the term first.** A new domain concept gets its row in the same PR that introduces it, before or together with the code.
 - **One meaning per row.** If a word means different things in two bounded contexts, it gets two rows, one for each context. That's the language test from IT-arkitektur M4.
 - **Don't rename the columns.** The TEAM008 analyzer checks public types in `*.Models` against the **In code** column.
-- **Term is the Danish word the business uses** (proposed, Q5 in ADR 007). It is the word in the report, the user journey and conversations with FitLife. **In code** is the English name we use in C#, APIs and event names.
+- **Term is the Danish word the business uses** (proposed, Q5 in ADR 007, open). It is the word in the report, the user journey and conversations with FitLife. **In code** is the English name we use in C#, APIs and event names.
 - **Avoid** lists the synonyms nobody may use for this concept. If an agent writes one of them, the reviewer asks for the glossary name.
 - **schema.org** is the type the English name is taken from (course rule #5). Write `–` if none fits.
 - **Kind** is one of: `Aggregate root`, `Entity`, `Value object`, `Domain event`, `Command`, `Query`, `Domain service`, or `Term` for a word that is not a type.
@@ -33,8 +33,8 @@ People and agents use these words, and only these words, in code, tests, issues,
 | Ventelisteplads | A member's place in the queue for a full class session, first come first served | `WaitlistEntry` | – | Booking | Entity | Queue, Standby, Waiting |
 | Sen afmelding | A cancellation less than two hours before the class session starts. Statistics only, no consequence | `LateCancellation` | – | Booking | Term | Late cancel, No-show |
 | Instruktør | The trainer who leads a class session. Booking only knows the instructor's id and name | `Instructor` | Person | Booking | Value object | Trainer, Coach, Teacher |
-| Personlig træner | A trainer in a personal training programme with one member (NEXT; depends on Q1) | `PersonalTrainer` | Person | Training | Entity | Instructor, Coach, PT |
-| Træningspas | One completed training session in a personal training programme (NEXT; depends on Q1) | `TrainingSession` | ExerciseAction | Training | Entity | Session, Workout, Visit |
+| Personlig træner | A trainer in a personal training programme with one member (NEXT) | `PersonalTrainer` | Person | Training | Entity | Instructor, Coach, PT |
+| Træningspas | One completed training session in a personal training programme (NEXT) | `TrainingSession` | ExerciseAction | Training | Entity | Session, Workout, Visit |
 | Notifikation | One message to one member about something that happened, with its delivery log | `Notification` | – | Notification | Aggregate root | Message, Alert, Push |
 | Booking oprettet | A member got a seat on a class session, directly or from the waitlist | `ReservationMade` | – | Booking | Domain event | BookingCreated, ReservationAdded |
 | Booking afmeldt | A member gave up their seat | `ReservationCancelled` | – | Booking | Domain event | BookingDeleted, ReservationRemoved |

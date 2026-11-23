@@ -495,3 +495,6 @@ coverage/
 .env.*
 !.env.example
 *.secrets.json
+# Throwaway projects from tools/ci/check-build-rules.sh
+src/__BuildCheck*/
+tests/__BuildCheck*/

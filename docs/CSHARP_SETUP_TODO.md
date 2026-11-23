@@ -74,8 +74,8 @@ The cost is per-service releases inside one Git Flow (section 9) and a repo-root
   *Why:* the tdd-check workflow (section 6) tells production code from tests by path. `deploy/` keeps both environments next to the code they run: compose for a laptop and CI, Bicep for Azure.
 - [ ] **One root solution (`.slnx`) with every service and test project.**
   *Why:* one `dotnet build` and one `dotnet test` cover the whole system, and language servers load a single workspace.
-- [ ] **`global.json`:** SDK `10.0.100` with `rollForward: latestFeature`. Dockerfiles use `mcr.microsoft.com/dotnet/sdk:10.0-alpine`, as the course does.
-  *Why:* every agent and CI run use .NET 10 at or above a known baseline. The roll-forward policy keeps the course's floating `10.0-alpine` image from failing the build when its patch differs.
+- [ ] **`global.json`:** SDK `10.0.203` with `rollForward: disable`. Dockerfiles use the matching pinned tag, `mcr.microsoft.com/dotnet/sdk:10.0.203-alpine3.23` (MCR has no `10.0.203-alpine` tag), not the floating `10.0-alpine` (#47). Only the SDK image restores, so the runtime image may keep a floating tag.
+  *Why:* a Web SDK project's `packages.lock.json` records an implicit package version that follows the installed SDK patch, so `--locked-mode` restore only works when every laptop, CI run and Docker build uses the same patch. Moving to a newer patch is a reviewed PR.
 - [ ] **Root `Directory.Build.props`, with restore settings and defaults:**
   - `Nullable=enable`
   - `ImplicitUsings=enable`

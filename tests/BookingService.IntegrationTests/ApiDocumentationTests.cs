@@ -12,7 +12,8 @@ public sealed class ApiDocumentationTests
     public async Task Get_InProduction_ReturnsNotFound(string path)
     {
         // Arrange
-        using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(host => host.UseEnvironment("Production"));
+        using var app = new WebApplicationFactory<Program>();
+        using var factory = app.WithWebHostBuilder(host => host.UseEnvironment("Production"));
         using var client = factory.CreateClient();
 
         // Act
@@ -27,7 +28,8 @@ public sealed class ApiDocumentationTests
     public async Task Get_InDevelopment_ReturnsOk(string path)
     {
         // Arrange
-        using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(host => host.UseEnvironment("Development"));
+        using var app = new WebApplicationFactory<Program>();
+        using var factory = app.WithWebHostBuilder(host => host.UseEnvironment("Development"));
         using var client = factory.CreateClient();
 
         // Act

@@ -17,6 +17,12 @@
     <GlobalPackageReference Include="Nullable.Extended.Analyzer" Version="1.19.0" />
   </ItemGroup>
 
+  <!-- Services: OpenAPI document and Scalar, both mapped in Development only (course rule #7) -->
+  <ItemGroup Label="Services">
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.15" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="3.1.1" />
+  </ItemGroup>
+
   <!-- Added to every test project automatically by tests/Directory.Build.props. -->
   <ItemGroup Label="Test framework">
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />

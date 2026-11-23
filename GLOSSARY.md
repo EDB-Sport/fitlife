@@ -35,6 +35,10 @@ People and agents use these words, and only these words, in code, tests, issues,
 | Instruktør | The trainer who leads a class session. Booking only knows the instructor's id and name | `Instructor` | Person | Booking | Value object | Trainer, Coach, Teacher |
 | Personlig træner | A trainer in a personal training programme with one member (NEXT) | `PersonalTrainer` | Person | Training | Entity | Instructor, Coach, PT |
 | Træningspas | One completed training session in a personal training programme (NEXT) | `TrainingSession` | ExerciseAction | Training | Entity | Session, Workout, Visit |
+| PT-forløb | A personal training programme: one member's series of training sessions with their personal trainer, with follow-up (NEXT) | `TrainingProgram` | ExercisePlan | Training | Aggregate root | Course, Plan, Package |
+| Samtykke | A member's permission to share their training and health data with a trainer or an external app. It can be withdrawn (principle P4 in the target architecture; designed with Training) | `Consent` | – | Consent | Aggregate root | Permission, Approval, Acceptance |
+| Adgangsbrik | The key fob a member uses to get into a centre. Today the 2012 system handles the key fobs [PB p. 4] (NEXT) | `KeyFob` | – | Access | Entity | Key card, Tag, Badge |
+| Check-in | One registered entry of a member into a centre (NEXT) | `CheckIn` | CheckInAction | Access | Entity | Visit, Entry, Scan |
 | Notifikation | One message to one member about something that happened, with its delivery log | `Notification` | – | Notification | Aggregate root | Message, Alert, Push |
 | Booking oprettet | A member got a seat on a class session, directly or from the waitlist | `ReservationMade` | – | Booking | Domain event | BookingCreated, ReservationAdded |
 | Booking afmeldt | A member gave up their seat | `ReservationCancelled` | – | Booking | Domain event | BookingDeleted, ReservationRemoved |
@@ -53,4 +57,4 @@ From the language test, step 1 of `docs/DDD_PLAN.md`. Each line here points at a
 | hold | Booking, planning: a kind of class that recurs every week, the class the informant goes to every Tuesday or "is on" [I1, I3] | Booking, reservations: one run of a class that can be full [I1, I3]. A third meaning, the regular group of people on a class who know each other [I3, I4], points at a later Engagement context | `ClassType` / `ClassSession` / (Engagement, LATER) |
 | træner | Booking: the instructor who leads a class and knows the members' names [I1, I3] | Training: the personal trainer in a programme with one member, with data, exercises and follow-up [I2, I3] | `Instructor` / `PersonalTrainer` |
 | medlem | Identity: anyone who can log in, including the role "Medlem" | Membership: a person who has joined, pays and has a key fob [PB p. 4; I1]. Booking only sees a participant with a seat | `Account` (with `Role`) / `Member`, referenced as `MemberId` |
-| session | Training: one personal training session in a programme [I3] | Identity: a logged-in browser session | `TrainingSession` / `LoginSession` |
+| session | Training: one personal training session in a programme [I3] | Identity: a logged-in browser session | `TrainingSession` / – (no type in Identity yet) |

@@ -61,7 +61,7 @@ One context = one service in `src/<Service>/` = one database. Each context gets 
 
 | Context | Service | Subdomain(s) | Owns data about | Key terms (see `GLOSSARY.md`) | Phase |
 |---|---|---|---|---|---|
-| Booking | `BookingService` | Class scheduling and booking (core) | Centres, class types, class sessions, reservations, waitlist entries | Hold, Holdtype, Booking, Venteliste, Instruktør | NOW |
+| Booking | `BookingService` | Class scheduling and booking (core) | Centres, class types, class sessions, reservations, waitlist entries | Hold, Holdtype, Booking, Ventelisteplads, Instruktør | NOW |
 | Training | `TrainingService` | Personal training (core) | Programmes, training sessions, notes | PT-forløb, Træningspas, Personlig træner | NEXT (#18 decides) |
 | Membership | `MembershipService` | Membership administration | Members, memberships, membership types | Medlem, Medlemskab, Medlemstype | NOW |
 | Notification | `NotificationService` | Member communication | Notification preferences, sent notifications | Notifikation | NOW |

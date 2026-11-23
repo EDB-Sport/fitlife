@@ -10,7 +10,7 @@ People and agents use these words, and only these words, in code, tests, issues,
 - **Add the term first.** A new domain concept gets its row in the same PR that introduces it, before or together with the code.
 - **One meaning per row.** If a word means different things in two bounded contexts, it gets two rows, one for each context. That's the language test from IT-arkitektur M4.
 - **Don't rename the columns.** The TEAM008 analyzer checks public types in `*.Models` against the **In code** column.
-- **Term is the Danish word the business uses** (proposed, Q5 in ADR 007, open). It is the word in the report, the user journey and conversations with FitLife. **In code** is the English name we use in C#, APIs and event names.
+- **Term is the Danish word the business uses** (proposed, Q5 in ADR 007, open). It is the word in the report, the user journey and conversations with FitLife. **In code** is the English name we use in C#, APIs and event names. Where a Danish Term is spelled like an English name in its own **Avoid** cell (Booking), Avoid means the name in code: the Danish text says *booking*, the code says `Reservation`.
 - **Avoid** lists the synonyms nobody may use for this concept. If an agent writes one of them, the reviewer asks for the glossary name.
 - **schema.org** is the type the English name is taken from (course rule #5). Write `–` if none fits.
 - **Kind** is one of: `Aggregate root`, `Entity`, `Value object`, `Domain event`, `Command`, `Query`, `Domain service`, or `Term` for a word that is not a type.
@@ -29,7 +29,7 @@ People and agents use these words, and only these words, in code, tests, issues,
 | Holdtype | A kind of class that recurs in the schedule, e.g. spinning or yoga | `ClassType` | – | Booking | Entity | Activity, Program, Course |
 | Hold | One scheduled run of a class: centre, class type, instructor, start time, duration and capacity | `ClassSession` | Event | Booking | Aggregate root | Session, Class, Lesson, Event |
 | Kapacitet | How many members can have a reservation on one class session | `Capacity` | – | Booking | Value object | Seats, Size, Max, Limit |
-| Booking | A member's seat on one class session | `Reservation` | Reservation | Booking | Entity | Booking, Signup, Enrollment, Tilmelding |
+| Booking | A member's seat on one class session | `Reservation` | Reservation | Booking | Entity | Booking (as a name in code), Signup, Enrollment, Tilmelding |
 | Ventelisteplads | A member's place in the queue for a full class session, first come first served | `WaitlistEntry` | – | Booking | Entity | Queue, Standby, Waiting |
 | Sen afmelding | A cancellation less than two hours before the class session starts. Statistics only, no consequence | `LateCancellation` | – | Booking | Term | Late cancel, No-show |
 | Instruktør | The trainer who leads a class session. Booking only knows the instructor's id and name | `Instructor` | Person | Booking | Value object | Trainer, Coach, Teacher |

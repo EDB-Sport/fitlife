@@ -1,0 +1,10 @@
+P:System.DateTime.Now;Inject TimeProvider instead (testable)
+P:System.DateTime.UtcNow;Inject TimeProvider instead (testable)
+M:System.Threading.Thread.Sleep(System.Int32);Use await Task.Delay with an injected TimeProvider
+P:System.Threading.Tasks.Task`1.Result;Use await
+M:System.Threading.Tasks.Task.Wait;Use await
+M:System.Net.Http.HttpClient.#ctor;Inject IHttpClientFactory or a typed client (socket exhaustion, course M5)
+M:System.Console.WriteLine(System.String);Use an injected ILogger<T>
+M:System.Environment.GetEnvironmentVariable(System.String);Use IConfiguration (it reads environment variables too)
+M:System.Activator.CreateInstance(System.Type);No reflection: create the object directly
+M:System.Random.#ctor;Inject the source of randomness so tests are repeatable

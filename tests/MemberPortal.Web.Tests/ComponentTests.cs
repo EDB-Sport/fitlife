@@ -7,25 +7,35 @@ namespace MemberPortal.Web.Tests;
 public class ComponentTests : BunitContext
 {
     [Test]
-    public void Home_RendersHeading()
+    public void Home_RendersHeadingWithFitLifeTitle()
     {
         // Arrange & Act
         var cut = Render<Home>();
 
         // Assert
-        cut.Find("h1").MarkupMatches("<h1>Hello, world!</h1>");
+        var heading = cut.Find("h1");
+        heading.MarkupMatches("<h1 class=\"display-5 fw-bold mb-3\">Velkommen til FitLife Digital</h1>");
     }
 
     [Test]
-    public void Counter_IncrementsWhenClicked()
+    public void Home_RendersLocalFriendlyBadge()
     {
-        // Arrange
-        var cut = Render<Counter>();
-
-        // Act
-        cut.Find("button").Click();
+        // Arrange & Act
+        var cut = Render<Home>();
 
         // Assert
-        cut.Find("p").MarkupMatches("<p role=\"status\">Current count: 1</p>");
+        var badge = cut.Find("span.badge");
+        Assert.That(badge.TextContent, Does.Contain("Lokal & venlig"));
+    }
+
+    [Test]
+    public void Home_RendersThreeFeatureCards()
+    {
+        // Arrange & Act
+        var cut = Render<Home>();
+
+        // Assert
+        var cards = cut.FindAll(".card");
+        Assert.That(cards.Count, Is.EqualTo(3));
     }
 }

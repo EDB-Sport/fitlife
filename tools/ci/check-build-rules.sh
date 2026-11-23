@@ -9,7 +9,8 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 a="$root/src/BuildCheckA"
 b="$root/src/BuildCheckB"
 t="$root/tests/BuildCheck.Tests"
-trap 'rm -rf "$a" "$b" "$t"' EXIT
+i="$root/tests/BuildCheck.IntegrationTests"
+trap 'rm -rf "$a" "$b" "$t" "$i"' EXIT
 failures=0
 
 # write_project <dir> [extra csproj lines]
@@ -224,6 +225,16 @@ public static class CalculatorTests
 }
 EOF
 expect_pass "test project builds without XML comments and with underscores" "$t"
+
+# 13. Unit-test projects can't reference real infrastructure (issue #13, docs/CSHARP_SETUP_TODO.md section 6)
+write_project "$t" '<ItemGroup><PackageReference Include="Testcontainers.MongoDb" /></ItemGroup>'
+expect_error "*.Tests project referencing Testcontainers.MongoDb fails" "$t" "FITLIFE002"
+
+write_project "$t" '<ItemGroup><PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" /></ItemGroup>'
+expect_error "*.Tests project referencing Microsoft.AspNetCore.Mvc.Testing fails" "$t" "FITLIFE002"
+
+write_project "$i" '<ItemGroup><PackageReference Include="Testcontainers.MongoDb" /><PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" /></ItemGroup>'
+expect_pass "*.IntegrationTests project referencing Testcontainers.MongoDb and Mvc.Testing builds" "$i"
 
 echo
 if [ "$failures" -eq 0 ]; then

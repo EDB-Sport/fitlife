@@ -1,1 +1,7 @@
-<Solution />
+<Solution>
+  <Folder Name="/tools/" />
+  <Folder Name="/tools/Analyzers/">
+    <Project Path="tools/Analyzers/Team.Analyzers.Tests/Team.Analyzers.Tests.csproj" />
+    <Project Path="tools/Analyzers/Team.Analyzers/Team.Analyzers.csproj" />
+  </Folder>
+</Solution>

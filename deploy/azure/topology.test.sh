@@ -125,7 +125,7 @@ else:
     fail(summary)
 
 # 4. Secrets: secure parameters, passed as secureValue.
-secret_name = re.compile(r"(PASSWORD|TOKEN|SECRET|SIGNINGKEY|_KEY$)", re.IGNORECASE)
+secret_name = re.compile(r"(PASS|TOKEN|SECRET|SIGNING_?KEY|_KEY$)", re.IGNORECASE)
 failures_before = len(failures)
 for name, parameter in main.get("parameters", {}).items():
     if secret_name.search(name) and parameter.get("type") != "securestring":
@@ -153,7 +153,8 @@ def secret_files(container_name):
     files = {}
     for volume_name, path in mounts(container_name).items():
         for file_name, content in volumes.get(volume_name, {}).get("secret", {}).items():
-            files[f"{path}/{file_name}"] = content
+            # loadFileAsBase64() compiles to a variable that holds the file's base64 text.
+            files[f"{path}/{file_name}"] = resolve(content)
     return files
 expected = {
     "mongodb": {"/docker-entrypoint-initdb.d/01-service-users.js": "deploy/compose/mongodb/init/01-service-users.js"},

@@ -95,13 +95,21 @@ jobs:
       - name: Pin the Bicep CLI
         run: az bicep install --version v0.49.2
 
-      # main.bicepparam reads these with readEnvironmentVariable(). The token never appears on a command line.
+      # main.bicepparam reads these with readEnvironmentVariable(). No secret appears on a command line.
       - name: What-if
         env:
           SERVICE_IMAGE_TAG: ${{ steps.versions.outputs.service_tag }}
           UI_IMAGE_TAG: ${{ steps.versions.outputs.ui_tag }}
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_PULL_TOKEN: ${{ secrets.DOCKERHUB_PULL_TOKEN }}
+          MONGO_ROOT_PASSWORD: ${{ secrets.MONGO_ROOT_PASSWORD }}
+          BOOKING_DB_PASSWORD: ${{ secrets.BOOKING_DB_PASSWORD }}
+          MEMBERSHIP_DB_PASSWORD: ${{ secrets.MEMBERSHIP_DB_PASSWORD }}
+          IDENTITY_DB_PASSWORD: ${{ secrets.IDENTITY_DB_PASSWORD }}
+          NOTIFICATION_DB_PASSWORD: ${{ secrets.NOTIFICATION_DB_PASSWORD }}
+          RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
+          VAULT_DEV_ROOT_TOKEN: ${{ secrets.VAULT_DEV_ROOT_TOKEN }}
+          JWT_SIGNING_KEY: ${{ secrets.JWT_SIGNING_KEY }}
         run: |
           az deployment group what-if \
             --resource-group "$RESOURCE_GROUP" \
@@ -114,6 +122,14 @@ jobs:
           UI_IMAGE_TAG: ${{ steps.versions.outputs.ui_tag }}
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_PULL_TOKEN: ${{ secrets.DOCKERHUB_PULL_TOKEN }}
+          MONGO_ROOT_PASSWORD: ${{ secrets.MONGO_ROOT_PASSWORD }}
+          BOOKING_DB_PASSWORD: ${{ secrets.BOOKING_DB_PASSWORD }}
+          MEMBERSHIP_DB_PASSWORD: ${{ secrets.MEMBERSHIP_DB_PASSWORD }}
+          IDENTITY_DB_PASSWORD: ${{ secrets.IDENTITY_DB_PASSWORD }}
+          NOTIFICATION_DB_PASSWORD: ${{ secrets.NOTIFICATION_DB_PASSWORD }}
+          RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
+          VAULT_DEV_ROOT_TOKEN: ${{ secrets.VAULT_DEV_ROOT_TOKEN }}
+          JWT_SIGNING_KEY: ${{ secrets.JWT_SIGNING_KEY }}
         run: |
           set -euo pipefail
           outputs="$(az deployment group create \

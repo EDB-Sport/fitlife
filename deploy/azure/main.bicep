@@ -1,9 +1,10 @@
-// FitLife production on Azure Container Instances (docs/CSHARP_SETUP_TODO.md section 9a, issue #10).
-// The thin slice: Caddy (HTTPS) -> Nginx -> one service and the member portal, in one container group.
+// FitLife production on Azure Container Instances (docs/CSHARP_SETUP_TODO.md section 9a, issues #10 and #23).
+// One container group: Caddy (HTTPS) -> Nginx -> the service and the member portal, with MongoDB, RabbitMQ
+// and Vault next to them. Loki and Grafana join with #6, the other services and UIs as they are released.
 // Deploy: see deploy/azure/README.md. Values for production are in main.bicepparam.
 targetScope = 'resourceGroup'
 
-metadata description = 'FitLife production: one container group with Caddy, Nginx, one service and the member portal.'
+metadata description = 'FitLife production: one container group with Caddy, Nginx, the services and UIs, MongoDB, RabbitMQ and Vault.'
 
 @description('Azure region for every resource.')
 param location string = resourceGroup().location
@@ -56,9 +57,68 @@ param nginxImage string = 'nginx:1.30.7-alpine'
 @description('Caddy image, the HTTPS sidecar in front of Nginx.')
 param caddyImage string = 'caddy:2.11.9-alpine'
 
+@description('MongoDB image. The same version as deploy/compose/infrastructure.yml.')
+param mongoImage string = 'mongo:8.0.38'
+
+@description('RabbitMQ image. The same version as deploy/compose/infrastructure.yml.')
+param rabbitmqImage string = 'rabbitmq:4.4.1-management'
+
+@description('Vault image (dev mode). The same version as deploy/compose/infrastructure.yml.')
+param vaultImage string = 'hashicorp/vault:2.2.2'
+
+@description('MongoDB admin user name.')
+param mongoRootUsername string = 'root'
+
+@description('RabbitMQ user that the services connect as.')
+param rabbitmqUsername string = 'fitlife'
+
+// Secrets: the deploy workflow passes them from GitHub Actions secrets (main.bicepparam), and the
+// containers get them as secureValue, which the portal doesn't show. The names match deploy/compose/.env.
+
+@description('MongoDB admin password. Used only by the init script that creates the service users, and for debugging.')
+@secure()
+@minLength(1)
+param mongoRootPassword string
+
+@description('Password of the MongoDB user booking-svc, which can reach only the booking database.')
+@secure()
+@minLength(1)
+param bookingDbPassword string
+
+@description('Password of the MongoDB user membership-svc, which can reach only the membership database.')
+@secure()
+@minLength(1)
+param membershipDbPassword string
+
+@description('Password of the MongoDB user identity-svc, which can reach only the identity database.')
+@secure()
+@minLength(1)
+param identityDbPassword string
+
+@description('Password of the MongoDB user notification-svc, which can reach only the notification database.')
+@secure()
+@minLength(1)
+param notificationDbPassword string
+
+@description('RabbitMQ password of rabbitmqUsername.')
+@secure()
+@minLength(1)
+param rabbitmqPassword string
+
+@description('Root token of the dev-mode Vault. The services read their secrets from Vault with it (#17).')
+@secure()
+@minLength(1)
+param vaultRootToken string
+
+@description('Key that signs and checks the JWTs (HMAC-SHA256), at least 32 characters. Seeded into Vault.')
+@secure()
+@minLength(32)
+param jwtSigningKey string
+
 // Caddy keeps its Let's Encrypt certificate here, so a restart doesn't request a new one.
-// MongoDB, Loki and Grafana get their shares here as the slice grows.
 var caddyShareName = 'caddy-data'
+// MongoDB's data directory. Loki and Grafana get their shares here with #6.
+var mongoShareName = 'mongodb-data'
 
 // Globally unique, and the same on every deploy to this resource group.
 var storageAccountName = 'fitlife${uniqueString(resourceGroup().id)}'
@@ -69,6 +129,7 @@ module storage 'modules/storage.bicep' = {
     storageAccountName: storageAccountName
     shareNames: [
       caddyShareName
+      mongoShareName
     ]
   }
 }
@@ -84,6 +145,7 @@ module containers 'modules/containers.bicep' = {
     dnsNameLabel: dnsNameLabel
     storageAccountName: storageAccountName
     caddyShareName: caddyShareName
+    mongoShareName: mongoShareName
     dockerHubUsername: dockerHubUsername
     dockerHubToken: dockerHubToken
     serviceContext: serviceContext
@@ -93,6 +155,19 @@ module containers 'modules/containers.bicep' = {
     uiHealthPath: uiHealthPath
     nginxImage: nginxImage
     caddyImage: caddyImage
+    mongoImage: mongoImage
+    rabbitmqImage: rabbitmqImage
+    vaultImage: vaultImage
+    mongoRootUsername: mongoRootUsername
+    rabbitmqUsername: rabbitmqUsername
+    mongoRootPassword: mongoRootPassword
+    bookingDbPassword: bookingDbPassword
+    membershipDbPassword: membershipDbPassword
+    identityDbPassword: identityDbPassword
+    notificationDbPassword: notificationDbPassword
+    rabbitmqPassword: rabbitmqPassword
+    vaultRootToken: vaultRootToken
+    jwtSigningKey: jwtSigningKey
   }
 }
 

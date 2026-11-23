@@ -26,6 +26,10 @@ jobs:
           fetch-depth: 0 # gitleaks reads the commits, not just the files
           persist-credentials: false
 
+      - name: test the security steps
+        # A planted fake secret must fail the gitleaks step, run with the shell GitHub uses for it.
+        run: tools/ci/security-steps.test.sh
+
       - name: gitleaks
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}

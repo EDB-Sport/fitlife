@@ -135,7 +135,7 @@ public sealed class ConditionalExpressionAnalyzerTests
             }
             """;
         var expected = new DiagnosticResult(ConditionalExpressionAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
-            .WithSpan(5, 16, 5, 42)
+            .WithSpan(5, 16, 5, 43)
             .WithMessage("Found a conditional expression (?:) as a return value. Do write an if statement with a return in each branch in the method instead.");
         return VerifyAsync(source, expected);
     }
@@ -187,6 +187,21 @@ public sealed class ConditionalExpressionAnalyzerTests
                 {
                     string text = $"{seats} {(seats == 1 ? "seat" : "seats")}";
                     return text;
+                }
+            }
+            """;
+        return VerifyAsync(source);
+    }
+
+    [Test]
+    public Task RefConditionalAsAssignmentTarget_ReportsNothing()
+    {
+        const string source = """
+            class C
+            {
+                void M(bool first, ref int left, ref int right)
+                {
+                    (first ? ref left : ref right) = 0;
                 }
             }
             """;

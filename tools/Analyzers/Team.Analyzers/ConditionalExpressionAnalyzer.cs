@@ -1,5 +1,7 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Team.Analyzers;
@@ -31,5 +33,32 @@ public sealed class ConditionalExpressionAnalyzer : DiagnosticAnalyzer
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
+        context.RegisterSyntaxNodeAction(AnalyzeConditional, SyntaxKind.ConditionalExpression);
+    }
+
+    private static void AnalyzeConditional(SyntaxNodeAnalysisContext context)
+    {
+        SyntaxNode node = context.Node;
+        SyntaxNode? parent = node.Parent;
+        while (parent is ParenthesizedExpressionSyntax)
+        {
+            node = parent;
+            parent = parent.Parent;
+        }
+
+        // Only the outermost conditional is reported: an inner one goes away with the outer one's if statement
+        string[]? use = parent switch
+        {
+            ReturnStatementSyntax => ["a return value", "a return", "the method"],
+            AssignmentExpressionSyntax assignment when assignment.Right == node => ["an assigned value", "an assignment", "the method"],
+            EqualsValueClauseSyntax { Parent: VariableDeclaratorSyntax { Parent.Parent: FieldDeclarationSyntax } }
+                => ["a field initializer", "an assignment", "the constructor"],
+            EqualsValueClauseSyntax { Parent: VariableDeclaratorSyntax } => ["a variable initializer", "an assignment", "the method"],
+            _ => null,
+        };
+        if (use is not null)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(Rule, context.Node.GetLocation(), use[0], use[1], use[2]));
+        }
     }
 }

@@ -1,0 +1,31 @@
+<Project>
+  <!--
+    Test project conventions (docs/CSHARP_SETUP_TODO.md section 6, tests/README.md).
+    MSBuild imports only the nearest Directory.Build.props, so pull in the root one first when it exists (issue #3).
+  -->
+  <PropertyGroup>
+    <_FitLifeRootBuildProps>$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..'))</_FitLifeRootBuildProps>
+  </PropertyGroup>
+  <Import Project="$(_FitLifeRootBuildProps)" Condition="'$(_FitLifeRootBuildProps)' != ''" />
+
+  <!-- The project name decides the kind of test project: tests/<Service>.Tests or tests/<Service>.IntegrationTests. -->
+  <PropertyGroup>
+    <IsUnitTestProject>$(MSBuildProjectName.EndsWith('.Tests'))</IsUnitTestProject>
+    <IsIntegrationTestProject>$(MSBuildProjectName.EndsWith('.IntegrationTests'))</IsIntegrationTestProject>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IsUnitTestProject)' == 'true' or '$(IsIntegrationTestProject)' == 'true'">
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!-- Every test project gets NUnit and coverlet, so coverage is collected everywhere. Versions: Directory.Packages.props. -->
+  <ItemGroup Condition="'$(IsTestProject)' == 'true'">
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit3TestAdapter" />
+    <PackageReference Include="NUnit.Analyzers" />
+    <PackageReference Include="coverlet.collector" />
+    <Using Include="NUnit.Framework" />
+  </ItemGroup>
+</Project>

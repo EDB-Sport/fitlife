@@ -1,0 +1,33 @@
+<Project>
+  <!--
+    Central Package Management: every package version lives here, one version per package across all services.
+    A Version= on a PackageReference in a .csproj is error NU1008 (docs/CSHARP_SETUP_TODO.md section 1).
+    Issue #3 adds the analyzers here as GlobalPackageReference.
+  -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <!-- Added to every test project automatically by tests/Directory.Build.props. -->
+  <ItemGroup Label="Test framework">
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
+    <PackageVersion Include="NUnit" Version="4.6.1" />
+    <PackageVersion Include="NUnit3TestAdapter" Version="6.3.1" />
+    <PackageVersion Include="NUnit.Analyzers" Version="4.15.0" />
+    <PackageVersion Include="coverlet.collector" Version="10.1.1" />
+  </ItemGroup>
+
+  <!-- Referenced by a test project when it needs them (tests/README.md). -->
+  <ItemGroup Label="Unit tests">
+    <!-- Never 4.20.0, the SponsorLink release (docs/CSHARP_SETUP_TODO.md section 6). -->
+    <PackageVersion Include="Moq" Version="4.21.0" />
+    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.11.1" />
+  </ItemGroup>
+
+  <!-- Integration tests only. tests/Directory.Build.targets fails a *.Tests project that references these. -->
+  <ItemGroup Label="Integration tests">
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.15" />
+    <PackageVersion Include="Testcontainers.MongoDb" Version="4.17.0" />
+    <PackageVersion Include="Testcontainers.RabbitMq" Version="4.17.0" />
+  </ItemGroup>
+</Project>

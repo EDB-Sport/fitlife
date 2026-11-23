@@ -490,6 +490,7 @@ CLAUDE.local.md
 # Newman / test reports
 results/
 coverage/
+StrykerOutput/
 # Local environment and secrets
 .env
 .env.*

@@ -1,5 +1,6 @@
+using System.Text.Json;
+using NLog;
 using NLog.Config;
-using NLog.Layouts;
 using NLog.Loki;
 
 namespace BookingService.Tests;
@@ -7,7 +8,9 @@ namespace BookingService.Tests;
 /// <summary>The shared nlog.config (libs/nlog.config) sends structured logs to Loki with the labels the Grafana dashboard expects.</summary>
 public sealed class LoggingConfigurationTests
 {
-    private static LoggingConfiguration Load()
+    private static readonly string[] LokiLabels = ["app", "server", "version"];
+
+    private static XmlLoggingConfiguration Load()
     {
         var path = Path.Combine(AppContext.BaseDirectory, "nlog.config");
         return new XmlLoggingConfiguration(path);
@@ -38,21 +41,30 @@ public sealed class LoggingConfigurationTests
         var labels = LokiTarget(configuration).Labels.Select(label => label.Name);
 
         // Assert
-        Assert.That(labels, Is.EquivalentTo(new[] { "app", "server", "version" }));
+        Assert.That(labels, Is.EquivalentTo(LokiLabels));
     }
 
     [Test]
-    public void LokiTarget_WritesJsonWithEventPropertiesAndCorrelationId()
+    public void LokiTarget_WritesJsonWithLevelMessageCorrelationIdAndEventProperties()
     {
         // Arrange
-        var configuration = Load();
+        var layout = LokiTarget(Load()).Layout;
+        var logEvent = new LogEventInfo(LogLevel.Error, "Booking", "Reservation made");
+        logEvent.Properties["ReservationId"] = "r-1";
 
         // Act
-        var layout = LokiTarget(configuration).Layout as JsonLayout;
+        string line;
+        using (ScopeContext.PushProperty("CorrelationId", "c-1"))
+        {
+            line = layout.Render(logEvent);
+        }
 
         // Assert
-        Assert.That(layout, Is.Not.Null);
-        Assert.That(layout!.IncludeEventProperties, Is.True); // Justification: asserted not null on the line above
-        Assert.That(layout.Attributes.Select(attribute => attribute.Name), Is.SupersetOf(new[] { "level", "message", "CorrelationId" }));
+        using var json = JsonDocument.Parse(line);
+        var fields = json.RootElement;
+        Assert.That(fields.GetProperty("level").GetString(), Is.EqualTo("Error"));
+        Assert.That(fields.GetProperty("message").GetString(), Is.EqualTo("Reservation made"));
+        Assert.That(fields.GetProperty("CorrelationId").GetString(), Is.EqualTo("c-1"));
+        Assert.That(fields.GetProperty("ReservationId").GetString(), Is.EqualTo("r-1"));
     }
 }

@@ -97,6 +97,47 @@ expect "comment-only section with CRLF fails" fail "empty 'What changed and why'
 # 8. A body with no sections at all fails
 expect "missing sections fail" fail "empty 'What changed and why'" <<<"Closes #5"
 
+# A body that is fine apart from its first line
+rest=$'\n## What changed and why\nSomething.\n\n## Tests\n- [x] No existing test was changed or removed'
+
+# 9. A partial PR links its issue with Refs, without closing it (PRs #40, #42, #44)
+expect "Refs #n passes" pass <<<"Refs #9$rest"
+
+# 10. The other keywords and forms GitHub links an issue with
+expect "Fixed #n passes" pass <<<"Fixed #12$rest"
+expect "Closes owner/repo#n passes" pass <<<"Closes EDB-Sport/project#12$rest"
+expect "Closes <issue URL> passes" pass <<<"Closes https://github.com/EDB-Sport/project/issues/12$rest"
+
+# 11. Release and hotfix PRs into main have no issue to close (METHODOLOGY section 2.1)
+HEAD_REF=release/1.0.0 expect "release PR without an issue passes" pass <<<"$rest"
+HEAD_REF=hotfix/bookingservice-1.0.1 expect "hotfix PR without an issue passes" pass <<<"$rest"
+HEAD_REF=feature/12-reserve expect "feature PR without an issue fails" fail "no linked issue" <<<"$rest"
+
+# 12. With the box unticked, the text has to say which test changed, not just that tests pass
+expect "unticked box with unrelated text fails" fail "no answer about existing tests" <<'EOF'
+Closes #5
+
+## What changed and why
+Something.
+
+## Tests
+- [x] The change started with a failing test (or executable acceptance check)
+- [ ] No existing test was changed or removed
+
+All tests pass.
+EOF
+
+# 13. Only the exact heading counts: "## Testsuite" is not "## Tests"
+expect "a heading that starts with Tests fails" fail "no answer about existing tests" <<'EOF'
+Closes #5
+
+## What changed and why
+Something.
+
+## Testsuite
+- [x] No existing test was changed or removed
+EOF
+
 echo
 if [ "$failures" -eq 0 ]; then
   echo "All PR description checks work."

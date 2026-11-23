@@ -38,6 +38,8 @@ EOF
   write_calculator ""
   write_tests ""
   dotnet sln FitLife.slnx add src/MutationCheck/MutationCheck.csproj tests/MutationCheck.Tests/MutationCheck.Tests.csproj >/dev/null
+  # The lock files are committed, as in the repo. Otherwise Stryker sees changed files in a test project and tests every mutant.
+  dotnet restore FitLife.slnx >/dev/null
   git init -q -b develop
   git -c user.name=test -c user.email=test@example.com add -A
   git -c user.name=test -c user.email=test@example.com commit -q -m base
@@ -108,8 +110,8 @@ expect() {
   local out status
   out=$(SINCE="$base" "$script" 2>&1)
   status=$?
-  if { [ "$1" = pass ] && [ "$status" -eq 0 ]; } ||
-     { [ "$1" = fail ] && [ "$status" -ne 0 ] && grep -qi "${3:-}" <<<"$out"; }; then
+  if { { [ "$1" = pass ] && [ "$status" -eq 0 ]; } || { [ "$1" = fail ] && [ "$status" -ne 0 ]; }; } &&
+     grep -qi "${3:-}" <<<"$out"; then
     echo "PASS  $2"
   else
     echo "FAIL  $2: expected $1, got exit $status"
@@ -129,9 +131,15 @@ setup_repo
 write_calculator "$subtract"
 write_tests "$subtract_test"
 commit "Subtract with its test"
-expect pass "a change with a test for it passes"
+expect pass "a change with a test for it passes" "final mutation score is 100"
 
-# 3. Without a base to compare with, the script refuses to run
+# 3. Only the changed files are mutated, and a change without C# files has nothing to mutate
+setup_repo
+echo "Docs only." >> README.md
+commit "docs only"
+expect pass "a change without C# files passes" "nothing to mutate"
+
+# 4. Without a base to compare with, the script refuses to run
 cd "$work" || exit 1
 if out=$(env -u SINCE "$script" 2>&1); then
   echo "FAIL  missing SINCE fails: it passed"

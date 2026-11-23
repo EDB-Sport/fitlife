@@ -83,6 +83,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4 # mutation.test.sh builds and mutates a throwaway project
+        with:
+          global-json-file: global.json
       - name: Run every tools/ci/*.test.sh
         run: |
           status=0
@@ -92,6 +95,29 @@ jobs:
             echo "::endgroup::"
           done
           exit "$status"
+
+  # Stryker on the C# files the PR changes; fails below the break threshold in stryker-config.json (issue #53).
+  mutation:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the diff needs the base branch
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Mutation testing on the changed C# files
+        run: tools/ci/mutation.sh
+        env:
+          SINCE: origin/${{ github.base_ref }}
+      - name: Upload the mutation report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: StrykerOutput/*/reports/
+          if-no-files-found: ignore
 
   diff-scan:
     if: github.event_name == 'pull_request'

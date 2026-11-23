@@ -15,6 +15,7 @@ Inputs: the case [PB p. 3–6], the group's simulated interviews [I1–I4], the 
 Forces:
 - Three of four informants stay because of the trainers or instructors [I1, I3, I4]. All four want digital booking and messages about changes [I1–I4].
 - At most two subdomains may be core [M4.01 p. 5]. At least three contexts, and at least two of them must come from the core capability [M4.01 p. 10].
+- The course's checklist for the context map also asks for at least one anticorruption layer towards an existing system, with a reason [M4.01 p. 11] (HaaV's systems in the guide, FitLife's here). With the 2012 ACL rejected below, the draft still has one: the ACL between FitLife's existing finance system [PB p. 5] and Membership (context map section 4). The payment provider and the messaging channels sit behind ACLs too, but the case names neither, so they are new external systems and not existing ones.
 - The case's idea for FitLife Digital is to integrate "med eksisterende medlems- og økonomisystemer" [PB p. 5]. It is an idea from the innovation manager, not one of the tasks under "I skal" [PB p. 6], so we may choose otherwise if we argue it.
 - The case itself describes the 2012 system as part of the problem: "Der eksisterer ingen integration mellem systemerne" [PB p. 4], and management's SWOT lists outdated IT systems without integration and technical debt and security risks [PB p. 5].
 - The PoC must handle "brugernes identitet og adgang på en sikker måde" [PB p. 10] and test mocked services with Postman MockServer [PB p. 9].

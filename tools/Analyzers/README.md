@@ -12,6 +12,7 @@ The project's own Roslyn rules (`docs/CSHARP_SETUP_TODO.md` section 4). Each rul
 | ID | Rule | Analyzer |
 |---|---|---|
 | TEAM004 | `#pragma warning disable` and `#nullable disable` end with `// #<issue>: <reason>` on the same line. `[SuppressMessage]` and `[UnconditionalSuppressMessage]` have `Justification = "#<issue>: <reason>"`. | `JustifiedSuppressionAnalyzer` |
+| TEAM008 | Every public, non-nested type in a `*.Models` namespace is named in the **In code** column of `GLOSSARY.md` (in backticks), which the build passes in as an AdditionalFile. | `ModelTypesInGlossaryAnalyzer` |
 
 The other rules in section 4 come one PR at a time (issue #9 and its sub-issues).
 

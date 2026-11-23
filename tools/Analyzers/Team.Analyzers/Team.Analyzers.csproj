@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The project's own Roslyn analyzers, the TEAM rules (docs/CSHARP_SETUP_TODO.md section 4).
+    Each rule is built test-first in tools/Analyzers/Team.Analyzers.Tests.
+  -->
+  <PropertyGroup>
+    <!-- The compiler loads analyzers as netstandard2.0 assemblies -->
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <!-- netstandard2.0 defaults to C# 7.3, which has no nullable reference types or implicit usings (root Directory.Build.props) -->
+    <LangVersion>latest</LangVersion>
+    <!-- Turns on the RS rules that keep an analyzer safe to load in the compiler and the IDE -->
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <IsRoslynComponent>true</IsRoslynComponent>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Compile-time only: the compiler that loads the analyzer brings its own Roslyn. Versions: Directory.Packages.props. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Release tracking (RS2008): every rule ID, category and severity is listed in these files -->
+    <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
+    <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
+  </ItemGroup>
+</Project>

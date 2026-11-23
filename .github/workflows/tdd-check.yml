@@ -1,0 +1,33 @@
+# Checks that every PR was built test-first. Logic and rules: tools/ci/tdd-check.sh.
+# Make "tdd-check" a required check on develop and main (docs/CSHARP_SETUP_TODO.md section 6, issue #5).
+name: tdd-check
+
+on:
+  pull_request:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+jobs:
+  tdd-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the base commit is needed for the diff and the red-on-base run
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: tdd-check
+        run: tools/ci/tdd-check.sh
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          TEST_CMD: dotnet test -c Release
+          SRC_DIR: src/
+          TEST_DIR: tests/
+          SRC_FILE_REGEX: '\.cs$'
+          TEST_FILE_REGEX: '\.cs$'
+          SKIP_MARKERS: '[[,][[:space:]]*(Ignore|Explicit)\b|Assert\.(Ignore|Inconclusive)'

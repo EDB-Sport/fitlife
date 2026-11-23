@@ -4,9 +4,20 @@
 # Make "security" a required check on develop and main (repo ruleset).
 name: security
 
+# One run per PR update: "push" is only a backstop for direct pushes and merges to the shared
+# branches, "pull_request" scans the PR's own commits (base..head).
+# No "paths:" filter on any trigger: a required check that never runs stays "Expected: waiting"
+# and blocks the merge. Checked by tools/ci/security-steps.test.sh.
+# If a merge queue is turned on, add a "merge_group:" trigger, or the required check never reports.
 on:
   push:
+    branches: [develop, main]
   pull_request:
+
+# A new push to a PR cancels the run in progress. Runs on develop and main are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read

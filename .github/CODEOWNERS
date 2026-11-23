@@ -1,0 +1,6 @@
+# Humans own the rule files (docs/CSHARP_SETUP_TODO.md section 1).
+# Add the .NET rule files here as they are created (global.json, Directory.*.props/targets, .editorconfig, ...).
+/.github/                     @EDB-Sport/edb-team
+/docs/METHODOLOGY.md          @EDB-Sport/edb-team
+/docs/domain/CONTEXT-MAP.md   @EDB-Sport/edb-team
+/docs/adr/                    @EDB-Sport/edb-team

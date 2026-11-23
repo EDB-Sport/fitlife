@@ -63,6 +63,7 @@ An agent review starts from the shared prompt in `docs/REVIEW_PROMPT.md`, so eve
 Rules for reviewers:
 - **Changes to existing tests get extra scrutiny.** A weakened or deleted test is the usual way generated code fakes success. The PR has to explain the change.
 - **Don't re-run what CI already proved.** Read the diff and the CI result.
+- **A re-review reads only the commits since the last review.** When re-reviewing a PR after the author has pushed new commits, review only the new commits and the changes they introduce; do not re-read the entire PR from the beginning.
 - **Domain changes:** when a PR touches a domain model, go through the DDD checklist in section 11.3.
 - **Verdict:** approve, or request changes with at most three concrete reasons. Off-topic remarks go in a separate comment and never block.
 

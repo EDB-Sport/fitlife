@@ -11,6 +11,12 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    # Without this, GitHub runs steps with "bash -e {0}", which has no pipefail, and
+    # "gitleaks … | tee" would return tee's exit code. Checked by tools/ci/security-steps.test.sh.
+    shell: bash
+
 env:
   # Tools run from their official images, pinned by tag and digest. Change both together.
   # The gitleaks CLI needs no GITLEAKS_LICENSE, unlike gitleaks/gitleaks-action in an organisation repo.

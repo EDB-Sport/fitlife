@@ -9,8 +9,45 @@ root="$(cd "$(dirname "$0")/../.." && pwd)"
 workflow="$root/.github/workflows/security.yml"
 failures=0
 
+# Trigger checks (issue #114). They need only awk and grep, so they run before the tool check.
+# on_block: the lines of the top-level "on:" key, up to the next top-level key
+on_block() {
+  awk '/^on:/ { inside = 1; next } inside && /^[A-Za-z_-]+:/ { exit } inside { print }' "$workflow"
+}
+# trigger_block <event>: the lines of one event under "on:", up to the next event
+trigger_block() {
+  on_block | awk -v ev="  $1:" '
+    $0 == ev { inside = 1; next }
+    inside && /^  [A-Za-z_]+:/ { exit }
+    inside { print }'
+}
+# expect_trigger <description> <command...>
+expect_trigger() {
+  local description=$1
+  shift
+  if "$@"; then
+    echo "PASS  $description"
+  else
+    echo "FAIL  $description"
+    failures=$((failures + 1))
+  fi
+}
+
+push_block=$(trigger_block push)
+expect_trigger "push is limited to develop and main" \
+  bash -c 'tr -d " " <<<"$1" | grep -qx "branches:\[develop,main\]"' _ "$push_block"
+expect_trigger "pull_request is a trigger" grep -qE '^  pull_request:' <(on_block)
+expect_trigger "pull_request has no branches or paths filter" \
+  bash -c '! grep -qE "^\s+(branches|paths|paths-ignore):" <<<"$1"' _ "$(trigger_block pull_request)"
+expect_trigger "no trigger has a paths filter (a required check that never runs blocks the merge)" \
+  bash -c '! grep -qE "^\s+paths(-ignore)?:" <<<"$1"' _ "$(on_block)"
+expect_trigger "concurrency group is per workflow and PR number or ref" \
+  grep -qE '^  group: .*github\.workflow.*(pull_request\.number|github\.ref)' "$workflow"
+expect_trigger "cancel-in-progress only for pull_request events" \
+  grep -qE '^  cancel-in-progress: \$\{\{ github\.event_name == .pull_request. \}\}' "$workflow"
+
 for tool in yq docker git; do
-  command -v "$tool" >/dev/null || { echo "needs $tool"; exit 2; }
+  command -v "$tool" >/dev/null || { echo "needs $tool"; [ "$failures" -eq 0 ] || echo "$failures trigger check(s) failed."; exit 2; }
 done
 
 # The shell GitHub runs a step with: the step's shell:, then the job's and the workflow's

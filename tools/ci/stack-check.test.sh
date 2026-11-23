@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# Tests for tools/ci/stack-check.sh (issue #110).
+# Each case builds a throwaway git repo with `develop` and some PR branches, then runs the check
+# on one PR head. The branch names stand in for origin/<branch>: the script reads them with
+# DEVELOP_REF=develop and BRANCH_PREFIX="" here.
+# Usage: tools/ci/stack-check.test.sh   (exit code 0 = all cases pass)
+set -uo pipefail
+
+check="$(cd "$(dirname "$0")" && pwd)/stack-check.sh"
+failures=0
+tmp_root=$(mktemp -d)
+trap 'rm -rf "$tmp_root"' EXIT
+
+# fixture: a repo with one commit on develop. Prints its path.
+fixture() {
+  local repo
+  repo=$(mktemp -d "$tmp_root/repo.XXXXXX")
+  git -C "$repo" init --quiet --initial-branch=develop
+  git -C "$repo" config user.email test@example.invalid
+  git -C "$repo" config user.name stack-check-test
+  commit "$repo" base
+  echo "$repo"
+}
+
+# commit <repo> <file>: one commit that adds <file>
+commit() {
+  echo "$2" > "$1/$2"
+  git -C "$1" add "$2"
+  git -C "$1" commit --quiet -m "add $2"
+}
+
+# run_check <repo> <base branch> <head branch> <open PR lines>: prints the output, returns the exit code
+run_check() {
+  (
+    cd "$1" || exit 99
+    DEVELOP_REF=develop BRANCH_PREFIX="" \
+      BASE_REF="$2" HEAD_SHA="$(git rev-parse "$3")" HEAD_BRANCH="$3" OPEN_PRS="$4" \
+      "$check" 2>&1
+  )
+}
+
+# expect <description> <pass|fail> [text the output must contain] -- <repo> <base> <head> <open PRs>
+expect() {
+  local description=$1 verdict=$2 text=$3 out status
+  shift 4
+  out=$(run_check "$@")
+  status=$?
+  if [ "$verdict" = pass ] && [ "$status" -eq 0 ]; then
+    echo "PASS  $description"
+  elif [ "$verdict" = fail ] && [ "$status" -eq 1 ] && grep -qF -- "$text" <<<"$out"; then
+    echo "PASS  $description"
+  else
+    echo "FAIL  $description: expected $verdict${text:+ with '$text'}, got exit $status"
+    sed 's/^/      /' <<<"$out"
+    failures=$((failures + 1))
+  fi
+}
+
+open_prs=$'10 feature/a\n11 feature/b'
+
+# 1. A branch made from an up-to-date develop passes, even with other PRs open
+repo=$(fixture)
+git -C "$repo" checkout --quiet -b feature/a develop && commit "$repo" a
+git -C "$repo" checkout --quiet -b feature/b develop && commit "$repo" b
+expect "branch from develop passes" pass "" -- "$repo" develop feature/b "$open_prs"
+
+# 2. A branch built on another open PR's branch, base develop, fails and names the parent
+repo=$(fixture)
+git -C "$repo" checkout --quiet -b feature/a develop && commit "$repo" a
+git -C "$repo" checkout --quiet -b feature/b feature/a && commit "$repo" b
+expect "stacked on #10 with base develop fails: merge first" fail "merge #10 first" -- \
+  "$repo" develop feature/b "$open_prs"
+expect "stacked on #10 with base develop fails: set the base" fail "set the base to feature/a" -- \
+  "$repo" develop feature/b "$open_prs"
+
+# 3. The same branch with the parent's branch as the base passes
+expect "stacked branch with the parent as base passes" pass "" -- \
+  "$repo" feature/a feature/b "$open_prs"
+
+# 4. The parent has merged into develop: its commits are on develop now, so it passes
+git -C "$repo" checkout --quiet develop && git -C "$repo" merge --quiet --no-ff feature/a -m "Merge #10"
+expect "parent merged into develop passes" pass "" -- "$repo" develop feature/b "$open_prs"
+
+# 5. The PR's own branch in the open list is not its own parent
+repo=$(fixture)
+git -C "$repo" checkout --quiet -b feature/a develop && commit "$repo" a
+expect "a PR is not its own parent" pass "" -- "$repo" develop feature/a "$open_prs"
+
+# 6. A PR with no open PRs around passes
+expect "no other open PRs passes" pass "" -- "$repo" develop feature/a "10 feature/a"
+
+echo
+if [ "$failures" -eq 0 ]; then
+  echo "stack-check behaves as specified."
+else
+  echo "$failures case(s) failed."
+fi
+exit "$failures"

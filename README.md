@@ -7,6 +7,7 @@ Proof of concept for FitLife Digital: .NET 10 microservices with lightweight Bla
 | Document | What it is |
 |---|---|
 | [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) | How we work: issues, Git Flow, TDD, review, CI. **Read this first.** |
+| [`docs/PR_RULES.md`](docs/PR_RULES.md) | The PR rules in short. CI checks the PR description. |
 | [`GLOSSARY.md`](GLOSSARY.md) | The ubiquitous language. Names in code, tests and issues come from here. |
 | [`docs/domain/CONTEXT-MAP.md`](docs/domain/CONTEXT-MAP.md) | Bounded contexts and how they relate (a group decision) |
 | [`docs/DDD_PLAN.md`](docs/DDD_PLAN.md) | The steps for getting to the domain model |

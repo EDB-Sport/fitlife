@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Size limits for SonarAnalyzer.CSharp (docs/CSHARP_SETUP_TODO.md section 3).
+  Short, flat methods with few inputs are what you can explain line by line at the exam.
+  Code-owned: changes need a review from the maintainers.
+-->
+<AnalysisInput>
+  <Rules>
+    <Rule>
+      <!-- Cognitive complexity per method (Sonar default 15) -->
+      <Key>S3776</Key>
+      <Parameters>
+        <Parameter><Key>threshold</Key><Value>10</Value></Parameter>
+      </Parameters>
+    </Rule>
+    <Rule>
+      <!-- Nesting depth of control flow (Sonar default 3) -->
+      <Key>S134</Key>
+      <Parameters>
+        <Parameter><Key>max</Key><Value>3</Value></Parameter>
+      </Parameters>
+    </Rule>
+    <Rule>
+      <!-- Parameters per method (Sonar default 7) -->
+      <Key>S107</Key>
+      <Parameters>
+        <Parameter><Key>max</Key><Value>5</Value></Parameter>
+      </Parameters>
+    </Rule>
+    <Rule>
+      <!-- Lines per method (Sonar default 80) -->
+      <Key>S138</Key>
+      <Parameters>
+        <Parameter><Key>max</Key><Value>40</Value></Parameter>
+      </Parameters>
+    </Rule>
+    <Rule>
+      <!-- Lines per file (Sonar default 1000) -->
+      <Key>S104</Key>
+      <Parameters>
+        <Parameter><Key>maximumFileLocThreshold</Key><Value>300</Value></Parameter>
+      </Parameters>
+    </Rule>
+    <Rule>
+      <!-- Operators per expression (Sonar default 3) -->
+      <Key>S1067</Key>
+      <Parameters>
+        <Parameter><Key>max</Key><Value>3</Value></Parameter>
+      </Parameters>
+    </Rule>
+  </Rules>
+</AnalysisInput>

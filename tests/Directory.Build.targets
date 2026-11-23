@@ -1,0 +1,21 @@
+<Project>
+  <!-- MSBuild imports only the nearest Directory.Build.targets, so pull in the root one first when it exists (issue #3). -->
+  <PropertyGroup>
+    <_FitLifeRootBuildTargets>$([MSBuild]::GetPathOfFileAbove('Directory.Build.targets', '$(MSBuildThisFileDirectory)..'))</_FitLifeRootBuildTargets>
+  </PropertyGroup>
+  <Import Project="$(_FitLifeRootBuildTargets)" Condition="'$(_FitLifeRootBuildTargets)' != ''" />
+
+  <!--
+    Unit-test projects stay unit tests (docs/CSHARP_SETUP_TODO.md section 6).
+    A test that uses a real database or a real web host is an integration test and belongs in *.IntegrationTests.
+  -->
+  <Target Name="FitLifeCheckUnitTestIsolation" BeforeTargets="BeforeBuild" Condition="'$(IsUnitTestProject)' == 'true'">
+    <ItemGroup>
+      <_FitLifeIntegrationOnlyPackage Include="@(PackageReference)"
+        Condition="'%(Identity)' == 'Microsoft.AspNetCore.Mvc.Testing' or '%(Identity)' == 'MongoDB.Driver' or $([System.String]::Copy('%(Identity)').StartsWith('Testcontainers'))" />
+    </ItemGroup>
+    <Error Code="FITLIFE002"
+      Condition="'@(_FitLifeIntegrationOnlyPackage)' != ''"
+      Text="$(MSBuildProjectName) is a unit-test project but references @(_FitLifeIntegrationOnlyPackage). Move those tests to tests/$(MSBuildProjectName.Replace('.Tests', '.IntegrationTests'))/ (docs/CSHARP_SETUP_TODO.md section 6)." />
+  </Target>
+</Project>

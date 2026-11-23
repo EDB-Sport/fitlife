@@ -7,7 +7,8 @@
 #   3. No test removed          (the number of [Test]/[TestCase]/... attributes, outside comment lines, does not go down).
 #   4. Red on base              the PR's tests pass with the change and fail without it
 #                               (production code reset to the base branch, tests kept).
-#                               A test that no longer compiles on base counts as red.
+#                               A test that no longer compiles on base counts as red. A run that stops before
+#                               any test is built (no project found, restore error: SETUP_ERRORS) does not.
 #
 # A refactoring PR (label "refactor" in PR_LABELS, METHODOLOGY section 8) changes structure, not behaviour:
 #   R1. No file under TEST_DIR changes (added, modified, deleted or moved).
@@ -33,6 +34,9 @@ SRC_DIR="${SRC_DIR:-src/}"
 TEST_DIR="${TEST_DIR:-tests/}"
 SRC_FILE_REGEX="${SRC_FILE_REGEX:-\.cs$}"
 TEST_FILE_REGEX="${TEST_FILE_REGEX:-\.cs$}"
+# Errors that stop the test run before anything is built: no project or solution found, or a failed restore.
+default_setup_errors='error (MSB1003|MSB1009|NU1[0-9]{3}):'
+SETUP_ERRORS="${SETUP_ERRORS:-$default_setup_errors}"
 SKIP_MARKERS="${SKIP_MARKERS:-[[,][[:space:]]*(Ignore|Explicit)\b|\bIgnoreReason\b|Assert\.(Ignore|Inconclusive)|\bAssume\.}"
 TEST_MARKERS="${TEST_MARKERS:-[[,][[:space:]]*(Test|TestCase|TestCaseSource|Theory)\b}"
 PR_LABELS="${PR_LABELS:-}"
@@ -112,13 +116,16 @@ if [[ -n "$src_changes" ]]; then
       # Restore the base branch's production code, if it had any. Tests and everything else stay as in the PR.
       if git cat-file -e "$BASE_SHA:$SRC_DIR" 2>/dev/null; then git checkout --quiet "$BASE_SHA" -- "$SRC_DIR" || exit 1; fi
       echo "::group::Tests without the change (must fail)"
-      $TEST_CMD; echo $? > "$worktree/.tdd-check-exit"
+      $TEST_CMD 2>&1 | tee "$worktree/.tdd-check-output"; echo "${PIPESTATUS[0]}" > "$worktree/.tdd-check-exit"
       echo "::endgroup::"
     )
     red=$(cat "$worktree/.tdd-check-exit" 2>/dev/null || echo missing)
+    setup_error=$(grep -Eo "$SETUP_ERRORS" "$worktree/.tdd-check-output" 2>/dev/null | head -1 || true)
     git worktree remove --force "$worktree"
     if [[ "$red" == missing ]]; then
       fail "could not prepare the base copy of the code, so red on base is not proven."
+    elif [[ -n "$setup_error" ]]; then
+      fail "the run without the change failed before any test ran ($setup_error), so red on base is not proven. Check SRC_DIR, TEST_DIR and TEST_CMD."
     elif (( red == 0 )); then
       fail "the PR's tests also pass without the production change, so they don't test it."
     fi

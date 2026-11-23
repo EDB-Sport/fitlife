@@ -35,3 +35,16 @@ jobs:
           SRC_FILE_REGEX: '\.cs$'
           TEST_FILE_REGEX: '\.cs$'
           SKIP_MARKERS: '[[,][[:space:]]*(Ignore|Explicit)\b|\bIgnoreReason\b|Assert\.(Ignore|Inconclusive)|\bAssume\.'
+
+      - name: tdd-check (tools/Analyzers)
+        # The TEAM analyzers and their tests (issue #49). Same rules, with the analyzer project as the production code.
+        if: ${{ !cancelled() }}
+        run: BASE_SHA=$(git rev-parse HEAD^1) tools/ci/tdd-check.sh
+        env:
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          TEST_CMD: dotnet test -c Release
+          SRC_DIR: tools/Analyzers/Team.Analyzers/
+          TEST_DIR: tools/Analyzers/Team.Analyzers.Tests/
+          SRC_FILE_REGEX: '\.cs$'
+          TEST_FILE_REGEX: '\.cs$'
+          SKIP_MARKERS: '[[,][[:space:]]*(Ignore|Explicit)\b|\bIgnoreReason\b|Assert\.(Ignore|Inconclusive)|\bAssume\.'

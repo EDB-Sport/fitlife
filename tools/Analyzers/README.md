@@ -12,6 +12,7 @@ The project's own Roslyn rules (`docs/CSHARP_SETUP_TODO.md` section 4). Each rul
 | ID | Rule | Analyzer |
 |---|---|---|
 | TEAM004 | `#pragma warning disable` and `#nullable disable` end with `// #<issue>: <reason>` on the same line. `[SuppressMessage]` and `[UnconditionalSuppressMessage]` have `Justification = "#<issue>: <reason>"`. | `JustifiedSuppressionAnalyzer` |
+| TEAM009 | Every controller action (a public instance method of a `ControllerBase` subclass, not `[NonAction]`) has an `[HttpGet]`/`[HttpPost]`/… attribute and returns `ActionResult<T>` or a typed result from `Microsoft.AspNetCore.Http.HttpResults`, also inside `Task<>`/`ValueTask<>`. | `ControllerActionContractAnalyzer` |
 
 The other rules in section 4 come one PR at a time (issue #9 and its sub-issues).
 

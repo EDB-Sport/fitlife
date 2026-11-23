@@ -40,15 +40,17 @@ git -C "$repo" init -q
 git -C "$repo" config user.email test@example.invalid
 git -C "$repo" config user.name test
 mkdir -p "$repo/tools/ci" "$repo/contracts/openapi"
-cp "$here/release-gate.sh" "$here/oasdiff-breaking.sh" "$repo/tools/ci/" 2>/dev/null
+cp "$here/release-gate.sh" "$here/oasdiff-breaking.sh" "$here/services.sh" "$repo/tools/ci/" 2>/dev/null
 service BookingService 1.0.0
 service MembershipService 1.0.0
+service MemberPortal.Web 1.0.0
 contract bookingservice "{\"/classes\":$get_op,\"/reservations\":$get_op}"
 commit "release 1.0.0"
 git -C "$repo" tag bookingservice/v1.0.0
 git -C "$repo" tag membershipservice/v1.0.0
+git -C "$repo" tag memberportal/v1.0.0 # a UI's tag has no .web (deploy.yml, #42)
 
-expect 0 release/1.1.0 "nothing changed since the tags passes"
+expect 0 release/1.1.0 "nothing changed since the tags passes" "MemberPortal.Web: unchanged since memberportal/v1.0.0"
 
 echo "// change" > "$repo/src/BookingService/Reservations.cs"; commit "booking change"
 expect 1 release/1.1.0 "a changed service without a raised version fails" "BookingService"
@@ -67,19 +69,19 @@ expect 0 release/2.0.0 "a breaking change with a MAJOR passes"
 
 # Hotfixes start from the tags again
 git -C "$repo" checkout -q -b hotfix/bookingservice-1.0.1 bookingservice/v1.0.0
-cp "$here/release-gate.sh" "$here/oasdiff-breaking.sh" "$repo/tools/ci/" 2>/dev/null
+cp "$here/release-gate.sh" "$here/oasdiff-breaking.sh" "$here/services.sh" "$repo/tools/ci/" 2>/dev/null
 echo "// fix" > "$repo/src/BookingService/Fix.cs"; service BookingService 1.0.1
 echo "// fix" > "$repo/src/MembershipService/Fix.cs"; service MembershipService 1.0.1
 commit "hotfix two services"
 expect 1 hotfix/bookingservice-1.0.1 "a hotfix touching two services fails" "only one service"
 
 git -C "$repo" checkout -q -B hotfix/bookingservice-1.1.0 bookingservice/v1.0.0
-cp "$here/release-gate.sh" "$here/oasdiff-breaking.sh" "$repo/tools/ci/" 2>/dev/null
+cp "$here/release-gate.sh" "$here/oasdiff-breaking.sh" "$here/services.sh" "$repo/tools/ci/" 2>/dev/null
 echo "// fix" > "$repo/src/BookingService/Fix.cs"; service BookingService 1.1.0; commit "hotfix raises MINOR"
 expect 1 hotfix/bookingservice-1.1.0 "a hotfix that raises more than PATCH fails" "only PATCH"
 
 git -C "$repo" checkout -q -B hotfix/bookingservice-1.0.1 bookingservice/v1.0.0
-cp "$here/release-gate.sh" "$here/oasdiff-breaking.sh" "$repo/tools/ci/" 2>/dev/null
+cp "$here/release-gate.sh" "$here/oasdiff-breaking.sh" "$here/services.sh" "$repo/tools/ci/" 2>/dev/null
 echo "// fix" > "$repo/src/BookingService/Fix.cs"; service BookingService 1.0.1; commit "hotfix one service"
 expect 0 hotfix/bookingservice-1.0.1 "a hotfix raising PATCH of one service passes"
 

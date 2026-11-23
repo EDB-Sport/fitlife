@@ -19,9 +19,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: tools/ci
+          sparse-checkout: |
+            tools/ci
+            .github
+      - name: Test the check
+        run: tools/ci/check-pr-body.test.sh
       - name: Check the PR description
-        # The body is passed through an environment variable, never pasted into the script
+        # The body and branch are passed through environment variables, never pasted into the script
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
+          HEAD_REF: ${{ github.head_ref }}
         run: tools/ci/check-pr-body.sh

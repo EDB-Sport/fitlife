@@ -4,7 +4,7 @@ This repo is built by a group where everyone uses their own agent setup. The sha
 
 ## Pull requests
 
-Follow `docs/PRrules.md`. CI fails a PR whose description doesn't follow the template.
+Follow `docs/PR_RULES.md`. CI fails a PR whose description doesn't follow the template.
 
 ## Code
 

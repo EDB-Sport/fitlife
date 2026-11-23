@@ -2,15 +2,10 @@
 
 Checked by CI (`PR description`, `tools/ci/check-pr-body.sh`):
 
-1. Link the issue: `Closes #<issue number>`.
+1. Link the issue: `Closes #<issue number>`, or `Refs #<issue number>` when the PR is only part of the issue. Release and hotfix PRs into `main` have no issue.
 2. Fill in **What changed and why**: one or two lines.
 3. In **Tests**, tick "No existing test was changed or removed", or say which test changed and why.
 
-Also required (`docs/METHODOLOGY.md` sections 1–3):
-
-4. One issue, one branch, one PR. Branch `feature/<issue>-<name>` from `develop`; the PR targets `develop`.
-5. Tests first: the change starts with a failing test or executable check.
-6. CI is green and at least one other group member approves before merge.
-7. Merge with a merge commit, not squash.
+The rest of the PR rules live in `docs/METHODOLOGY.md`: one issue, one branch, one PR (section 1), branches and merging (section 2.1), review (section 3) and tests first (section 4).
 
 Agents: `gh pr create --fill` and `--body` skip the template. Fill in `.github/pull_request_template.md` in a file and use `gh pr create --base develop --body-file <file>`.

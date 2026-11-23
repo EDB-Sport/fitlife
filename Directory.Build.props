@@ -23,4 +23,10 @@
     <!-- Read by SonarAnalyzer.CSharp for the rule limits -->
     <AdditionalFiles Include="$(RepoRoot)SonarLint.xml" />
   </ItemGroup>
+
+  <!-- The team's own Roslyn analyzers (TEAM rules, tools/Analyzers/README.md) run on every project except themselves -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'Team.Analyzers' And '$(MSBuildProjectName)' != 'Team.Analyzers.Tests'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)tools/Analyzers/Team.Analyzers/Team.Analyzers.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
 </Project>

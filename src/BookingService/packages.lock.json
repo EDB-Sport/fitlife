@@ -76,6 +76,9 @@
         "dependencies": {
           "NLog": "6.2.2"
         }
+      },
+      "fitlife.correlation": {
+        "type": "Project"
       }
     }
   }

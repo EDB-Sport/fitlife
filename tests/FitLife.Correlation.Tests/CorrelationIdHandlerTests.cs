@@ -23,7 +23,7 @@ public sealed class CorrelationIdHandlerTests
         var sent = await SendAndCaptureAsync().ConfigureAwait(false);
 
         // Assert
-        Assert.That(sent.Headers.GetValues(CorrelationContext.HeaderName), Is.EqualTo(new[] { "abc-123" }));
+        Assert.That(sent.Headers.GetValues(CorrelationContext.HeaderName), Is.EqualTo(new List<string> { "abc-123" }));
     }
 
     [Test]

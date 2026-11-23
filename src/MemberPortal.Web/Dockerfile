@@ -2,8 +2,15 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
 WORKDIR /app
 
-# Copy project files and restore dependencies
+# Copy root configuration, analyzers and build rules
+COPY global.json .
+COPY Directory.Build.props .
+COPY Directory.Build.targets .
 COPY Directory.Packages.props .
+COPY BannedSymbols.txt .
+COPY SonarLint.xml .
+
+# Copy project file and restore dependencies
 COPY src/MemberPortal.Web/MemberPortal.Web.csproj src/MemberPortal.Web/
 RUN dotnet restore src/MemberPortal.Web/MemberPortal.Web.csproj
 

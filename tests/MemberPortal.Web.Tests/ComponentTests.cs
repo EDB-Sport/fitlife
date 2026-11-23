@@ -4,6 +4,7 @@ using NUnit.Framework;
 
 namespace MemberPortal.Web.Tests;
 
+[FixtureLifeCycle(LifeCycle.InstancePerTestCase)]
 public class ComponentTests : BunitContext
 {
     [Test]

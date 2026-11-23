@@ -19,7 +19,7 @@ The project name decides what kind of test project it is. `tests/Directory.Build
 
 You don't add those packages yourself. Package versions live only in the root `Directory.Packages.props`.
 
-**A unit-test project stays a unit-test project.** The build fails with `FITLIFE001` if a `*.Tests` project references `Microsoft.AspNetCore.Mvc.Testing`, `MongoDB.Driver` or any `Testcontainers` package. Those tests belong in `*.IntegrationTests`.
+**A unit-test project stays a unit-test project.** The build fails with `FITLIFE002` if a `*.Tests` project references `Microsoft.AspNetCore.Mvc.Testing`, `MongoDB.Driver` or any `Testcontainers` package. Those tests belong in `*.IntegrationTests`.
 
 ## Adding a test project
 

@@ -14,7 +14,7 @@
       <_FitLifeIntegrationOnlyPackage Include="@(PackageReference)"
         Condition="'%(Identity)' == 'Microsoft.AspNetCore.Mvc.Testing' or '%(Identity)' == 'MongoDB.Driver' or $([System.String]::Copy('%(Identity)').StartsWith('Testcontainers'))" />
     </ItemGroup>
-    <Error Code="FITLIFE001"
+    <Error Code="FITLIFE002"
       Condition="'@(_FitLifeIntegrationOnlyPackage)' != ''"
       Text="$(MSBuildProjectName) is a unit-test project but references @(_FitLifeIntegrationOnlyPackage). Move those tests to tests/$(MSBuildProjectName.Replace('.Tests', '.IntegrationTests'))/ (docs/CSHARP_SETUP_TODO.md section 6)." />
   </Target>

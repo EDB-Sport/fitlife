@@ -115,6 +115,23 @@ git -C "$repo" checkout --quiet feature/a && git -C "$repo" merge --quiet develo
 git -C "$repo" checkout --quiet feature/b && git -C "$repo" merge --quiet develop -m "Merge develop"
 expect "siblings that both merged develop pass" pass "" -- "$repo" develop feature/b 11 "$open_prs"
 
+# 11. Parent and child both merged the same newer develop commit: they have two merge bases,
+#     develop's commit and the parent's own commit. The parent's still counts.
+repo=$(fixture)
+git -C "$repo" checkout --quiet -b feature/a develop && commit "$repo" a
+git -C "$repo" checkout --quiet -b feature/b feature/a && commit "$repo" b
+git -C "$repo" checkout --quiet develop && commit "$repo" later
+git -C "$repo" checkout --quiet feature/a && git -C "$repo" merge --quiet develop -m "Merge develop"
+git -C "$repo" checkout --quiet feature/b && git -C "$repo" merge --quiet develop -m "Merge develop"
+expect "stacked, both merged the same develop commit, still fails" fail "merge #10 first" -- \
+  "$repo" develop feature/b 11 "$open_prs"
+
+# 12. The lower-numbered PR is built on this one (numbers reversed): this one is the bottom, passes
+repo=$(fixture)
+git -C "$repo" checkout --quiet -b feature/b develop && commit "$repo" b
+git -C "$repo" checkout --quiet -b feature/a feature/b && commit "$repo" a
+expect "bottom of a stack with the higher number passes" pass "" -- "$repo" develop feature/b 11 "$open_prs"
+
 echo
 if [ "$failures" -eq 0 ]; then
   echo "stack-check behaves as specified."

@@ -50,7 +50,7 @@ People and agents use these words, and only these words, in code, tests, issues,
 
 ## Words that mean different things in different contexts
 
-From the language test, step 1 of `docs/DDD_PLAN.md`. Each line here points at a context boundary. The references point to where the word is used in the interviews; the group checks them and adds quotes with informant code before the ADR is accepted.
+From the language test, step 1 of `docs/DDD_PLAN.md`. Each line here points at a context boundary, except *hold* (see the note under the table). The references point to where the word is used in the interviews; the group checks them and adds quotes with informant code before the ADR is accepted.
 
 | Word | Meaning in context A | Meaning in context B | Names in code |
 |---|---|---|---|
@@ -58,3 +58,5 @@ From the language test, step 1 of `docs/DDD_PLAN.md`. Each line here points at a
 | træner | Booking: the instructor who leads a class and knows the members' names [I1, I3] | Training: the personal trainer in a programme with one member, with data, exercises and follow-up [I2, I3] | `Instructor` / `PersonalTrainer` |
 | medlem | Identity: anyone who can log in, including the role "Medlem" | Membership: a person who has joined, pays and has a key fob [PB p. 4; I1]. Booking only sees a participant with a seat | `Account` (with `Role`) / `Member`, referenced as `MemberId` |
 | session | Training: one personal training session in a programme [I3] | Identity: a logged-in browser session | `TrainingSession` / – (no type in Identity yet) |
+
+**Bare "hold" is ambiguous, and it is not a boundary.** The informants use it both for the weekly class and for one run of it (first line of the table). In this glossary `Holdtype` is the weekly class (`ClassType`) and `Hold` is one run of it (`ClassSession`). Both belong to Booking, because ADR 007 keeps class scheduling and booking in one context. Say which of the two you mean.

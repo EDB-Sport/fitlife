@@ -273,6 +273,23 @@ public sealed class Sample
 }
 EOF
 
+expect_error "static field in camelCase fails (IDE1006)" IDE1006 <<'EOF2'
+namespace StyleCheck;
+
+/// <summary>Sample.</summary>
+public static class Sample
+{
+    private static int count = 1;
+
+    /// <summary>Returns the count.</summary>
+    /// <returns>The count.</returns>
+    public static int Count()
+    {
+        return count;
+    }
+}
+EOF2
+
 expect_error "interface without I prefix fails (IDE1006)" IDE1006 <<'EOF'
 namespace StyleCheck;
 

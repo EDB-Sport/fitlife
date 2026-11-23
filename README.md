@@ -31,7 +31,7 @@ The build is strict on purpose: warnings are errors, all analyzers are on, and a
 
 - Build quietly: `dotnet build -v q -clp:NoSummary -tl:off`
 - On an analyzer error, run the fixer before you edit by hand: `dotnet format style --diagnostics <ID>` or `dotnet format analyzers --diagnostics <ID>`. The fixes are deterministic and solution-wide.
-- Check the formatting like CI does: `dotnet format --verify-no-changes --no-restore`
+- Check the formatting (CI will run this, see #5): `dotnet format --verify-no-changes --no-restore`
 - Add a package: a `PackageVersion` in `Directory.Packages.props`, and a `PackageReference` without `Version` in the `.csproj`
 - Check that the rules still work after changing a rule file: `tools/ci/check-build-rules.sh`
 - Check that the code style rules still work after changing `.editorconfig` or `.globalconfig`: `tools/ci/check-style-rules.sh`

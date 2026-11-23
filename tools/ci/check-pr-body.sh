@@ -41,6 +41,6 @@ fi
 if [ "$errors" -eq 0 ]; then
   echo "The PR description follows the template."
 else
-  echo "Edit the PR description to fix this; the check runs again when you save. Template: .github/pull_request_template.md"
+  echo "Edit the PR description to fix this; the check runs again when you save. Rules: docs/PRrules.md"
 fi
 exit "$errors"

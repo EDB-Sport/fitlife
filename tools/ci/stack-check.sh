@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Fails a pull request that targets develop but is built on another open PR's branch (issue #110).
 # Another open PR is a parent when it has a lower number than this PR and shares commits with
-# it that aren't on develop (their merge base isn't on develop). It doesn't matter whether the
+# it that aren't on develop (one of their merge bases, `git merge-base --all`, isn't on develop). It doesn't matter whether the
 # parent has moved on since: shared commits, not the parent's current tip, are what a reviewer
 # sees twice. The lower-number rule keeps the bottom of a stack passing while its child is open.
-# A stack whose child has the lower number is not caught.
+# If the lower-numbered PR is itself built on this one (numbers reversed), this PR is the bottom
+# and passes; the other PR is the one that is stacked, but it is not caught.
 # Inputs (environment):
 #   BASE_REF     the PR's base branch; only a PR whose base is develop is checked
 #   HEAD_SHA     the PR's head commit
@@ -37,8 +38,13 @@ while read -r number branch; do
   [ "$branch" = "${HEAD_BRANCH:-}" ] && continue
   tip=$(git rev-parse --verify --quiet "${prefix}${branch}^{commit}") || continue
   [ "$number" -lt "${PR_NUMBER:?}" ] || continue # only a lower-numbered PR is a parent
-  shared=$(git merge-base "$tip" "$HEAD_SHA") || continue # no common history
-  git merge-base --is-ancestor "$shared" "$develop_ref" && continue # only develop in common
+  git merge-base --is-ancestor "$HEAD_SHA" "$tip" && continue # this PR is beneath that one
+  shared_unmerged=0
+  while read -r base; do
+    [ -n "$base" ] || continue
+    git merge-base --is-ancestor "$base" "$develop_ref" || shared_unmerged=1
+  done < <(git merge-base --all "$tip" "$HEAD_SHA")
+  [ "$shared_unmerged" -eq 1 ] || continue # only develop in common (or nothing)
   echo "::error::This PR targets develop but contains the commits of #$number ($branch), which aren't on develop."
   echo "Either merge #$number first, or set the base to $branch (retarget to develop after #$number merges). After you change the base, re-run this check: a base change does not start it."
   failed=1

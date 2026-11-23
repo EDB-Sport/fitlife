@@ -1,3 +1,4 @@
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Testing;
 
 namespace Team.Analyzers.Tests;
@@ -13,6 +14,9 @@ public sealed class JustifiedSuppressionAnalyzerTests
     // TEAM004 reports that pragma, and TEAM004 itself can't be suppressed (tested below), so the check is skipped.
     private static Task VerifyAsync(string source, (string Path, string Content)? analyzerConfigFile = null) =>
         AnalyzerVerifier.VerifyAsync<JustifiedSuppressionAnalyzer>(source, analyzerConfigFile, TestBehaviors.SkipSuppressionCheck);
+
+    private static Task VerifyAsync(string source, DiagnosticResult expected) =>
+        AnalyzerVerifier.VerifyAsync<JustifiedSuppressionAnalyzer>(source, analyzerConfigFile: null, TestBehaviors.SkipSuppressionCheck, expected);
 
     // --- #pragma warning disable ---
 
@@ -277,5 +281,27 @@ public sealed class JustifiedSuppressionAnalyzerTests
             [assembly: {|TEAM004:SuppressMessage("Maintainability", "TEAM004", Scope = "module")|}]
             """;
         return VerifyAsync(source);
+    }
+
+    // --- The message tells the agent what to do ---
+
+    [TestCase(
+        "{|#0:#pragma warning disable CS0168|}\nclass C { }",
+        "Found '#pragma warning disable' without an issue reference. Add '// #<issue>: <reason>' at the end of the same line, naming the GitHub issue that allows the exception.")]
+    [TestCase(
+        "{|#0:#nullable disable|}\nclass C { }",
+        "Found '#nullable disable' without an issue reference. Add '// #<issue>: <reason>' at the end of the same line, naming the GitHub issue that allows the exception.")]
+    [TestCase(
+        "using System.Diagnostics.CodeAnalysis;\n[{|#0:SuppressMessage(\"Style\", \"IDE0060\")|}]\nclass C { }",
+        "Found [SuppressMessage] without an issue reference. Add Justification = \"#<issue>: <reason>\" to the attribute, naming the GitHub issue that allows the exception.")]
+    [TestCase(
+        "using System.Diagnostics.CodeAnalysis;\n[{|#0:UnconditionalSuppressMessage(\"Trimming\", \"IL2026\")|}]\nclass C { }",
+        "Found [UnconditionalSuppressMessage] without an issue reference. Add Justification = \"#<issue>: <reason>\" to the attribute, naming the GitHub issue that allows the exception.")]
+    public Task Message_UnjustifiedSuppression_IsAnErrorThatSaysWhatToAdd(string source, string message)
+    {
+        var expected = new DiagnosticResult(JustifiedSuppressionAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
+            .WithLocation(0)
+            .WithMessage(message);
+        return VerifyAsync(source, expected);
     }
 }

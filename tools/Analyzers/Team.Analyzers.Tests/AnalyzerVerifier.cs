@@ -14,7 +14,12 @@ internal static class AnalyzerVerifier
     /// <param name="source">The snippet, with markup for every expected diagnostic.</param>
     /// <param name="analyzerConfigFile">Optional .editorconfig or .globalconfig file (path and content) next to the snippet.</param>
     /// <param name="behaviors">Checks of the test framework to skip, for a rule that needs it.</param>
-    public static Task VerifyAsync<TAnalyzer>(string source, (string Path, string Content)? analyzerConfigFile = null, TestBehaviors behaviors = TestBehaviors.None)
+    /// <param name="expected">Diagnostics expected on top of the markup, for checks of the message or severity.</param>
+    public static Task VerifyAsync<TAnalyzer>(
+        string source,
+        (string Path, string Content)? analyzerConfigFile = null,
+        TestBehaviors behaviors = TestBehaviors.None,
+        params DiagnosticResult[] expected)
         where TAnalyzer : DiagnosticAnalyzer, new()
     {
         var test = new CSharpAnalyzerTest<TAnalyzer, DefaultVerifier>
@@ -24,6 +29,7 @@ internal static class AnalyzerVerifier
             ReferenceAssemblies = ReferenceAssemblies.Net.Net100,
             TestBehaviors = behaviors,
         };
+        test.ExpectedDiagnostics.AddRange(expected);
         if (analyzerConfigFile is { } file)
         {
             test.TestState.AnalyzerConfigFiles.Add((file.Path, file.Content));

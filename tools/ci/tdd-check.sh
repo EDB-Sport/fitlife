@@ -71,20 +71,29 @@ if [[ -n "$src_changes" ]]; then
   echo "::endgroup::"
   (( green == 0 )) || fail "the tests fail with the change."
 
+  # Fail closed: if the base copy can't be set up, red on base is not proven, so the check fails.
+  # Only the test run itself may fail (including a compile error on base), and that counts as red.
   worktree=$(mktemp -d)
-  git worktree add --quiet --detach "$worktree" "$HEAD_SHA"
-  (
-    cd "$worktree" || exit 1
-    rm -rf "$SRC_DIR"
-    # Restore the base branch's production code, if it had any. Tests and everything else stay as in the PR.
-    if git cat-file -e "$BASE_SHA:$SRC_DIR" 2>/dev/null; then git checkout --quiet "$BASE_SHA" -- "$SRC_DIR"; fi
-    echo "::group::Tests without the change (must fail)"
-    $TEST_CMD; echo $? > "$worktree/.tdd-check-exit"
-    echo "::endgroup::"
-  )
-  red=$(cat "$worktree/.tdd-check-exit" 2>/dev/null || echo 1)
-  git worktree remove --force "$worktree"
-  (( red != 0 )) || fail "the PR's tests also pass without the production change, so they don't test it."
+  if git worktree add --quiet --detach "$worktree" "$HEAD_SHA"; then
+    (
+      cd "$worktree" || exit 1
+      rm -rf "$SRC_DIR"
+      # Restore the base branch's production code, if it had any. Tests and everything else stay as in the PR.
+      if git cat-file -e "$BASE_SHA:$SRC_DIR" 2>/dev/null; then git checkout --quiet "$BASE_SHA" -- "$SRC_DIR" || exit 1; fi
+      echo "::group::Tests without the change (must fail)"
+      $TEST_CMD; echo $? > "$worktree/.tdd-check-exit"
+      echo "::endgroup::"
+    )
+    red=$(cat "$worktree/.tdd-check-exit" 2>/dev/null || echo missing)
+    git worktree remove --force "$worktree"
+    if [[ "$red" == missing ]]; then
+      fail "could not prepare the base copy of the code, so red on base is not proven."
+    elif (( red == 0 )); then
+      fail "the PR's tests also pass without the production change, so they don't test it."
+    fi
+  else
+    fail "could not create a worktree for the red-on-base run, so red on base is not proven."
+  fi
 fi
 
 if (( failed == 0 )); then echo "tdd-check passed."; fi

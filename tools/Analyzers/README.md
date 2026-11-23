@@ -12,6 +12,7 @@ The project's own Roslyn rules (`docs/CSHARP_SETUP_TODO.md` section 4). Each rul
 | ID | Rule | Analyzer |
 |---|---|---|
 | TEAM004 | `#pragma warning disable` and `#nullable disable` end with `// #<issue>: <reason>` on the same line. `[SuppressMessage]` and `[UnconditionalSuppressMessage]` have `Justification = "#<issue>: <reason>"`. | `JustifiedSuppressionAnalyzer` |
+| TEAM005 | No `dynamic`, no `goto` (also `goto case`/`goto default`), no LINQ query syntax, no conditional expression inside another one, and no lambda or anonymous method nested more than one level deep (a lambda inside a lambda is fine). | `ReadabilityLimitsAnalyzer` |
 
 The other rules in section 4 come one PR at a time (issue #9 and its sub-issues).
 

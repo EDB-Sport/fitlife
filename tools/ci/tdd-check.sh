@@ -45,8 +45,13 @@ if [[ -n "$src_changes" && -z "$test_changes" ]]; then
   fail "production code under $SRC_DIR changed, but no test under $TEST_DIR was added or changed."
 fi
 
-# 2. No new skip markers.
-skipped=$(git diff -U0 --no-renames "$BASE_SHA...$HEAD_SHA" -- "$TEST_DIR" | grep -E '^\+[^+]' | grep -E "$SKIP_MARKERS" || true)
+# 2. No new skip markers, in test files only (a README may describe [Ignore] without using it).
+skipped=""
+if [[ -n "$test_changes" ]]; then
+  test_files=()
+  while IFS= read -r file; do test_files+=("$file"); done <<< "$test_changes"
+  skipped=$(git diff -U0 --no-renames "$BASE_SHA...$HEAD_SHA" -- "${test_files[@]}" | grep -E '^\+[^+]' | grep -E "$SKIP_MARKERS" || true)
+fi
 if [[ -n "$skipped" ]]; then
   fail "the PR adds skipped tests:"; echo "$skipped"
 fi

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The release gate on PRs into main (issue #94, docs/CSHARP_SETUP_TODO.md section 9, METHODOLOGY section 2.1).
-# For each service src/<Service>/<Service>.csproj, compared with its newest <service>/vX.Y.Z tag:
+# For each service src/<Service>/<Service>.csproj, compared with its newest <prefix>/vX.Y.Z tag (tools/ci/services.sh):
 #   - changed since the tag  -> the <Version> in the .csproj is higher than the tag
 #   - a breaking API change  -> the MAJOR is raised (tools/ci/oasdiff-breaking.sh)
 #   - a hotfix branch        -> only one service changed, and only its PATCH is raised
@@ -22,15 +22,15 @@ higher() {
   [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -1)" = "$1" ]
 }
 
-for csproj in src/*/*.csproj; do
-  name=$(basename "$(dirname "$csproj")")
-  [ "$(basename "$csproj" .csproj)" = "$name" ] || continue
-  version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' "$csproj" | head -1)
+# shellcheck source=tools/ci/services.sh
+. "$(dirname "$0")/services.sh"
+
+while read -r name service version; do
+  csproj="src/$name/$name.csproj"
   if [ -z "$version" ]; then
     fail "$csproj has no <Version>. Every service has its own version (METHODOLOGY section 2.1)."
     continue
   fi
-  service=$(tr '[:upper:]' '[:lower:]' <<<"$name")
   tag=$(git tag --list "$service/v*" --sort=-v:refname | head -1)
 
   if [ -z "$tag" ]; then
@@ -59,7 +59,7 @@ for csproj in src/*/*.csproj; do
     continue
   fi
   echo "$name: $released -> $version"
-done
+done < <(services)
 
 if [[ $head_ref == hotfix/* ]] && [ "${#changed[@]}" -gt 1 ]; then
   fail "A hotfix changes only one service, but this one changes ${changed[*]}."

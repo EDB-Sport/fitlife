@@ -139,11 +139,43 @@ sed -i 's|    \[Test\] // needs: Add|    // [Test] // needs: Add|' "$repo/tests/
 commit "$repo" "comment out a test"
 expect "commented-out [Test] fails" fail "$repo" "removes tests"
 
+# 4b. The run without the change fails before any test runs (issue #49).
+# pr_with_runner <repo> <error line>: a feature PR whose test runner prints <error line> and exits 1
+# when src/Project.marker is missing, the way `dotnet test` stops when it finds no project to build.
+pr_with_runner() {
+  local repo=$1 runner
+  runner=$(cat "$repo/run-tests.sh")
+  {
+    echo '#!/usr/bin/env bash'
+    echo "[ -f src/Project.marker ] || { echo '$2'; exit 1; }"
+    tail -n +2 <<<"$runner"
+  } > "$repo/run-tests.sh"
+  touch "$repo/src/Project.marker"
+  git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+}
+
+for error in 'MSBUILD : error MSB1003: Specify a project or solution file.' \
+             'MSBUILD : error MSB1009: Project file does not exist.' \
+             '/repo/Test.csproj : error NU1101: Unable to find package NUnit.'; do
+  repo=$(feature_pr)
+  pr_with_runner "$repo" "$error"
+  expect "setup failure on base is not red: ${error#*error }" fail "$repo" "failed before any test ran"
+done
+
+# A compile error caused by the missing production code is still red.
+repo=$(feature_pr)
+runner=$(cat "$repo/run-tests.sh")
+echo "${runner//echo \"red: \$word\"/echo \"Calc.cs(1,1): error CS0103: The name '\$word' does not exist\"}" > "$repo/run-tests.sh"
+git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+expect "compile error from missing production code is red" pass "$repo"
+
 # 5. The workflow (finding 1 and 3)
 wf() { grep -qE "$2" "$workflow" && echo "PASS  $1" || { echo "FAIL  $1: '$2' not in $workflow"; failures=$((failures + 1)); }; }
 wf "workflow re-runs on label changes" 'types: \[opened, synchronize, reopened, labeled, unlabeled\]'
 wf "workflow takes BASE_SHA from the merge commit's first parent" 'BASE_SHA=\$\(git rev-parse HEAD\^1\)'
 wf "workflow passes the PR's labels" 'PR_LABELS: \$\{\{ join\(github\.event\.pull_request\.labels\.\*\.name, '"','"'\) \}\}'
+wf "workflow checks tools/Analyzers (issue #49): SRC_DIR" 'SRC_DIR: tools/Analyzers/Team\.Analyzers/$'
+wf "workflow checks tools/Analyzers (issue #49): TEST_DIR" 'TEST_DIR: tools/Analyzers/Team\.Analyzers\.Tests/$'
 if grep -qF 'pull_request.base.sha' "$workflow"; then
   echo "FAIL  workflow no longer uses pull_request.base.sha"; failures=$((failures + 1))
 else

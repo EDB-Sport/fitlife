@@ -78,6 +78,18 @@ jobs:
           name: coverage-report
           path: coverage-report
 
+  # The committed OpenAPI contracts match the code (issue #90, section 8): every API change shows in the PR diff.
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore --locked-mode
+      - name: Regenerate the contracts and compare them with the commit
+        run: tools/ci/check-contracts.sh
+
   # Runs the tests of the CI scripts themselves, so a change to a script fails its own tests.
   ci-scripts:
     runs-on: ubuntu-latest

@@ -62,7 +62,13 @@ public sealed class NoHardCodedUrlsAnalyzer : DiagnosticAnalyzer
         context.ReportDiagnostic(Diagnostic.Create(Rule, context.Node.GetLocation(), text, where));
     }
 
-    // A file in a "src" folder of the repo, on any OS: /repo/src/... or C:\repo\src\...
-    private static bool IsUnderSrc(string path) =>
-        path.Split('/', '\\').Any(segment => string.Equals(segment, "src", StringComparison.Ordinal));
+    // The repo's top-level folders. The last one in the path decides, so a clone in ~/src/fitlife/tests/... is not under src/.
+    private static readonly string[] TopLevelFolders = ["src", "tests", "tools"];
+
+    // A file in the repo's src/ folder, on any OS: /repo/src/... or C:\repo\src\...
+    private static bool IsUnderSrc(string path)
+    {
+        string? last = path.Split('/', '\\').LastOrDefault(segment => TopLevelFolders.Contains(segment, StringComparer.Ordinal));
+        return string.Equals(last, "src", StringComparison.Ordinal);
+    }
 }

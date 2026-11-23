@@ -110,6 +110,18 @@ jobs:
           done
           exit "$status"
 
+  # The executable acceptance check for the build rules (#3): builds throwaway projects and
+  # checks that each rule in Directory.Build.* still fails the build (issue #54).
+  build-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Check that every build rule still fails the build
+        run: tools/ci/check-build-rules.sh
+
   diff-scan:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest

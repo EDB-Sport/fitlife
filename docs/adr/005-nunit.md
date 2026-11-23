@@ -14,7 +14,7 @@ The project needs one framework across every service, the Blazor UIs (bUnit) and
 
 All test projects use **NUnit** with its constraint assertions (`Assert.That(total, Is.EqualTo(150))`), plus Moq for test doubles where interactions must be checked. Tests are named `Method_Scenario_ExpectedResult` and written Arrange–Act–Assert.
 
-The setup from #4 makes this the default: `tests/Directory.Build.props` gives every `*.Tests` and `*.IntegrationTests` project NUnit, the NUnit adapter, NUnit.Analyzers and coverlet, with versions in `Directory.Packages.props` (NUnit 4.6.1, the 4.x line the course template uses). tdd-check counts `[Test]`, `[TestCase]`, `[TestCaseSource]` and `[Theory]`, and treats `[Ignore]`, `[Explicit]`, `Assert.Ignore` and `Assert.Inconclusive` as skipped tests.
+The setup from #4 makes this the default: `tests/Directory.Build.props` gives every `*.Tests` and `*.IntegrationTests` project NUnit, the NUnit adapter, NUnit.Analyzers and coverlet, with versions in `Directory.Packages.props` (NUnit 4.6.1, the 4.x line the course template uses). tdd-check recognises tests and skipped tests by NUnit's attributes and assertions; the current lists are in `tools/ci/tdd-check.sh`.
 
 ## Alternatives considered
 

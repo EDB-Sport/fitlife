@@ -11,6 +11,7 @@ Replace `<Service>` with the service name from the context map, e.g. `Membership
 1. **Service project:** copy `src/BookingService/` to `src/<Service>/` and rename the `.csproj`. Keep:
    - `Microsoft.NET.Sdk.Web`, `net10.0`, and `<Version>0.1.0</Version>` (each service has its own version, METHODOLOGY section 2.1)
    - `Program.cs`: `AddOpenApi()`, `MapOpenApi()` and `MapScalarApiReference()` inside `IsDevelopment()` only (course rule #7), `MapHealthChecks("/health")`, and the `public partial class Program` for the tests
+   - the OpenAPI contract: the `Microsoft.Extensions.ApiDescription.Server` reference, `OpenApiDocumentsDirectory` and `--file-name <service in lower case>`, so the build writes `contracts/openapi/<service>.json`. Commit that file; the `contract` CI job fails when it's stale (`tools/ci/check-contracts.sh`)
    - a new port in `Properties/launchSettings.json`, so two services can run side by side
 2. **`CONTEXT.md`:** start from `docs/templates/CONTEXT.md`, with the purpose from the context map. Terms go into `GLOSSARY.md` in the same PR.
 3. **Tests:** copy `tests/BookingService.Tests/` and `tests/BookingService.IntegrationTests/` to `tests/<Service>.Tests/` and `tests/<Service>.IntegrationTests/`, and update the `ProjectReference` and the namespaces.

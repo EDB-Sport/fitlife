@@ -1,0 +1,51 @@
+# Infrastructure group: MongoDB and RabbitMQ.
+# Image versions are pinned, never :latest (docs/CSHARP_SETUP_TODO.md section 7).
+# Passwords come from .env (copy .env.example); none are written here.
+services:
+  mongodb:
+    # MONGO_IMAGE in .env only to work around a host problem, e.g. MongoDB 8 refuses to start on
+    # Linux kernels 6.19 to 7.0.13 (older Docker Desktop). See README.md.
+    image: ${MONGO_IMAGE:-mongo:8.0.38}
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?set it in deploy/compose/.env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set it in deploy/compose/.env}
+      # One database and one user per service (bounded context). mongodb/init/ creates them.
+      SERVICE_DATABASES: booking membership identity notification
+      BOOKING_DB_PASSWORD: ${BOOKING_DB_PASSWORD:?set it in deploy/compose/.env}
+      MEMBERSHIP_DB_PASSWORD: ${MEMBERSHIP_DB_PASSWORD:?set it in deploy/compose/.env}
+      IDENTITY_DB_PASSWORD: ${IDENTITY_DB_PASSWORD:?set it in deploy/compose/.env}
+      NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD:?set it in deploy/compose/.env}
+    volumes:
+      - mongodb-data:/data/db
+      - ./mongodb/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:${MONGO_HOST_PORT:-27018}:27017" # 27018 on your machine, so a local MongoDB on 27017 doesn't clash
+    healthcheck:
+      # Ping on the container's own address, not localhost: during first-time init the image runs a
+      # temporary mongod on localhost only, so this passes only once the real server is up.
+      test: ["CMD-SHELL", "mongosh --quiet \"mongodb://$$(hostname -i):27017\" --eval 'quit(db.adminCommand(\"ping\").ok ? 0 : 1)'"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  rabbitmq:
+    image: rabbitmq:4.4.1-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:?set it in deploy/compose/.env}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?set it in deploy/compose/.env}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    ports:
+      - "127.0.0.1:${RABBITMQ_HOST_PORT:-5672}:5672"              # AMQP
+      - "127.0.0.1:${RABBITMQ_MANAGEMENT_HOST_PORT:-15672}:15672" # management UI
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 20s
+
+volumes:
+  mongodb-data:
+  rabbitmq-data:

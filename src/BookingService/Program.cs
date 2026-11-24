@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using FitLife.Correlation;
 using NLog;
 using NLog.Web;
 using Scalar.AspNetCore;
@@ -16,6 +17,9 @@ try
     builder.Services.AddHealthChecks();
 
     WebApplication app = builder.Build();
+
+    // First, so every log line of the request carries its X-Correlation-ID
+    app.UseMiddleware<CorrelationIdMiddleware>();
 
     // Course rule #7: the OpenAPI document and Scalar only in Development
     if (app.Environment.IsDevelopment())

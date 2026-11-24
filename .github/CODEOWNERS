@@ -8,6 +8,7 @@
 /tests/Directory.Build.targets @EDB-Sport/edb-team
 **/stryker-config.json        @EDB-Sport/edb-team
 /tools/                       @EDB-Sport/edb-team
+/libs/                        @EDB-Sport/edb-team
 /docs/METHODOLOGY.md          @EDB-Sport/edb-team
 /docs/domain/CONTEXT-MAP.md   @EDB-Sport/edb-team
 /docs/adr/                    @EDB-Sport/edb-team

@@ -50,9 +50,11 @@ public sealed class NoWaitInTestsAnalyzer : DiagnosticAnalyzer
     }
 
     // The same convention as tests/Directory.Build.props: tests/<Service>.Tests and tests/<Service>.IntegrationTests
-    private static bool IsTestProject(string assemblyName) =>
-        assemblyName.EndsWith(".Tests", StringComparison.Ordinal)
+    private static bool IsTestProject(string assemblyName)
+    {
+        return assemblyName.EndsWith(".Tests", StringComparison.Ordinal)
         || assemblyName.EndsWith(".IntegrationTests", StringComparison.Ordinal);
+    }
 
     private static void AnalyzeInvocation(
         OperationAnalysisContext context,

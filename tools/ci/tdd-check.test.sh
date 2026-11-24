@@ -115,27 +115,34 @@ echo 'public static class Calculator { public static int Sum(int a, int b) => a 
 commit "$repo" "refactor that breaks the suite"
 expect "refactor PR with a red suite fails" fail "$repo" "the tests fail" refactor
 
+# edit <file> <sed script>: in-place edit that works with GNU and BSD sed (macOS, #87).
+# GNU and BSD disagree on "sed -i" and on "\n" in a replacement; a backslash-newline works in both.
+edit() {
+  sed "$2" "$1" >"$1.tmp" && mv "$1.tmp" "$1"
+}
+
 # 3. Skipped tests
 for marker in '[Ignore("later")]' '[TestCase(3, 4, IgnoreReason = "later")]' '[Explicit]'; do
   repo=$(feature_pr)
-  sed -i "s|    \[Test\] // needs: Subtract|    $marker\n    [Test] // needs: Subtract|" "$repo/tests/CalculatorTests.cs"
+  edit "$repo/tests/CalculatorTests.cs" "s|    \[Test\] // needs: Subtract|    $marker\\
+    [Test] // needs: Subtract|"
   git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
   expect "added $marker fails" fail "$repo" "adds skipped tests"
 done
 
 repo=$(feature_pr)
-sed -i 's|Subtract_TwoNumbers_ReturnsDifference() { }|Subtract_TwoNumbers_ReturnsDifference() { Assume.That(false); }|' "$repo/tests/CalculatorTests.cs"
+edit "$repo/tests/CalculatorTests.cs" 's|Subtract_TwoNumbers_ReturnsDifference() { }|Subtract_TwoNumbers_ReturnsDifference() { Assume.That(false); }|'
 git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
 expect "added Assume.That fails" fail "$repo" "adds skipped tests"
 
 # 4. Removed tests
 repo=$(fixture)
-sed -i '/\[TestCase(2, 3)\]/d' "$repo/tests/CalculatorTests.cs"
+edit "$repo/tests/CalculatorTests.cs" '/\[TestCase(2, 3)\]/d'
 commit "$repo" "delete a test case"
 expect "deleted test fails" fail "$repo" "removes tests"
 
 repo=$(fixture)
-sed -i 's|    \[Test\] // needs: Add|    // [Test] // needs: Add|' "$repo/tests/CalculatorTests.cs"
+edit "$repo/tests/CalculatorTests.cs" 's|    \[Test\] // needs: Add|    // [Test] // needs: Add|'
 commit "$repo" "comment out a test"
 expect "commented-out [Test] fails" fail "$repo" "removes tests"
 

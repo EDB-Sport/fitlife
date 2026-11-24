@@ -1,13 +1,22 @@
 using BookingService.Domain;
+using Microsoft.Extensions.Time.Testing;
 
 namespace BookingService.Tests.Domain;
 
-/// <summary>A class session never has more reservations than its capacity (#155), and a member has at most one of them (#156).</summary>
+/// <summary>The invariants of the <see cref="ClassSession"/> aggregate (src/BookingService/CONTEXT.md).</summary>
 public sealed class ClassSessionTests
 {
+    private static readonly DateTimeOffset Now = new(2026, 11, 24, 12, 0, 0, TimeSpan.Zero);
+    private readonly FakeTimeProvider _clock = new(Now);
+
     private static ClassSession ClassSessionWithCapacity(int capacity)
     {
-        return new ClassSession(Guid.NewGuid(), new Capacity(capacity));
+        return new ClassSession(Guid.NewGuid(), new Capacity(capacity), Now.AddDays(1));
+    }
+
+    private static ClassSession ClassSessionStartingAt(DateTimeOffset startTime)
+    {
+        return new ClassSession(Guid.NewGuid(), new Capacity(1), startTime);
     }
 
     [Test]
@@ -15,10 +24,10 @@ public sealed class ClassSessionTests
     {
         // Arrange
         ClassSession classSession = ClassSessionWithCapacity(1);
-        classSession.Reserve(Guid.NewGuid());
+        classSession.Reserve(Guid.NewGuid(), _clock);
 
         // Act
-        ReservationResult result = classSession.Reserve(Guid.NewGuid());
+        ReservationResult result = classSession.Reserve(Guid.NewGuid(), _clock);
 
         // Assert
         Assert.Multiple(() =>
@@ -36,7 +45,7 @@ public sealed class ClassSessionTests
         var memberId = Guid.NewGuid();
 
         // Act
-        ReservationResult result = classSession.Reserve(memberId);
+        ReservationResult result = classSession.Reserve(memberId, _clock);
 
         // Assert
         Assert.Multiple(() =>
@@ -51,10 +60,10 @@ public sealed class ClassSessionTests
     {
         // Arrange
         ClassSession classSession = ClassSessionWithCapacity(2);
-        classSession.Reserve(Guid.NewGuid());
+        classSession.Reserve(Guid.NewGuid(), _clock);
 
         // Act
-        ReservationResult result = classSession.Reserve(Guid.NewGuid());
+        ReservationResult result = classSession.Reserve(Guid.NewGuid(), _clock);
 
         // Assert
         Assert.Multiple(() =>
@@ -70,10 +79,10 @@ public sealed class ClassSessionTests
         // Arrange
         ClassSession classSession = ClassSessionWithCapacity(2);
         var memberId = Guid.NewGuid();
-        classSession.Reserve(memberId);
+        classSession.Reserve(memberId, _clock);
 
         // Act
-        ReservationResult result = classSession.Reserve(memberId);
+        ReservationResult result = classSession.Reserve(memberId, _clock);
 
         // Assert
         Assert.Multiple(() =>
@@ -89,10 +98,10 @@ public sealed class ClassSessionTests
         // Arrange
         ClassSession classSession = ClassSessionWithCapacity(1);
         var memberId = Guid.NewGuid();
-        classSession.Reserve(memberId);
+        classSession.Reserve(memberId, _clock);
 
         // Act
-        ReservationResult result = classSession.Reserve(memberId);
+        ReservationResult result = classSession.Reserve(memberId, _clock);
 
         // Assert
         Assert.That(result, Is.EqualTo(ReservationResult.MemberAlreadyHasReservation));
@@ -103,7 +112,7 @@ public sealed class ClassSessionTests
     {
         // Arrange
         ClassSession classSession = ClassSessionWithCapacity(1);
-        classSession.Reserve(Guid.NewGuid());
+        classSession.Reserve(Guid.NewGuid(), _clock);
         var firstMemberId = Guid.NewGuid();
         var secondMemberId = Guid.NewGuid();
         classSession.JoinWaitlist(firstMemberId);
@@ -142,7 +151,7 @@ public sealed class ClassSessionTests
         // Arrange
         ClassSession classSession = ClassSessionWithCapacity(1);
         var memberId = Guid.NewGuid();
-        classSession.Reserve(memberId);
+        classSession.Reserve(memberId, _clock);
 
         // Act
         WaitlistResult result = classSession.JoinWaitlist(memberId);
@@ -160,7 +169,7 @@ public sealed class ClassSessionTests
     {
         // Arrange
         ClassSession classSession = ClassSessionWithCapacity(1);
-        classSession.Reserve(Guid.NewGuid());
+        classSession.Reserve(Guid.NewGuid(), _clock);
         var memberId = Guid.NewGuid();
         classSession.JoinWaitlist(memberId);
 
@@ -183,7 +192,7 @@ public sealed class ClassSessionTests
         var memberId = Guid.NewGuid();
         var firstWaitingMemberId = Guid.NewGuid();
         var secondWaitingMemberId = Guid.NewGuid();
-        classSession.Reserve(memberId);
+        classSession.Reserve(memberId, _clock);
         classSession.JoinWaitlist(firstWaitingMemberId);
         classSession.JoinWaitlist(secondWaitingMemberId);
 
@@ -212,7 +221,7 @@ public sealed class ClassSessionTests
         // Arrange
         ClassSession classSession = ClassSessionWithCapacity(1);
         var memberId = Guid.NewGuid();
-        classSession.Reserve(memberId);
+        classSession.Reserve(memberId, _clock);
 
         // Act
         CancellationResult result = classSession.CancelReservation(memberId);
@@ -231,7 +240,7 @@ public sealed class ClassSessionTests
     {
         // Arrange
         ClassSession classSession = ClassSessionWithCapacity(1);
-        classSession.Reserve(Guid.NewGuid());
+        classSession.Reserve(Guid.NewGuid(), _clock);
 
         // Act
         CancellationResult result = classSession.CancelReservation(Guid.NewGuid());
@@ -243,6 +252,36 @@ public sealed class ClassSessionTests
             Assert.That(classSession.Reservations, Has.Count.EqualTo(1));
             Assert.That(classSession.DomainEvents, Is.Empty);
         });
+    }
+
+    [Test]
+    public void Reserve_MoreThanFourWeeksAhead_IsRejected()
+    {
+        // Arrange
+        ClassSession classSession = ClassSessionStartingAt(Now.AddDays(28).AddMinutes(1));
+
+        // Act
+        ReservationResult result = classSession.Reserve(Guid.NewGuid(), _clock);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(ReservationResult.TooFarAhead));
+            Assert.That(classSession.Reservations, Is.Empty);
+        });
+    }
+
+    [Test]
+    public void Reserve_ExactlyFourWeeksAhead_IsReserved()
+    {
+        // Arrange
+        ClassSession classSession = ClassSessionStartingAt(Now.AddDays(28));
+
+        // Act
+        ReservationResult result = classSession.Reserve(Guid.NewGuid(), _clock);
+
+        // Assert
+        Assert.That(result, Is.EqualTo(ReservationResult.Made));
     }
 
     [TestCase(0)]

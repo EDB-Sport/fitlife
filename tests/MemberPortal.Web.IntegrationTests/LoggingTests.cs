@@ -21,10 +21,10 @@ public sealed class LoggingTests
         // Arrange
         using var logs = new CapturingLoggerProvider();
         using var app = new WebApplicationFactory<Program>();
-        using var factory = WithCapturedLogs(app, logs);
+        using WebApplicationFactory<Program> factory = WithCapturedLogs(app, logs);
 
         // Act
-        using var client = factory.CreateClient();
+        using HttpClient client = factory.CreateClient();
 
         // Assert
         Assert.That(logs.Messages, Has.Some.Contains("MemberPortal.Web").And.Contains("0.1.0"));
@@ -36,16 +36,16 @@ public sealed class LoggingTests
         // Arrange
         using var logs = new CapturingLoggerProvider();
         using var app = new WebApplicationFactory<Program>();
-        using var factory = WithCapturedLogs(app, logs);
-        using var client = factory.CreateClient();
+        using WebApplicationFactory<Program> factory = WithCapturedLogs(app, logs);
+        using HttpClient client = factory.CreateClient();
         using var request = new HttpRequestMessage(HttpMethod.Get, new Uri("/health", UriKind.Relative));
         request.Headers.Add("X-Correlation-ID", "abc-123");
 
         // Act
-        using var response = await client.SendAsync(request).ConfigureAwait(false);
+        using HttpResponseMessage response = await client.SendAsync(request).ConfigureAwait(false);
 
         // Assert
-        var scopeValues = logs.Scopes.SelectMany(scopes => scopes).OfType<IEnumerable<KeyValuePair<string, object?>>>().SelectMany(pairs => pairs);
+        IEnumerable<KeyValuePair<string, object?>> scopeValues = logs.Scopes.SelectMany(scopes => scopes).OfType<IEnumerable<KeyValuePair<string, object?>>>().SelectMany(pairs => pairs);
         Assert.That(scopeValues, Has.Member(new KeyValuePair<string, object?>("CorrelationId", "abc-123")));
     }
 }

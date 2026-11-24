@@ -13,14 +13,26 @@ internal sealed class CapturingLoggerProvider : ILoggerProvider, ISupportExterna
 
     public IEnumerable<IReadOnlyList<object?>> Scopes => _entries.Select(entry => entry.Scopes);
 
-    public ILogger CreateLogger(string categoryName) => this;
+    public ILogger CreateLogger(string categoryName)
+    {
+        return this;
+    }
 
-    public void SetScopeProvider(IExternalScopeProvider scopeProvider) => _scopes = scopeProvider;
+    public void SetScopeProvider(IExternalScopeProvider scopeProvider)
+    {
+        _scopes = scopeProvider;
+    }
 
     public IDisposable? BeginScope<TState>(TState state)
-        where TState : notnull => _scopes?.Push(state);
+        where TState : notnull
+    {
+        return _scopes?.Push(state);
+    }
 
-    public bool IsEnabled(LogLevel logLevel) => true;
+    public bool IsEnabled(LogLevel logLevel)
+    {
+        return true;
+    }
 
     public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
     {

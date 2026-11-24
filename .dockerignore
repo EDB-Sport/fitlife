@@ -1,0 +1,8 @@
+# Build context for the service and UI Dockerfiles, built from the repo root (docs/CSHARP_SETUP_TODO.md section 8).
+# Each Dockerfile copies only the root rule files, tools/Analyzers/ and its own src/<Service>/.
+**/bin/
+**/obj/
+tests/
+.git/
+.github/
+.env

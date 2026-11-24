@@ -138,7 +138,7 @@ expect "continue-on-error outside workflows passes" pass
 
 # 15. Changing an existing line under tests/ adds tests-modified
 new_repo
-sed -i 's/Works/StillWorks/' tests/A.Tests/ATests.cs
+sed 's/Works/StillWorks/' tests/A.Tests/ATests.cs >ATests.tmp && mv ATests.tmp tests/A.Tests/ATests.cs # not sed -i: GNU and BSD differ (#87)
 commit_head
 expect "changed test line adds tests-modified" pass "label: tests-modified"
 
@@ -162,7 +162,7 @@ expect "new contract file adds contract-change" pass "label: contract-change"
 
 # 19. Rule failures and labels are reported together
 new_repo
-sed -i 's/Works/StillWorks/' tests/A.Tests/ATests.cs
+sed 's/Works/StillWorks/' tests/A.Tests/ATests.cs >ATests.tmp && mv ATests.tmp tests/A.Tests/ATests.cs # not sed -i: GNU and BSD differ (#87)
 printf '    if: false\n' >> .github/workflows/ci.yml
 commit_head
 expect "a failing scan still reports its labels" fail "label: tests-modified"

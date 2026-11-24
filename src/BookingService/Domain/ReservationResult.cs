@@ -8,4 +8,7 @@ public enum ReservationResult
 
     /// <summary>Every seat is taken, so no reservation was made.</summary>
     ClassSessionFull,
+
+    /// <summary>The member already has a seat on this class session, so no second reservation was made.</summary>
+    MemberAlreadyHasReservation,
 }

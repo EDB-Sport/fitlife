@@ -1,10 +1,12 @@
-# Checks that every PR was built test-first. Logic and rules: tools/ci/tdd-check.sh.
+# Checks that a PR's tests depend on its change, or, for a PR labelled refactor, that the tests are
+# unchanged and green. Logic, rules and limits: tools/ci/tdd-check.sh.
 # Make "tdd-check" a required check on develop and main (docs/CSHARP_SETUP_TODO.md section 6, issue #5).
 name: tdd-check
 
 on:
   pull_request:
     branches: [develop, main]
+    types: [opened, synchronize, reopened, labeled, unlabeled] # adding or removing "refactor" re-runs the check
 
 permissions:
   contents: read
@@ -22,12 +24,27 @@ jobs:
           global-json-file: global.json
 
       - name: tdd-check
-        run: tools/ci/tdd-check.sh
+        # The checked-out merge commit's first parent is the exact base it was built from;
+        # the base sha in the pull_request event can lag behind it.
+        run: BASE_SHA=$(git rev-parse HEAD^1) tools/ci/tdd-check.sh
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
           TEST_CMD: dotnet test -c Release
           SRC_DIR: src/
           TEST_DIR: tests/
           SRC_FILE_REGEX: '\.cs$'
           TEST_FILE_REGEX: '\.cs$'
-          SKIP_MARKERS: '[[,][[:space:]]*(Ignore|Explicit)\b|Assert\.(Ignore|Inconclusive)'
+          SKIP_MARKERS: '[[,][[:space:]]*(Ignore|Explicit)\b|\bIgnoreReason\b|Assert\.(Ignore|Inconclusive)|\bAssume\.'
+
+      - name: tdd-check (tools/Analyzers)
+        # The TEAM analyzers and their tests (issue #49). Same rules, with the analyzer project as the production code.
+        if: ${{ !cancelled() }}
+        run: BASE_SHA=$(git rev-parse HEAD^1) tools/ci/tdd-check.sh
+        env:
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          TEST_CMD: dotnet test -c Release
+          SRC_DIR: tools/Analyzers/Team.Analyzers/
+          TEST_DIR: tools/Analyzers/Team.Analyzers.Tests/
+          SRC_FILE_REGEX: '\.cs$'
+          TEST_FILE_REGEX: '\.cs$'
+          SKIP_MARKERS: '[[,][[:space:]]*(Ignore|Explicit)\b|\bIgnoreReason\b|Assert\.(Ignore|Inconclusive)|\bAssume\.'

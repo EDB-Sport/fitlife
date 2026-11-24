@@ -1,0 +1,81 @@
+# Security checks: gitleaks (secrets in commits) and hadolint (Dockerfiles).
+# docs/CSHARP_SETUP_TODO.md section 8 and section 10 job 8, issue #20.
+# Temporary file: issue #5 moves the "security" job into ci.yml, and this file is deleted then.
+# Make "security" a required check on develop and main (repo ruleset).
+name: security
+
+# One run per PR update: "push" is only a backstop for direct pushes and merges to the shared
+# branches, "pull_request" scans the PR's own commits (base..head).
+# No "paths:" filter on any trigger: a required check that never runs stays "Expected: waiting"
+# and blocks the merge. Checked by tools/ci/security-steps.test.sh.
+# If a merge queue is turned on, add a "merge_group:" trigger, or the required check never reports.
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+
+# A new push to a PR cancels the run in progress. Runs on develop and main are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # Without this, GitHub runs steps with "bash -e {0}", which has no pipefail, and
+    # "gitleaks … | tee" would return tee's exit code. Checked by tools/ci/security-steps.test.sh.
+    shell: bash
+
+env:
+  # Tools run from their official images, pinned by tag and digest. Change both together.
+  # The gitleaks CLI needs no GITLEAKS_LICENSE, unlike gitleaks/gitleaks-action in an organisation repo.
+  GITLEAKS_IMAGE: ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+  HADOLINT_IMAGE: hadolint/hadolint:v2.15.1@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # gitleaks reads the commits, not just the files
+          persist-credentials: false
+
+      - name: test the security steps
+        # A planted fake secret must fail the gitleaks step, run with the shell GitHub uses for it.
+        run: tools/ci/security-steps.test.sh
+
+      - name: gitleaks
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Pull request: the PR's own commits. Push: the history of the pushed commit.
+          if [ -n "$BASE_SHA" ]; then
+            commits="$BASE_SHA..$HEAD_SHA"
+          else
+            commits="$GITHUB_SHA"
+          fi
+          log="$RUNNER_TEMP/gitleaks.log"
+          docker run --rm -v "$PWD:/repo:ro" -w /repo "$GITLEAKS_IMAGE" \
+            git --redact --no-banner --no-color --verbose --log-opts="$commits" /repo 2>&1 | tee "$log"
+          # gitleaks exits 0 when git itself fails ("0 commits scanned"), so a broken scan must not pass.
+          if grep -q ' ERR ' "$log"; then
+            echo "::error::gitleaks could not read the git history, see the log above"
+            exit 1
+          fi
+
+      - name: hadolint
+        run: |
+          # A plain assignment, so the step fails if git fails instead of finding "no Dockerfiles".
+          found=$(git ls-files -- '*Dockerfile' '*Dockerfile.*' '*.dockerfile' ':(exclude)*.dockerignore')
+          if [ -z "$found" ]; then
+            echo "No Dockerfiles in the repo, nothing to lint."
+            exit 0
+          fi
+          mapfile -t dockerfiles <<< "$found"
+          printf 'Linting %s\n' "${dockerfiles[@]}"
+          docker run --rm -v "$PWD:/repo:ro" -w /repo "$HADOLINT_IMAGE" \
+            hadolint --config .hadolint.yaml "${dockerfiles[@]}"

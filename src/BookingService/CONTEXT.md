@@ -53,7 +53,7 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | Command | `ClassSession.Reserve(memberId, clock)` | Returns `ReservationResult.Made`, `MemberAlreadyHasReservation`, `TooFarAhead` or `ClassSessionFull`. The clock is a `TimeProvider` |
 | Command | `ClassSession.JoinWaitlist(memberId, clock)` | Returns `WaitlistResult.Joined`, `MemberAlreadyHasReservation`, `MemberAlreadyOnWaitlist`, `ClassSessionNotFull` or `WaitlistClosed` |
 | Command | `ClassSession.CancelReservation(memberId)` | Returns `CancellationResult.Cancelled` or `NoReservation` |
-| Command | `ClassSession.CloseWaitlist(clock)` | Returns `WaitlistClosingResult.Closed` or `TooEarly`. Nothing calls it yet: a scheduled job does, in a later issue |
+| Command | `ClassSession.CloseWaitlist(clock)` | Returns `WaitlistClosingResult.Closed` or `TooEarly`. Nothing calls it yet: a scheduled job does, in a later issue. Until it has run, `CancelReservation` still gives a freed seat to the first waitlist entry, also in the last 2 hours |
 | Event | `ReservationCancelled` | Raised when a member gives up their seat |
 | Event | `ReservationMade` | Raised when the first waitlist entry gets the freed seat. Published later (#171 and after); the events wait in `ClassSession.DomainEvents` |
 | Event | `WaitlistEntryExpired` | Raised for each waitlist entry removed when the waitlist closes |

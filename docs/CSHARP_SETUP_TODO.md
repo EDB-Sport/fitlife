@@ -414,7 +414,7 @@ These follow `METHODOLOGY.md` §2.1, with one repo and a separate version per se
 
   *Why:* Git Flow merges the whole of `develop` into `main`, so every changed service has to be released together, or `main` would contain unreleased code.
 - [ ] **A release gate on PRs into `main`.** For each service, it fails unless:
-  - changes since the service's last tag mean its version has been raised
+  - changes since the service's last tag mean its version has been raised. A change is one in `src/<Service>/`, in a `libs/` project the service references (directly or through another `libs/` project), or in `Directory.Packages.props`, `Directory.Build.props`, `Directory.Build.targets` or `global.json` (#112)
   - a hotfix raises only PATCH, for only one service
   - if oasdiff reports a breaking change against the service's last tag, its MAJOR has been raised
 

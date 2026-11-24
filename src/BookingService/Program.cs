@@ -6,7 +6,7 @@ using Scalar.AspNetCore;
 
 try
 {
-    var builder = WebApplication.CreateBuilder(args);
+    WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
     // Course rule #8: NLog → Loki, with the shared libs/nlog.config
     builder.Logging.ClearProviders();
@@ -15,7 +15,7 @@ try
     builder.Services.AddOpenApi();
     builder.Services.AddHealthChecks();
 
-    var app = builder.Build();
+    WebApplication app = builder.Build();
 
     // Course rule #7: the OpenAPI document and Scalar only in Development
     if (app.Environment.IsDevelopment())
@@ -29,7 +29,7 @@ try
     // The startup line: which service and which release is running (the version is also a Loki label)
     if (app.Logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information))
     {
-        var version = typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        string? version = typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
         app.Logger.LogInformation("Starting {Service} {Version}", app.Environment.ApplicationName, version);
     }
 

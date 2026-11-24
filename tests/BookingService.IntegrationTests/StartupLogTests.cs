@@ -15,10 +15,10 @@ public sealed class StartupLogTests
         // Arrange
         using var logs = new CapturingLoggerProvider();
         using var app = new WebApplicationFactory<Program>();
-        using var factory = app.WithWebHostBuilder(host => host.ConfigureServices(services => services.AddSingleton<ILoggerProvider>(logs)));
+        using WebApplicationFactory<Program> factory = app.WithWebHostBuilder(host => host.ConfigureServices(services => services.AddSingleton<ILoggerProvider>(logs)));
 
         // Act
-        using var client = factory.CreateClient();
+        using HttpClient client = factory.CreateClient();
 
         // Assert
         Assert.That(logs.Messages, Has.Some.Contains("BookingService").And.Contains("0.1.0"));
@@ -30,12 +30,21 @@ public sealed class StartupLogTests
 
         public IEnumerable<string> Messages => _messages;
 
-        public ILogger CreateLogger(string categoryName) => this;
+        public ILogger CreateLogger(string categoryName)
+        {
+            return this;
+        }
 
         public IDisposable? BeginScope<TState>(TState state)
-            where TState : notnull => null;
+            where TState : notnull
+        {
+            return null;
+        }
 
-        public bool IsEnabled(LogLevel logLevel) => true;
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return true;
+        }
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {

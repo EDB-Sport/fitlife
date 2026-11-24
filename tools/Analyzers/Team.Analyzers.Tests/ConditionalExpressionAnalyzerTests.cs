@@ -10,8 +10,10 @@ namespace Team.Analyzers.Tests;
 [TestFixture]
 public sealed class ConditionalExpressionAnalyzerTests
 {
-    private static Task VerifyAsync(string source, params DiagnosticResult[] expected) =>
-        AnalyzerVerifier.VerifyAsync<ConditionalExpressionAnalyzer>(source, analyzerConfigFile: null, TestBehaviors.None, expected);
+    private static Task VerifyAsync(string source, params DiagnosticResult[] expected)
+    {
+        return AnalyzerVerifier.VerifyAsync<ConditionalExpressionAnalyzer>(source, analyzerConfigFile: null, TestBehaviors.None, expected);
+    }
 
     // --- raises TEAM012 ---
 
@@ -134,7 +136,7 @@ public sealed class ConditionalExpressionAnalyzerTests
                 }
             }
             """;
-        var expected = new DiagnosticResult(ConditionalExpressionAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
+        DiagnosticResult expected = new DiagnosticResult(ConditionalExpressionAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
             .WithSpan(5, 16, 5, 43)
             .WithMessage("Found a conditional expression (?:) as a return value. Do write an if statement with a return in each branch in the method instead.");
         return VerifyAsync(source, expected);

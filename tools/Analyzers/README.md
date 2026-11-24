@@ -14,6 +14,7 @@ The project's own Roslyn rules (`docs/CSHARP_SETUP_TODO.md` section 4). Each rul
 | TEAM002 | No NLog API (`LogManager`, `NLog.Logger`, `NLog.ILogger`) outside `Program.cs`. Classes inject `ILogger<T>`. | `NlogOnlyInProgramAnalyzer` |
 | TEAM003 | An `ILogger` call (`Log`, `LogInformation`, …, `BeginScope`) whose template placeholders or arguments have a name containing `password`, `token`, `secret`, `connectionString`, `jwt` or `cpr` (any case). Log an id or a masked value instead. | `NoSecretsInLogsAnalyzer` |
 | TEAM004 | `#pragma warning disable` and `#nullable disable` end with `// #<issue>: <reason>` on the same line. `[SuppressMessage]` and `[UnconditionalSuppressMessage]` have `Justification = "#<issue>: <reason>"`. | `JustifiedSuppressionAnalyzer` |
+| TEAM005 | No `dynamic`, no `goto` (also `goto case`/`goto default`), no LINQ query syntax, no conditional expression inside another one, and no lambda or anonymous method nested more than one level deep (a lambda inside a lambda is fine). | `ReadabilityLimitsAnalyzer` |
 | TEAM007 | No `Thread.Sleep` and no `Task.Delay` in test projects (assembly name `*.Tests` or `*.IntegrationTests`). Advance a `FakeTimeProvider` instead. `Task.Delay` with a `TimeProvider` argument is allowed. | `NoWaitInTestsAnalyzer` |
 | TEAM012 | No conditional expression (`?:`) as a return value, an assigned value or a variable initializer. Write `if`/`return`, or `if`/`else` with an assignment in each branch. Elsewhere, for example as an argument, it is allowed. | `ConditionalExpressionAnalyzer` |
 

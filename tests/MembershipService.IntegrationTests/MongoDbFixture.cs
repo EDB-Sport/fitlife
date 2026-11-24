@@ -12,7 +12,9 @@ public sealed class MongoDbFixture : IAsyncDisposable
     /// <summary>The password of the test database user.</summary>
     public const string ServicePassword = "membership-test-password";
 
-    private readonly MongoDbContainer _container = new MongoDbBuilder("mongo:8.0.38").Build();
+    // 7.0, not compose's 8.0: MongoDB 8 won't start on Linux kernels 6.19 to 7.0.13 (some Docker Desktop
+    // versions, deploy/compose/README.md), and the tests need only what both versions do.
+    private readonly MongoDbContainer _container = new MongoDbBuilder("mongo:7.0.48").Build();
 
     /// <summary>The host the container is reached on.</summary>
     public string Host => _container.Hostname;

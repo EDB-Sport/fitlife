@@ -1,0 +1,68 @@
+using System.Security.Claims;
+using FitLife.Authentication;
+using MembershipService.Application;
+using MembershipService.Domain;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+
+namespace MembershipService.Api;
+
+/// <summary>Joining FitLife, and the lookup by account id other services use (CONTEXT-MAP section 4, Open Host Service).</summary>
+public static class MemberEndpoints
+{
+    /// <summary>Maps <c>POST /members</c> and <c>GET /members/by-account/{accountId}</c>. Both need a token from Identity.</summary>
+    /// <param name="app">The routes.</param>
+    /// <returns>The routes.</returns>
+    public static IEndpointRouteBuilder MapMemberEndpoints(this IEndpointRouteBuilder app)
+    {
+        RouteGroupBuilder members = app.MapGroup("/members").RequireAuthorization().WithTags("Members");
+        members.MapPost("/", Join)
+            .WithName("JoinMembership")
+            .WithSummary("The account in the token joins FitLife and gets an active membership");
+        members.MapGet("/by-account/{accountId}", GetByAccount)
+            .WithName("GetMemberByAccount")
+            .WithSummary("The member id of an account, and whether its membership is active");
+        return app;
+    }
+
+    private static async Task<Results<Created<MemberResponse>, Conflict<ProblemDetails>, UnauthorizedHttpResult>> Join(
+        ClaimsPrincipal user, JoinMembershipHandler handler, CancellationToken cancellationToken)
+    {
+        string? accountId = user.FindFirstValue(FitLifeJwt.AccountIdClaim);
+        if (string.IsNullOrWhiteSpace(accountId))
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        JoinResult result = await handler.HandleAsync(new JoinMembershipCommand(accountId), cancellationToken).ConfigureAwait(false);
+        if (result.Member is null || result.Membership is null)
+        {
+            return TypedResults.Conflict(new ProblemDetails
+            {
+                Title = "The account is already a member",
+                Status = StatusCodes.Status409Conflict,
+            });
+        }
+
+        var response = new MemberResponse(result.Member.Id, result.Membership.Status, result.Membership.IsActive);
+        return TypedResults.Created(new Uri($"/members/by-account/{Uri.EscapeDataString(accountId)}", UriKind.Relative), response);
+    }
+
+    private static async Task<Results<Ok<MemberResponse>, NotFound>> GetByAccount(
+        string accountId, IMemberRepository members, IMembershipRepository memberships, CancellationToken cancellationToken)
+    {
+        Member? member = await members.FindByAccountIdAsync(accountId, cancellationToken).ConfigureAwait(false);
+        if (member is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        Membership? membership = await memberships.FindByMemberIdAsync(member.Id, cancellationToken).ConfigureAwait(false);
+        if (membership is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        return TypedResults.Ok(new MemberResponse(member.Id, membership.Status, membership.IsActive));
+    }
+}

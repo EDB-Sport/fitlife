@@ -1,6 +1,11 @@
 using System.Globalization;
 using System.Reflection;
+using System.Text.Json.Serialization;
+using FitLife.Authentication;
 using FitLife.Correlation;
+using MembershipService.Api;
+using MembershipService.Application;
+using MembershipService.Repositories;
 using NLog;
 using NLog.Web;
 using Scalar.AspNetCore;
@@ -16,6 +21,17 @@ try
     builder.Services.AddOpenApi();
     builder.Services.AddHealthChecks();
 
+    // The token from Identity, checked the same way in every service (#183)
+    builder.Services.AddFitLifeJwtAuthentication();
+    builder.Services.AddAuthorization();
+
+    // Statuses as names in the API ("Active"), not numbers
+    builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+    builder.Services.AddSingleton(TimeProvider.System);
+    builder.Services.AddMongoRepositories();
+    builder.Services.AddSingleton<JoinMembershipHandler>();
+
     WebApplication app = builder.Build();
 
     // First, so every log line of the request carries its X-Correlation-ID
@@ -28,7 +44,11 @@ try
         app.MapScalarApiReference();
     }
 
+    app.UseAuthentication();
+    app.UseAuthorization();
+
     app.MapHealthChecks("/health");
+    app.MapMemberEndpoints();
 
     // The startup line: which service and which release is running (the version is also a Loki label)
     if (app.Logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information))

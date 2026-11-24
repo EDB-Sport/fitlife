@@ -5,6 +5,7 @@ using Microsoft.Extensions.Time.Testing;
 namespace MembershipService.Tests;
 
 /// <summary>Joining FitLife: one member per account, with an active membership (#170).</summary>
+[FixtureLifeCycle(LifeCycle.InstancePerTestCase)] // fresh in-memory stores for every test
 public sealed class JoinMembershipHandlerTests
 {
     private readonly InMemoryMembers _members = new();
@@ -28,8 +29,8 @@ public sealed class JoinMembershipHandlerTests
         // Assert
         Assert.That(result.Joined, Is.True);
         Assert.That(_members.Stored.Single().AccountId, Is.EqualTo("account-1"));
-        Assert.That(_memberships.Stored.Single().MemberId, Is.EqualTo(result.Member!.Id));
-        Assert.That(result.Membership!.IsActive, Is.True);
+        Assert.That(_memberships.Stored.Single().MemberId, Is.EqualTo(result.Member?.Id));
+        Assert.That(result.Membership?.IsActive, Is.True);
     }
 
     [Test]
@@ -42,7 +43,7 @@ public sealed class JoinMembershipHandlerTests
         JoinResult result = await handler.HandleAsync(new JoinMembershipCommand("account-1"), CancellationToken.None);
 
         // Assert
-        Assert.That(result.Membership!.StartDate, Is.EqualTo(new DateOnly(2026, 11, 24)));
+        Assert.That(result.Membership?.StartDate, Is.EqualTo(new DateOnly(2026, 11, 24)));
     }
 
     [Test]

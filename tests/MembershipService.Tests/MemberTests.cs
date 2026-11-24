@@ -12,7 +12,7 @@ public sealed class MemberTests
         const string accountId = "account-1";
 
         // Act
-        Member member = Member.Join(accountId);
+        var member = Member.Join(accountId);
 
         // Assert
         Assert.That(member.AccountId, Is.EqualTo(accountId));

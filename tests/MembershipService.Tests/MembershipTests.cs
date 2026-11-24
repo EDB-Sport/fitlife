@@ -14,7 +14,7 @@ public sealed class MembershipTests
         var memberId = Guid.NewGuid();
 
         // Act
-        Membership membership = Membership.Start(memberId, Today);
+        var membership = Membership.Start(memberId, Today);
 
         // Assert
         Assert.That(membership.Status, Is.EqualTo(MembershipStatus.Active));
@@ -28,7 +28,7 @@ public sealed class MembershipTests
         var memberId = Guid.NewGuid();
 
         // Act
-        Membership membership = Membership.Start(memberId, Today);
+        var membership = Membership.Start(memberId, Today);
 
         // Assert
         Assert.That(membership.Type, Is.EqualTo(MembershipType.Standard));

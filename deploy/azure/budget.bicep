@@ -1,6 +1,6 @@
 // A monthly cost budget with e-mail alerts on the subscription (section 9a, issue #10).
 // Run once by a person with rights on the subscription, not by the deploy workflow:
-//   az deployment sub create --location northeurope --template-file deploy/azure/budget.bicep \
+//   az deployment sub create --location switzerlandnorth --template-file deploy/azure/budget.bicep \
 //     --parameters contactEmails='["someone@example.com"]'
 targetScope = 'subscription'
 

@@ -1,7 +1,9 @@
+using System.Reflection;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace FitLife.Authentication;
@@ -13,17 +15,30 @@ public static class JwtAuthenticationExtensions
     /// Adds JWT bearer authentication as the default scheme: HMAC-SHA256 with the key from
     /// <see cref="FitLifeJwt.SigningKeyConfigurationKey"/>, issuer <see cref="FitLifeJwt.Issuer"/>,
     /// audience <see cref="FitLifeJwt.Audience"/>, and the lifetime checked. The claims keep their names from the token.
-    /// A missing or too short key stops the service when it starts.
+    /// A missing or too short key stops the service when it starts (on the first request during build-time OpenAPI generation).
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>
     public static IServiceCollection AddFitLifeJwtAuthentication(this IServiceCollection services)
     {
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
-        services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
-            .Configure<IConfiguration>(Configure)
-            .ValidateOnStart();
+        OptionsBuilder<JwtBearerOptions> options = services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+            .Configure<IConfiguration>(Configure);
+
+        // The build writes contracts/openapi/<service>.json by starting the app in GetDocument.Insider, without Vault.
+        // There the key is checked on the first request instead, which never comes.
+        if (!IsBuildTimeDocumentGeneration())
+        {
+            options.ValidateOnStart();
+        }
+
         return services;
+    }
+
+    // The check Microsoft documents for build-time OpenAPI generation (aspnetcore openapi docs, "build-time document generation")
+    private static bool IsBuildTimeDocumentGeneration()
+    {
+        return string.Equals(Assembly.GetEntryAssembly()?.GetName().Name, "GetDocument.Insider", StringComparison.Ordinal);
     }
 
     private static void Configure(JwtBearerOptions options, IConfiguration configuration)

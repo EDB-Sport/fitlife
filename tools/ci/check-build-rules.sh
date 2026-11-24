@@ -269,6 +269,27 @@ write_project "$a"
 pragma_code "$a" " // #48: checks that a justified pragma builds"
 expect_pass "pragma with an issue reference builds" "$a"
 
+# 14. TEAM008 reads the repo root's GLOSSARY.md: every project gets it as an AdditionalFile (issue #76)
+model_code() {
+  write_code "$1" "$2" <<EOF
+namespace BuildCheck.Models;
+
+/// <summary>A model type for the glossary check.</summary>
+public sealed class $2
+{
+    /// <summary>Gets the name.</summary>
+    public string Name { get; init; } = string.Empty;
+}
+EOF
+}
+write_project "$a"
+model_code "$a" Member
+expect_pass "a *.Models type that is in GLOSSARY.md builds (TEAM008)" "$a"
+
+write_project "$a"
+model_code "$a" Customer
+expect_error "a *.Models type that isn't in GLOSSARY.md fails (TEAM008)" "$a" "is not in the 'In code' column of GLOSSARY.md"
+
 echo
 if [ "$failures" -eq 0 ]; then
   echo "All build rules work."

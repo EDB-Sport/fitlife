@@ -1,9 +1,11 @@
+using System.Collections.Concurrent;
 using System.Text;
 using FitLife.Correlation;
 using FitLife.Messaging.Events;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using RabbitMQ.Client;
 using Testcontainers.RabbitMq;
@@ -101,11 +103,33 @@ public sealed class RabbitMqRoundTripTests
         Assert.That(received.Event, Is.EqualTo(Sample));
     }
 
+    [Test]
+    public async Task Start_RabbitMqNotReachable_KeepsTryingInsteadOfStoppingTheService()
+    {
+        // Arrange
+        using var logs = new WaitingLoggerProvider();
+        using IHost host = BuildHost(new RecordingHandler(), new Uri("amqp://guest:guest@127.0.0.1:1"), logs);
+
+        // Act
+        await host.StartAsync().ConfigureAwait(false);
+
+        // Assert
+        await logs.WaitForAsync("not reachable", Timeout).ConfigureAwait(false);
+        Assert.That(ConsumerOf(host).Consuming.IsCompleted, Is.False);
+    }
+
     /// <summary>A host with a publisher and a consumer on a queue of its own, so the tests don't share messages.</summary>
     private async Task<IHost> StartHostAsync(RecordingHandler handler)
     {
+        IHost host = BuildHost(handler, new Uri(_rabbitMq.GetConnectionString()), logs: null);
+        await host.StartAsync().ConfigureAwait(false);
+        await ConsumerOf(host).Consuming.WaitAsync(Timeout).ConfigureAwait(false);
+        return host;
+    }
+
+    private static IHost BuildHost(RecordingHandler handler, Uri broker, WaitingLoggerProvider? logs)
+    {
         HostApplicationBuilder builder = Host.CreateApplicationBuilder();
-        var broker = new Uri(_rabbitMq.GetConnectionString());
         string[] credentials = broker.UserInfo.Split(':');
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
         {
@@ -114,13 +138,21 @@ public sealed class RabbitMqRoundTripTests
             ["RabbitMq:UserName"] = credentials[0],
             ["RabbitMq:Password"] = credentials[1],
         });
+        if (logs is not null)
+        {
+            builder.Services.AddSingleton<ILoggerProvider>(logs);
+        }
+
         builder.Services.AddRabbitMq(builder.Configuration);
         builder.Services.AddEventPublisher();
         builder.Services.AddSingleton<IEventSubscriber<ReservationMade>>(handler);
         builder.Services.AddEventConsumer<ReservationMade>("test-" + Guid.NewGuid().ToString("N"));
-        IHost host = builder.Build();
-        await host.StartAsync().ConfigureAwait(false);
-        return host;
+        return builder.Build();
+    }
+
+    private static RabbitMqEventConsumer<ReservationMade> ConsumerOf(IHost host)
+    {
+        return host.Services.GetServices<IHostedService>().OfType<RabbitMqEventConsumer<ReservationMade>>().Single();
     }
 
     /// <summary>A message straight on the exchange, bypassing the publisher, as a broken producer would send it.</summary>
@@ -135,6 +167,55 @@ public sealed class RabbitMqRoundTripTests
             {
                 await channel.BasicPublishAsync(RabbitMqEventPublisher.Exchange, ReservationMade.RoutingKey, Encoding.UTF8.GetBytes(body)).ConfigureAwait(false);
             }
+        }
+    }
+
+    /// <summary>Captures every log line, and lets a test wait for the first line that contains some text.</summary>
+    private sealed class WaitingLoggerProvider : ILoggerProvider, ILogger
+    {
+        private readonly ConcurrentQueue<string> _lines = new();
+        private readonly SemaphoreSlim _logged = new(0);
+
+        public async Task<string> WaitForAsync(string text, TimeSpan timeout)
+        {
+            using var deadline = new CancellationTokenSource(timeout);
+            while (true)
+            {
+                string? line = _lines.FirstOrDefault(candidate => candidate.Contains(text, StringComparison.Ordinal));
+                if (line is not null)
+                {
+                    return line;
+                }
+
+                await _logged.WaitAsync(deadline.Token).ConfigureAwait(false);
+            }
+        }
+
+        public ILogger CreateLogger(string categoryName)
+        {
+            return this;
+        }
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull
+        {
+            return null;
+        }
+
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return true;
+        }
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            _lines.Enqueue(formatter(state, exception));
+            _logged.Release();
+        }
+
+        public void Dispose()
+        {
+            _logged.Dispose();
         }
     }
 

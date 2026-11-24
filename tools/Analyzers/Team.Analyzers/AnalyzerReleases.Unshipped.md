@@ -11,4 +11,5 @@ TEAM003 | Security | Error | NoSecretsInLogsAnalyzer: no secrets or personal dat
 TEAM005 | Maintainability | Error | ReadabilityLimitsAnalyzer: no dynamic, goto, query syntax, nested ternaries or deeply nested lambdas
 TEAM007 | Reliability | Error | NoWaitInTestsAnalyzer: no Thread.Sleep or Task.Delay in test projects
 TEAM008 | Naming | Error | ModelTypesInGlossaryAnalyzer: public types in *.Models are in GLOSSARY.md
+TEAM010 | Design | Error | NoHardCodedUrlsAnalyzer: no hard-coded http, https, mongodb or amqp addresses in src/
 TEAM012 | Style | Error | ConditionalExpressionAnalyzer: no conditional expression in place of if/return

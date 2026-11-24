@@ -52,7 +52,7 @@ public sealed class NoSecretsInLogsAnalyzer : DiagnosticAnalyzer
 
     private static void AnalyzeInvocation(OperationAnalysisContext context)
     {
-        IInvocationOperation invocation = (IInvocationOperation)context.Operation;
+        var invocation = (IInvocationOperation)context.Operation;
         if (!string.Equals(invocation.TargetMethod.ContainingType?.ToDisplayString(), LoggerExtensions, StringComparison.Ordinal))
         {
             return;
@@ -116,6 +116,8 @@ public sealed class NoSecretsInLogsAnalyzer : DiagnosticAnalyzer
     }
 
     // Any case, also as part of a longer name: AccessToken, userPassword, DbConnectionString
-    private static bool IsSecret(string name) =>
-        SecretWords.Any(word => name.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0);
+    private static bool IsSecret(string name)
+    {
+        return SecretWords.Any(word => name.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0);
+    }
 }

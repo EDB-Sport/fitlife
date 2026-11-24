@@ -34,11 +34,22 @@ check "the summary has the first real error line" grep -qF "error CS0103: The na
 check "the summary has only the first error" bash -c '! grep -qF "CS0246" <<<"$1"' _ "$summary"
 check "the summary has the hint" grep -qF "Fix the first compiler error" <<<"$summary"
 
+check "a failing step prints the error as an annotation, which gh run view lists" \
+  grep -qF "::error title=build failed::/repo/src/Program.cs(12,5): error CS0103: The name 'Foo' does not exist" <<<"$out"
+
 # 2. Failing tests and Newman assertions are found too
 run bash -c 'echo "Starting test execution, please wait..."; echo "  Failed Reserve_FullClass_IsRefused [12 ms]"; echo "  Error Message:"; exit 1'
 check "a failed test is the error line" grep -qF "Failed Reserve_FullClass_IsRefused" <<<"$summary"
 run bash -c 'echo "→ Create account"; echo "  1. AssertionError  Status is 201"; echo "     expected 500 to equal 201"; exit 1'
 check "a Newman assertion is the error line" grep -qF "AssertionError  Status is 201" <<<"$summary"
+
+# 2b. dotnet format's error lines have no digits in the code (issue #132 review)
+run bash -c 'echo "/repo/src/Program.cs(4,1): error WHITESPACE: Fix whitespace formatting. [/repo/src/App.csproj]"; exit 2'
+check "a dotnet format error is the error line" grep -qF "error WHITESPACE: Fix whitespace formatting." <<<"$summary"
+
+# 2c. % and newlines in the error are escaped in the annotation, so it stays one line
+run bash -c 'echo "x.cs(1,1): error CS1000: 100% wrong"; exit 1'
+check "a % in the error is escaped in the annotation" grep -qF "::error title=build failed::x.cs(1,1): error CS1000: 100%25 wrong" <<<"$out"
 
 # 3. A failure without a recognisable error line still gets a summary, with the last output line
 run bash -c 'echo "something went wrong"; exit 1'

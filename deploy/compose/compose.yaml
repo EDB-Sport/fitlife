@@ -1,0 +1,8 @@
+# The local and CI stack. From this folder: `docker compose up -d --wait` starts every group.
+# One group on its own: `docker compose -f infrastructure.yml up -d --wait`. See README.md.
+name: fitlife
+
+include:
+  - infrastructure.yml # MongoDB, RabbitMQ
+  - services.yml       # Nginx gateway; the services join this group as they are built (#18)
+  - monitoring.yml     # Loki, Grafana (#6)

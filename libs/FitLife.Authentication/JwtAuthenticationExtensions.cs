@@ -21,13 +21,22 @@ public static class JwtAuthenticationExtensions
     /// <returns>The service collection.</returns>
     public static IServiceCollection AddFitLifeJwtAuthentication(this IServiceCollection services)
     {
+        return services.AddFitLifeJwtAuthentication(Assembly.GetEntryAssembly()?.GetName().Name);
+    }
+
+    /// <summary>As <see cref="AddFitLifeJwtAuthentication(IServiceCollection)"/>, with the entry assembly's name given, so tests can act as the build.</summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="entryAssemblyName">The name of the assembly the process started from.</param>
+    /// <returns>The service collection.</returns>
+    internal static IServiceCollection AddFitLifeJwtAuthentication(this IServiceCollection services, string? entryAssemblyName)
+    {
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
         OptionsBuilder<JwtBearerOptions> options = services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
             .Configure<IConfiguration>(Configure);
 
         // The build writes contracts/openapi/<service>.json by starting the app in GetDocument.Insider, without Vault.
         // There the key is checked on the first request instead, which never comes.
-        if (!IsBuildTimeDocumentGeneration())
+        if (!IsBuildTimeDocumentGeneration(entryAssemblyName))
         {
             options.ValidateOnStart();
         }
@@ -36,9 +45,9 @@ public static class JwtAuthenticationExtensions
     }
 
     // The check Microsoft documents for build-time OpenAPI generation (aspnetcore openapi docs, "build-time document generation")
-    private static bool IsBuildTimeDocumentGeneration()
+    private static bool IsBuildTimeDocumentGeneration(string? entryAssemblyName)
     {
-        return string.Equals(Assembly.GetEntryAssembly()?.GetName().Name, "GetDocument.Insider", StringComparison.Ordinal);
+        return string.Equals(entryAssemblyName, "GetDocument.Insider", StringComparison.Ordinal);
     }
 
     private static void Configure(JwtBearerOptions options, IConfiguration configuration)

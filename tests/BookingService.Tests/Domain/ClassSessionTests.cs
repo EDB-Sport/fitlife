@@ -2,7 +2,7 @@ using BookingService.Domain;
 
 namespace BookingService.Tests.Domain;
 
-/// <summary>A class session never has more reservations than its capacity (issue #155).</summary>
+/// <summary>A class session never has more reservations than its capacity (#155), and a member has at most one of them (#156).</summary>
 public sealed class ClassSessionTests
 {
     private static ClassSession ClassSessionWithCapacity(int capacity)
@@ -62,6 +62,40 @@ public sealed class ClassSessionTests
             Assert.That(result, Is.EqualTo(ReservationResult.Made));
             Assert.That(classSession.Reservations, Has.Count.EqualTo(2));
         });
+    }
+
+    [Test]
+    public void Reserve_WhenTheMemberAlreadyHasAReservation_IsRejected()
+    {
+        // Arrange
+        ClassSession classSession = ClassSessionWithCapacity(2);
+        var memberId = Guid.NewGuid();
+        classSession.Reserve(memberId);
+
+        // Act
+        ReservationResult result = classSession.Reserve(memberId);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(ReservationResult.AlreadyReserved));
+            Assert.That(classSession.Reservations, Has.Count.EqualTo(1));
+        });
+    }
+
+    [Test]
+    public void Reserve_AgainOnAFullClassSession_SaysTheMemberAlreadyHasASeat()
+    {
+        // Arrange
+        ClassSession classSession = ClassSessionWithCapacity(1);
+        var memberId = Guid.NewGuid();
+        classSession.Reserve(memberId);
+
+        // Act
+        ReservationResult result = classSession.Reserve(memberId);
+
+        // Assert
+        Assert.That(result, Is.EqualTo(ReservationResult.AlreadyReserved));
     }
 
     [TestCase(0)]

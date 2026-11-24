@@ -39,6 +39,20 @@ expect "build-rules sets up the SDK pinned in global.json" \
 expect "build-rules has no continue-on-error" \
   bash -c '! grep -q "continue-on-error" <<<"$1"' _ "$build_rules"
 
+stack_check=$(job_block stack-check)
+
+expect "ci.yml has a stack-check job" test -n "$stack_check"
+expect "stack-check runs tools/ci/stack-check.sh" \
+  grep -qE 'run: tools/ci/stack-check\.sh$' <<<"$stack_check"
+expect "stack-check runs on pull requests only" \
+  grep -qF "if: github.event_name == 'pull_request'" <<<"$stack_check"
+expect "stack-check checks out the full history" \
+  grep -qE 'fetch-depth: 0' <<<"$stack_check"
+expect "stack-check can read pull requests" \
+  grep -qE 'pull-requests: read' <<<"$stack_check"
+expect "stack-check cannot write anything" \
+  bash -c '! grep -qE "(contents|issues|pull-requests): write" <<<"$1"' _ "$stack_check"
+
 echo
 if [ "$failures" -eq 0 ]; then
   echo "ci.yml runs every CI script."

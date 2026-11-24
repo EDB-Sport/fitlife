@@ -13,11 +13,11 @@ public sealed class ApiDocumentationTests
     {
         // Arrange
         using var app = new WebApplicationFactory<Program>();
-        using var factory = app.WithWebHostBuilder(host => host.UseEnvironment("Production"));
-        using var client = factory.CreateClient();
+        using WebApplicationFactory<Program> factory = app.WithWebHostBuilder(host => host.UseEnvironment("Production"));
+        using HttpClient client = factory.CreateClient();
 
         // Act
-        using var response = await client.GetAsync(new Uri(path, UriKind.Relative)).ConfigureAwait(false);
+        using HttpResponseMessage response = await client.GetAsync(new Uri(path, UriKind.Relative)).ConfigureAwait(false);
 
         // Assert
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
@@ -29,11 +29,11 @@ public sealed class ApiDocumentationTests
     {
         // Arrange
         using var app = new WebApplicationFactory<Program>();
-        using var factory = app.WithWebHostBuilder(host => host.UseEnvironment("Development"));
-        using var client = factory.CreateClient();
+        using WebApplicationFactory<Program> factory = app.WithWebHostBuilder(host => host.UseEnvironment("Development"));
+        using HttpClient client = factory.CreateClient();
 
         // Act
-        using var response = await client.GetAsync(new Uri(path, UriKind.Relative)).ConfigureAwait(false);
+        using HttpResponseMessage response = await client.GetAsync(new Uri(path, UriKind.Relative)).ConfigureAwait(false);
 
         // Assert
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));

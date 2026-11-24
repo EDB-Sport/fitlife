@@ -58,6 +58,16 @@ git -C "$repo" tag v1.1.0
 plan release/1.1.0
 check "a re-run after the release plans nothing" "Nothing to release"
 
+# The same run in GitHub Actions writes empty outputs. bash 3.2 (macOS) treats an empty array as unbound under set -u (#87).
+outputs=$(mktemp)
+out=$(cd "$repo" && GITHUB_OUTPUT="$outputs" RELEASE_REF=release/1.1.0 DOCKERHUB_NAMESPACE=example tools/ci/release-plan.sh 2>&1)
+status=$?
+out="$out
+$(cat "$outputs")"
+rm -f "$outputs"
+check "nothing to release writes an empty services list" "^services=\[\]$"
+check "nothing to release writes empty tags" "^tags=$"
+
 echo
 if [ "$failures" -eq 0 ]; then echo "release-plan.sh works."; else echo "$failures check(s) failed."; fi
 exit "$failures"

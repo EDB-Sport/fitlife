@@ -28,7 +28,7 @@ param dockerHubToken string
 @description('Bounded context of the thin-slice service: booking, membership or identity.')
 param serviceContext string
 
-@description('Service image with its tag, e.g. edbsport/bookingservice:0.1.0.')
+@description('Service image with its tag, e.g. albertarnason/bookingservice:0.1.0.')
 param serviceImage string
 
 @description('Health endpoint of the service.')
@@ -279,6 +279,16 @@ var containerDefinitions = [
         {
           name: 'ASPNETCORE_HTTP_PORTS'
           value: string(servicePorts[serviceContext])
+        }
+        {
+          // Its secret, secret/<context>-svc, from the Vault container in this group (#17). The service
+          // waits for Vault and the seed job itself (Vault:WaitSeconds), as in compose.
+          name: 'Vault__Address'
+          value: 'http://127.0.0.1:${vaultPort}'
+        }
+        {
+          name: 'Vault__Token'
+          secureValue: vaultRootToken
         }
       ]
       livenessProbe: healthProbe(serviceHealthPath, servicePorts[serviceContext], 30)

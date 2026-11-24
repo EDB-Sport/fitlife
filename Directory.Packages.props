@@ -37,6 +37,11 @@
     <PackageVersion Include="coverlet.collector" Version="10.1.1" />
   </ItemGroup>
 
+  <!-- UI component tests (bUnit) -->
+  <ItemGroup Label="UI tests">
+    <PackageVersion Include="bunit" Version="2.15.2" />
+  </ItemGroup>
+
   <!-- Referenced by a test project when it needs them (tests/README.md). -->
   <ItemGroup Label="Unit tests">
     <!-- Never 4.20.0, the SponsorLink release (docs/CSHARP_SETUP_TODO.md section 6). -->

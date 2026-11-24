@@ -9,6 +9,10 @@ Review PR #<n> in EDB-Sport/fitlife against docs/METHODOLOGY.md and docs/PR_RULE
 Don't re-run what CI already proved. Read the diff and the CI result.
 If the PR is stacked, read the diff against its base branch, not develop.
 
+If this is a re-review (the PR has an earlier "Reviewed at <sha>" comment):
+read only `git diff <reviewed-sha>..<new-head>` plus the reasons from the earlier
+review. Say which of those reasons are resolved. Don't re-read the whole PR.
+
 Check, in this order, and report only real findings:
 1. Existing tests: was any existing test changed, removed, skipped or weakened?
    Does the PR body explain it? (section 3)
@@ -24,4 +28,5 @@ Check, in this order, and report only real findings:
 Verdict: approve, or request changes with at most three concrete reasons,
 each with file:line. Off-topic remarks go in a separate comment and never block.
 Write it so it can be pasted as a GitHub review. Keep it short.
+End the review with the line ``Reviewed at `<sha>` `` (the head sha you read).
 ```

@@ -22,7 +22,7 @@ param jwtSigningKey = readEnvironmentVariable('JWT_SIGNING_KEY')
 
 // The thin slice: one service and the member portal. One image tag per service, never latest.
 param serviceContext = 'booking'
-param serviceImage = 'edbsport/bookingservice'
+param serviceImage = 'albertarnason/bookingservice'
 param serviceImageTag = readEnvironmentVariable('SERVICE_IMAGE_TAG', '0.1.0')
-param uiImage = 'edbsport/memberportal'
+param uiImage = 'albertarnason/memberportal'
 param uiImageTag = readEnvironmentVariable('UI_IMAGE_TAG', '0.1.0')

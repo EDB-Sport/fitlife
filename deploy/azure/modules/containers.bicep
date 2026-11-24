@@ -28,7 +28,7 @@ param dockerHubToken string
 @description('Bounded context of the thin-slice service: booking, membership or identity.')
 param serviceContext string
 
-@description('Service image with its tag, e.g. edbsport/bookingservice:0.1.0.')
+@description('Service image with its tag, e.g. albertarnason/bookingservice:0.1.0.')
 param serviceImage string
 
 @description('Health endpoint of the service.')

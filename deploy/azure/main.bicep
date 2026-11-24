@@ -31,7 +31,7 @@ param dockerHubToken string
 ])
 param serviceContext string
 
-@description('Docker Hub repository of that service, without a tag, e.g. edbsport/bookingservice.')
+@description('Docker Hub repository of that service, without a tag, e.g. albertarnason/bookingservice.')
 param serviceImage string
 
 @description('Released version of the service image, X.Y.Z (section 9). Never latest.')

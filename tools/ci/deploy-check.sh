@@ -3,9 +3,10 @@
 # Issue #21, docs/CSHARP_SETUP_TODO.md section 10 job 9. CI runs it in .github/workflows/deploy-check.yml.
 #
 # Run it locally from anywhere in the repo:  tools/ci/deploy-check.sh
-# Needs bash, git, jq and Docker with Compose v2. Every other tool (nginx, yq, gcx, az bicep) runs in a
-# pinned container, so nothing is installed on your machine. It only reads files and runs
-# `docker compose config` and `docker run --rm`: it never starts or stops the compose stack.
+# Needs bash, git, jq, python3 and Docker with Compose v2. Every other tool (nginx, yq, gcx, az bicep)
+# runs in a pinned container, so nothing is installed on your machine. Steps 1-5 only read files and run
+# `docker compose config` and `docker run --rm`. Step 6 runs the acceptance checks, which start their
+# containers in a compose project of their own and remove them again: never your own stack.
 #
 # Checks:
 #   1. `docker compose config -q` on compose.yaml and every group file, with .env.example as the env file
@@ -13,6 +14,8 @@
 #   3. `nginx -t` on the Nginx template, rendered by the gateway's own pinned nginx image and environment
 #   4. gcx lint of the Grafana dashboards and alert rules, when deploy/compose/grafana/ exists (#6)
 #   5. `az bicep build` and `az bicep lint` on deploy/azure/main.bicep, when it exists (#10)
+#   6. every acceptance check deploy/**/*.test.sh, e.g. Vault in compose (#17) and the ACI topology (#23),
+#      with BICEP set to the pinned Bicep CLI in a container (#77)
 # Every check runs, and the script exits 1 at the end if any of them failed.
 set -euo pipefail
 
@@ -116,15 +119,25 @@ if [[ -d $AZURE_DIR ]]; then
   done < <(grep -rnE --include='*.bicep' --include='*.bicepparam' "[:']latest'" "$AZURE_DIR" || true)
 
   if [[ -f $BICEPPARAM_FILE ]]; then
-    # An image parameter (name contains "image", not "tag") must have a tag or a digest.
+    # An image parameter (name contains "image", not "tag") must have a tag or a digest, unless a
+    # companion parameter <name>Tag sets its version, e.g. serviceImage + serviceImageTag (#78). That one
+    # is checked below like any tag parameter, and 'latest' anywhere is caught above.
     param_re="^[[:space:]]*param[[:space:]]+([A-Za-z0-9_]+)[[:space:]]*=[[:space:]]*'([^']*)'"
+    tag_params=" $(sed -nE 's/^[[:space:]]*param[[:space:]]+([A-Za-z0-9_]+Tag)[[:space:]]*=.*/\1/p' "$BICEPPARAM_FILE" | tr '\n' ' ')"
+    # A tag parameter read from the environment, e.g. readEnvironmentVariable('SERVICE_IMAGE_TAG', '0.1.0'),
+    # must not fall back to an empty version.
+    while IFS= read -r hit; do
+      fail "$BICEPPARAM_FILE:${hit%%:*} a tag parameter defaults to an empty version: set one"
+    done < <(grep -nE "^[[:space:]]*param[[:space:]]+[A-Za-z0-9_]+Tag[[:space:]]*=.*''" "$BICEPPARAM_FILE" || true)
     lineno=0
     while IFS= read -r line || [[ -n $line ]]; do
       lineno=$((lineno + 1))
       if [[ $line =~ $param_re ]]; then
         param=${BASH_REMATCH[1]} value=${BASH_REMATCH[2]}
         lower=$(printf '%s' "$param" | tr '[:upper:]' '[:lower:]')
-        if [[ $lower == *image* && $lower != *tag* ]]; then
+        if [[ $lower == *image* && $lower != *tag* && $tag_params == *" ${param}Tag "* ]]; then
+          ok "$BICEPPARAM_FILE:$lineno param $param: $value, version in ${param}Tag"
+        elif [[ $lower == *image* && $lower != *tag* ]]; then
           check_image "$BICEPPARAM_FILE:$lineno param $param" "$value"
         elif [[ $lower == *tag* && -z $value ]]; then
           fail "$BICEPPARAM_FILE:$lineno param $param is empty: set a version"
@@ -281,6 +294,35 @@ if [[ -f $BICEP_FILE ]]; then
 else
   skip "$BICEP_FILE does not exist yet (#10)"
 fi
+
+# ---------------------------------------------------------------------------------------------------
+step "6. Acceptance checks: deploy/**/*.test.sh"
+# Each check prints its own ok/FAIL lines and exits non-zero on failure. The checks that compile Bicep
+# call $BICEP, which runs the pinned Bicep CLI in the Azure CLI image with deploy/ mounted read-only.
+cat >"$WORK/bicep" <<WRAPPER
+#!/usr/bin/env bash
+# Pinned Bicep CLI ($BICEP_VERSION) in $AZ_CLI_IMAGE. Paths are relative to the repo root.
+exec docker run --rm -v "$ROOT/deploy:/src/deploy:ro" -w /src \\
+  -e AZURE_CORE_COLLECT_TELEMETRY=false -e AZURE_BICEP_CHECK_VERSION=false \\
+  -e AZURE_BICEP_USE_BINARY_FROM_PATH=false -e BICEP_VERSION="$BICEP_VERSION" \\
+  -e DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 \\
+  "$AZ_CLI_IMAGE" bash -euc 'az bicep install --version "\$BICEP_VERSION" >/dev/null 2>&1; exec ~/.azure/bin/bicep "\$@"' bicep "\$@"
+WRAPPER
+chmod +x "$WORK/bicep"
+
+acceptance_checks=()
+while IFS= read -r check; do acceptance_checks+=("$check"); done < <(find deploy -type f -name '*.test.sh' | sort)
+if [[ ${#acceptance_checks[@]} -eq 0 ]]; then
+  skip "no acceptance checks in deploy/ yet"
+fi
+for check in ${acceptance_checks[@]+"${acceptance_checks[@]}"}; do
+  printf -- '-- %s\n' "$check"
+  if BICEP="$WORK/bicep" bash "$check"; then
+    ok "$check"
+  else
+    fail "$check failed (see above)"
+  fi
+done
 
 # ---------------------------------------------------------------------------------------------------
 echo

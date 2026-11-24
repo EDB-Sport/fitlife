@@ -1,11 +1,11 @@
 # Booking (`src/BookingService/`)
 
 > From `docs/templates/CONTEXT.md`. Keep it under about 80 lines, and update it in the same PR that changes the model.
-> **Status: skeleton.** The context map (`docs/domain/CONTEXT-MAP.md`, issue #2) is still a proposal, and which context the PoC builds first is decided in #18. Nothing below is modelled yet. Fill in each section when the first issue for this context adds the model (step 4 of `docs/DDD_PLAN.md`).
+> **Status: skeleton.** The context map (`docs/domain/CONTEXT-MAP.md`) is decided in ADR 007. Nothing below is modelled yet. Fill in each section when the first issue for this context adds the model (step 4 of `docs/DDD_PLAN.md`).
 
 ## Purpose
 
-Class scheduling and booking, a core subdomain: one class schedule for all six centres, where members reserve a seat, cancel, or join a waitlist (context map, proposed).
+Class scheduling and booking, a core subdomain: one class schedule for all six centres, where members reserve a seat, cancel, or join a waitlist (context map).
 
 ## Language in this context
 
@@ -27,7 +27,7 @@ None yet.
 
 ## Talks to
 
-None yet. The proposed relations (Membership upstream, Notification downstream) are in the context map.
+None yet. The relations (Membership upstream, Notification downstream) are in the context map.
 
 | Other context / system | How | Pattern | Why |
 |---|---|---|---|

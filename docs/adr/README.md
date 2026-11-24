@@ -12,3 +12,4 @@ Planned first ADRs (`../CSHARP_SETUP_TODO.md`, suggested order step 1):
 | [004-pinned-image-versions](004-pinned-image-versions.md) | Pinned image versions instead of the course's `latest` (proposed) |
 | [005-nunit](005-nunit.md) | NUnit (IT-arkitektur) instead of Agil udvikling's MSTest (proposed) |
 | [006-kanban-and-review-signoff](006-kanban-and-review-signoff.md) | Kanban flow with milestones instead of Scrum sprints, and review signoff instead of pair programming (proposed) |
+| [007-bounded-contexts](007-bounded-contexts.md) | The bounded contexts, and why the system is cut this way |

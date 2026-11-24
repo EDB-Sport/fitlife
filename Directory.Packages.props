@@ -28,6 +28,8 @@
     <PackageVersion Include="NLog.Targets.Loki" Version="2.7.1" />
     <!-- Checks the JWT from Identity, the same way in every service (libs/FitLife.Authentication, #183) -->
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.15" />
+    <!-- One database per service; MongoDB types only in *.Repositories (TEAM001) -->
+    <PackageVersion Include="MongoDB.Driver" Version="3.14.1" />
   </ItemGroup>
 
   <!-- Added to every test project automatically by tests/Directory.Build.props. -->

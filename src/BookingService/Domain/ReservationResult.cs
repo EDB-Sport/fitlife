@@ -14,4 +14,7 @@ public enum ReservationResult
 
     /// <summary>The class session starts more than 4 weeks from now, so no reservation was made.</summary>
     TooFarAhead,
+
+    /// <summary>The class session is cancelled, so no reservation was made.</summary>
+    ClassSessionCancelled,
 }

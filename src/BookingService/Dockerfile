@@ -8,7 +8,7 @@ WORKDIR /app
 
 # The reviewed rule files, so the image is built with the same rules, package versions and analyzers as CI
 COPY global.json Directory.Build.props Directory.Build.targets Directory.Packages.props ./
-COPY .globalconfig BannedSymbols.txt SonarLint.xml GLOSSARY.md ./
+COPY .editorconfig .globalconfig BannedSymbols.txt SonarLint.xml GLOSSARY.md ./
 COPY tools/Analyzers/ tools/Analyzers/
 
 # Shared code (correlation ID, nlog.config), then the service

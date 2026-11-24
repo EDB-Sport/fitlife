@@ -98,6 +98,44 @@ public sealed class ClassSessionTests
         Assert.That(result, Is.EqualTo(ReservationResult.MemberAlreadyHasReservation));
     }
 
+    [Test]
+    public void JoinWaitlist_WhenClassSessionIsFull_AddsWaitlistEntriesInTheOrderTheyWereMade()
+    {
+        // Arrange
+        ClassSession classSession = ClassSessionWithCapacity(1);
+        classSession.Reserve(Guid.NewGuid());
+        var firstMemberId = Guid.NewGuid();
+        var secondMemberId = Guid.NewGuid();
+        classSession.JoinWaitlist(firstMemberId);
+
+        // Act
+        WaitlistResult result = classSession.JoinWaitlist(secondMemberId);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(WaitlistResult.Joined));
+            Assert.That(classSession.Waitlist.Select(waitlistEntry => waitlistEntry.MemberId), Is.EqualTo(new[] { firstMemberId, secondMemberId }));
+        });
+    }
+
+    [Test]
+    public void JoinWaitlist_WithFreeSeats_IsRejected()
+    {
+        // Arrange
+        ClassSession classSession = ClassSessionWithCapacity(1);
+
+        // Act
+        WaitlistResult result = classSession.JoinWaitlist(Guid.NewGuid());
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(WaitlistResult.ClassSessionNotFull));
+            Assert.That(classSession.Waitlist, Is.Empty);
+        });
+    }
+
     [TestCase(0)]
     [TestCase(-1)]
     public void Capacity_LessThanOne_IsRejected(int value)

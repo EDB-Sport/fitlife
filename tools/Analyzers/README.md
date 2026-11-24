@@ -11,6 +11,7 @@ The project's own Roslyn rules (`docs/CSHARP_SETUP_TODO.md` section 4). Each rul
 
 | ID | Rule | Analyzer |
 |---|---|---|
+| TEAM002 | No NLog API (`LogManager`, `NLog.Logger`, `NLog.ILogger`) outside `Program.cs`. Classes inject `ILogger<T>`. | `NlogOnlyInProgramAnalyzer` |
 | TEAM004 | `#pragma warning disable` and `#nullable disable` end with `// #<issue>: <reason>` on the same line. `[SuppressMessage]` and `[UnconditionalSuppressMessage]` have `Justification = "#<issue>: <reason>"`. | `JustifiedSuppressionAnalyzer` |
 
 The other rules in section 4 come one PR at a time (issue #9 and its sub-issues).

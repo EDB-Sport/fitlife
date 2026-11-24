@@ -15,18 +15,18 @@ public sealed class RabbitMqRoundTripTests
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
 
-    private static readonly ReservationMade Event = new(
+    private static readonly ReservationMade Sample = new(
         "6741f0c2a9e1b3d4c5f60718",
         "6741f0c2a9e1b3d4c5f60719",
         "6741f0c2a9e1b3d4c5f6071a",
         new DateTimeOffset(2026, 12, 1, 17, 0, 0, TimeSpan.Zero));
 
-    private RabbitMqContainer _rabbitMq = null!;
+    // The image compose uses (deploy/compose/infrastructure.yml)
+    private readonly RabbitMqContainer _rabbitMq = new RabbitMqBuilder("rabbitmq:4.4.1-management").Build();
 
     [OneTimeSetUp]
     public async Task StartRabbitMq()
     {
-        _rabbitMq = new RabbitMqBuilder().WithImage("rabbitmq:4.4.1-management").Build();
         await _rabbitMq.StartAsync().ConfigureAwait(false);
     }
 
@@ -44,11 +44,11 @@ public sealed class RabbitMqRoundTripTests
         using IHost host = await StartHostAsync(handler).ConfigureAwait(false);
 
         // Act
-        await host.Services.GetRequiredService<IEventPublisher>().PublishAsync(Event, CancellationToken.None).ConfigureAwait(false);
+        await host.Services.GetRequiredService<IEventPublisher>().PublishAsync(Sample, CancellationToken.None).ConfigureAwait(false);
 
         // Assert
         Received received = await handler.First.WaitAsync(Timeout).ConfigureAwait(false);
-        Assert.That(received.Event, Is.EqualTo(Event));
+        Assert.That(received.Event, Is.EqualTo(Sample));
     }
 
     [Test]
@@ -57,12 +57,12 @@ public sealed class RabbitMqRoundTripTests
         // Arrange
         var handler = new RecordingHandler();
         using IHost host = await StartHostAsync(handler).ConfigureAwait(false);
-        var publisher = host.Services.GetRequiredService<IEventPublisher>();
+        IEventPublisher publisher = host.Services.GetRequiredService<IEventPublisher>();
 
         // Act
         using (CorrelationContext.Begin(NullLogger.Instance, "abc-123"))
         {
-            await publisher.PublishAsync(Event, CancellationToken.None).ConfigureAwait(false);
+            await publisher.PublishAsync(Sample, CancellationToken.None).ConfigureAwait(false);
         }
 
         // Assert
@@ -78,7 +78,7 @@ public sealed class RabbitMqRoundTripTests
         using IHost host = await StartHostAsync(handler).ConfigureAwait(false);
 
         // Act
-        await host.Services.GetRequiredService<IEventPublisher>().PublishAsync(Event, CancellationToken.None).ConfigureAwait(false);
+        await host.Services.GetRequiredService<IEventPublisher>().PublishAsync(Sample, CancellationToken.None).ConfigureAwait(false);
 
         // Assert
         Received received = await handler.First.WaitAsync(Timeout).ConfigureAwait(false);
@@ -94,11 +94,11 @@ public sealed class RabbitMqRoundTripTests
         await PublishRawAsync("not json").ConfigureAwait(false);
 
         // Act
-        await host.Services.GetRequiredService<IEventPublisher>().PublishAsync(Event, CancellationToken.None).ConfigureAwait(false);
+        await host.Services.GetRequiredService<IEventPublisher>().PublishAsync(Sample, CancellationToken.None).ConfigureAwait(false);
 
         // Assert
         Received received = await handler.First.WaitAsync(Timeout).ConfigureAwait(false);
-        Assert.That(received.Event, Is.EqualTo(Event));
+        Assert.That(received.Event, Is.EqualTo(Sample));
     }
 
     /// <summary>A host with a publisher and a consumer on a queue of its own, so the tests don't share messages.</summary>
@@ -116,7 +116,7 @@ public sealed class RabbitMqRoundTripTests
         });
         builder.Services.AddRabbitMq(builder.Configuration);
         builder.Services.AddEventPublisher();
-        builder.Services.AddSingleton<IEventHandler<ReservationMade>>(handler);
+        builder.Services.AddSingleton<IEventSubscriber<ReservationMade>>(handler);
         builder.Services.AddEventConsumer<ReservationMade>("test-" + Guid.NewGuid().ToString("N"));
         IHost host = builder.Build();
         await host.StartAsync().ConfigureAwait(false);
@@ -127,22 +127,28 @@ public sealed class RabbitMqRoundTripTests
     private async Task PublishRawAsync(string body)
     {
         var factory = new ConnectionFactory { Uri = new Uri(_rabbitMq.GetConnectionString()) };
-        await using IConnection connection = await factory.CreateConnectionAsync().ConfigureAwait(false);
-        await using IChannel channel = await connection.CreateChannelAsync().ConfigureAwait(false);
-        await channel.BasicPublishAsync(RabbitMqEventPublisher.Exchange, ReservationMade.RoutingKey, Encoding.UTF8.GetBytes(body)).ConfigureAwait(false);
+        IConnection connection = await factory.CreateConnectionAsync().ConfigureAwait(false);
+        await using (connection.ConfigureAwait(false))
+        {
+            IChannel channel = await connection.CreateChannelAsync().ConfigureAwait(false);
+            await using (channel.ConfigureAwait(false))
+            {
+                await channel.BasicPublishAsync(RabbitMqEventPublisher.Exchange, ReservationMade.RoutingKey, Encoding.UTF8.GetBytes(body)).ConfigureAwait(false);
+            }
+        }
     }
 
     private sealed record Received(ReservationMade Event, string? CorrelationId);
 
-    private sealed class RecordingHandler : IEventHandler<ReservationMade>
+    private sealed class RecordingHandler : IEventSubscriber<ReservationMade>
     {
         private readonly TaskCompletionSource<Received> _first = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public Task<Received> First => _first.Task;
 
-        public Task HandleAsync(ReservationMade @event, CancellationToken cancellationToken)
+        public Task HandleAsync(ReservationMade integrationEvent, CancellationToken cancellationToken)
         {
-            _first.TrySetResult(new Received(@event, CorrelationContext.Current));
+            _first.TrySetResult(new Received(integrationEvent, CorrelationContext.Current));
             return Task.CompletedTask;
         }
     }

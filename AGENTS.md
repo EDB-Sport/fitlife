@@ -6,7 +6,7 @@ This repo is built by a group where everyone uses their own agent setup. The sha
 
 Follow `docs/PR_RULES.md`. CI fails a PR whose description doesn't follow the template.
 
-**A red CI run:** read the run's summary page first (`gh run view <run id>`), which names the failing check and its first error. Only then use `gh run view --log-failed`, which can be very long (#132).
+**A red CI run:** run `gh run view <run id>` first. Its ANNOTATIONS name each failing check and its first error; the run's summary page in the browser adds a hint. Only then use `gh run view --log-failed`, which can be very long (#132).
 
 ## Code
 

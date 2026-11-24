@@ -35,15 +35,18 @@ fi
 # sibling_source <number> <tip>: succeeds, printing "#<m> (<branch>)", when the candidate is a sibling,
 # not a parent (issue #116). A candidate is a parent when all its own unmerged commits are in this PR.
 # When some aren't, it is a sibling if every unmerged commit it shares with this PR (each merge base
-# not on develop) is also on another open PR's branch that isn't built on the candidate: the shared
-# commits come from that PR, so setting the base to the candidate would be the wrong advice.
-# A parent that moved on after this PR branched has no such other PR, so it keeps its base advice.
+# not on develop) is also on a lower-numbered open PR's branch that isn't built on the candidate: the
+# shared commits come from that PR, so setting the base to the candidate would be the wrong advice.
+# Only a lower number can be the source, as for parents: when a parent has moved on, the graph can't
+# tell it from its other children, and a PR stacked on this one always holds the shared commits too.
+# So a moved parent keeps its base advice, and the chain of sources always ends at a parent.
 sibling_source() {
   local candidate=$1 tip=$2 number branch other base covered
   [ -n "$(git rev-list -n 1 "$tip" "^$develop_ref" "^$HEAD_SHA")" ] || return 1
   while read -r number branch; do
     [ -n "${number:-}" ] && [ -n "${branch:-}" ] || continue
     [ "$number" = "$candidate" ] || [ "$branch" = "${HEAD_BRANCH:-}" ] && continue
+    [ "$number" -lt "$candidate" ] || continue # the lower number is the source, as for parents
     other=$(git rev-parse --verify --quiet "${prefix}${branch}^{commit}") || continue
     git merge-base --is-ancestor "$tip" "$other" && continue # built on the candidate
     covered=1

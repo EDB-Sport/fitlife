@@ -72,11 +72,10 @@ dotnet test -c Release --collect:"XPlat Code Coverage"
 Mutation testing with Stryker.NET (config in the root `stryker-config.json`, the build breaks below a 60 % mutation score):
 
 ```bash
-dotnet tool restore
-dotnet stryker --since:develop
+SINCE=origin/develop tools/ci/mutation.sh
 ```
 
-Drop `--since:develop` to mutate everything, not just what changed since `develop`. The HTML report is written to `StrykerOutput/`.
+This is what the `mutation` CI job runs. It mutates only the C# files changed since `origin/develop`. To mutate everything, run `dotnet tool restore` and then `dotnet stryker`. The HTML report is written to `StrykerOutput/`.
 
 ## tdd-check
 

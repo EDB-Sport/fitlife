@@ -51,10 +51,14 @@ Rules:
 - **The `git flow` CLI:** use it to start branches (`git flow feature start ...`). Finish through a PR instead of `git flow ... finish`, because finish merges and pushes locally, and branch protection blocks that.
 - **Delete** feature, release and hotfix branches after they are merged.
 - **Keep feature branches short-lived.** Rebase on, or merge in, `develop` often to avoid large conflicts between parallel agents.
+- **Start every branch from an up-to-date `develop`,** and get a PR signed off and merged before work that builds on it starts. A branch built on an unmerged one re-sends that code in its own diff and every reviewer reads it again (#106).
+- **When stacking can't be avoided,** the PR's base is its parent branch, so its diff shows only its own change. Retarget it to `develop` once the parent merges. The `stack-check` (#110) enforces this.
 
 ## 3. Review:
 
 No PR merges without at least one signoff: a group member other than the author, or an agent controlled by one, approves the PR on GitHub.
+
+An agent review starts from the shared prompt in `docs/REVIEW_PROMPT.md`, so every review checks the same things (#118).
 
 Rules for reviewers:
 - **Changes to existing tests get extra scrutiny.** A weakened or deleted test is the usual way generated code fakes success. The PR has to explain the change.

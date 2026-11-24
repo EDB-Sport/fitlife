@@ -33,7 +33,12 @@ while read -r name prefix version; do
   major=${version%%.*}
   minor=${version#*.}; minor=${minor%%.*}
   echo "$name: tag $tag"
-  echo "$name: image $namespace/$prefix: $version $major.$minor $major latest"
+  # docker/metadata-action's {{major}} makes no tag for major version 0 ("Major version zero" in its README)
+  images="$version $major.$minor $major latest"
+  if [ "$major" = 0 ]; then
+    images="$version $major.$minor latest"
+  fi
+  echo "$name: image $namespace/$prefix: $images"
   tags+=("$tag")
   matrix+=("{\"name\":\"$name\",\"prefix\":\"$prefix\",\"version\":\"$version\"}")
 done < <(services)

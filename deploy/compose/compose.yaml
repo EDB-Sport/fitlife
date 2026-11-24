@@ -5,4 +5,4 @@ name: fitlife
 include:
   - infrastructure.yml # MongoDB, RabbitMQ
   - services.yml       # Nginx gateway; the services join this group as they are built (#18)
-  # monitoring.yml     # Loki, Grafana (#6)
+  - monitoring.yml     # Loki, Grafana (#6)

@@ -45,4 +45,10 @@ npx newman run tests/postman/mocks/user-registration.mock-tests.postman_collecti
   -e tests/postman/environments/local.postman_environment.json
 ```
 
-CI runs every collection with the `cli`, `junit` and `htmlextra` reporters and uploads the HTML reports as evidence (issue #5).
+Every collection against the compose stack, the way CI runs it (needs Docker and `npm install --global newman newman-reporter-htmlextra`):
+
+```bash
+tools/ci/api-tests.sh
+```
+
+It starts the stack from `deploy/compose/`, runs `services/`, `integration/`, `e2e/` and the `mocks/*.mock-tests.*` collections with `environments/ci` and the `cli`, `junit` and `htmlextra` reporters, and stops the stack again. The reports go to `newman-reports/`. The `api-tests` CI job uploads them as evidence (issue #22).

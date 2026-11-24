@@ -11,3 +11,31 @@ Checked by CI (`PR description`, `tools/ci/check-pr-body.sh`):
 The rest of the PR rules live in `docs/METHODOLOGY.md`: one issue, one branch, one PR (section 1), branches and merging (section 2.1), review (section 3) and tests first (section 4).
 
 Agents: `gh pr create --fill` and `--body` skip the template. Fill in `.github/pull_request_template.md` in a file and use `gh pr create --base develop --body-file <file>`.
+
+## Review example
+
+A review comment follows the verdict format from `docs/METHODOLOGY.md` section 3:
+
+```
+Agent review: ACCEPT
+
+- All acceptance criteria are met.
+- Tests express the behaviour correctly.
+- No scope creep.
+
+Reviewed at `a1b2c3d`
+```
+
+For a rejection:
+
+```
+Agent review: REJECT
+
+- The domain invariant is not protected by the aggregate root.
+- Tests do not fail when the rule is removed.
+- Cross-context event schema is missing.
+
+Reviewed at `a1b2c3d`
+```
+
+The `Reviewed at \`<sha>\`` line records the head sha the reviewer read, as required by `docs/METHODOLOGY.md` section 3.

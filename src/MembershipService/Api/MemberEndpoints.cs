@@ -3,7 +3,6 @@ using FitLife.Authentication;
 using MembershipService.Application;
 using MembershipService.Domain;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 
 namespace MembershipService.Api;
 
@@ -18,14 +17,15 @@ public static class MemberEndpoints
         RouteGroupBuilder members = app.MapGroup("/members").RequireAuthorization().WithTags("Members");
         members.MapPost("/", Join)
             .WithName("JoinMembership")
-            .WithSummary("The account in the token joins FitLife and gets an active membership");
+            .WithSummary("The account in the token joins FitLife and gets an active membership")
+            .ProducesProblem(StatusCodes.Status409Conflict);
         members.MapGet("/by-account/{accountId}", GetByAccount)
             .WithName("GetMemberByAccount")
             .WithSummary("The member id of an account, and whether its membership is active");
         return app;
     }
 
-    private static async Task<Results<Created<MemberResponse>, Conflict<ProblemDetails>, UnauthorizedHttpResult>> Join(
+    private static async Task<Results<Created<MemberResponse>, ProblemHttpResult, UnauthorizedHttpResult>> Join(
         ClaimsPrincipal user, JoinMembershipHandler handler, CancellationToken cancellationToken)
     {
         string? accountId = user.FindFirstValue(FitLifeJwt.AccountIdClaim);
@@ -37,11 +37,7 @@ public static class MemberEndpoints
         JoinResult result = await handler.HandleAsync(new JoinMembershipCommand(accountId), cancellationToken).ConfigureAwait(false);
         if (result.Member is null || result.Membership is null)
         {
-            return TypedResults.Conflict(new ProblemDetails
-            {
-                Title = "The account is already a member",
-                Status = StatusCodes.Status409Conflict,
-            });
+            return TypedResults.Problem(title: "The account is already a member", statusCode: StatusCodes.Status409Conflict);
         }
 
         var response = new MemberResponse(result.Member.Id, result.Membership.Status, result.Membership.IsActive);

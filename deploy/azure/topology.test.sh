@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Acceptance check for #23: the production topology on Azure Container Instances, checked offline.
+# Check 7 is #17: the service reads its secret from Vault in the group.
 # It compiles deploy/azure/main.bicep to ARM JSON and reads the container group from it, so it needs no
 # Azure login and creates nothing.
 #
@@ -15,7 +16,7 @@
 #   6. MongoDB's init script and Vault's start and seed scripts are the compose files, so there is one source
 set -euo pipefail
 
-# The limit per container group for Linux containers without GPU in most regions, northeurope included
+# The limit per container group for Linux containers without GPU in most regions, switzerlandnorth included
 # (Microsoft Learn: "Resource availability and quota limits for ACI", standard SKU).
 LIMIT_CPU=4
 LIMIT_MEMORY_GB=16
@@ -171,6 +172,19 @@ for container_name, wanted in expected.items():
             ok(f"{container_name}: {mount_path} is {source}")
         else:
             fail(f"{container_name}: {mount_path} differs from {source}")
+
+# 7. The service reads its secret from Vault in the group (#17): the address on the group's localhost,
+#    the token as a secureValue. Compose gives it the same settings (deploy/compose/services.yml).
+infrastructure = {"caddy", "nginx", "member-portal", "mongodb", "rabbitmq", "vault"}
+for name, container in containers.items():
+    if name in infrastructure:
+        continue
+    variables = {v["name"]: v for v in container.get("environmentVariables", [])}
+    address = str(resolve(variables.get("Vault__Address", {}).get("value", "")))
+    if "127.0.0.1" in address and "secureValue" in variables.get("Vault__Token", {}):
+        ok(f"{name} reads its secret from Vault on the group's localhost")
+    else:
+        fail(f"{name} has no Vault__Address on 127.0.0.1 and Vault__Token as a secureValue")
 
 if failures:
     print(f"\n{len(failures)} check(s) failed", file=sys.stderr)

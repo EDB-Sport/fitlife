@@ -4,7 +4,7 @@
 // Without DOCKERHUB_USERNAME, DOCKERHUB_PULL_TOKEN and the secrets below set, the file does not compile (on purpose).
 using 'main.bicep'
 
-param location = 'northeurope'
+param location = 'switzerlandnorth'
 param dnsNameLabel = 'edb-fitlife'
 
 param dockerHubUsername = readEnvironmentVariable('DOCKERHUB_USERNAME')

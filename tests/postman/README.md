@@ -37,7 +37,7 @@ The mock server exists: `https://688e6cb8-8645-488f-922d-b533f91aec84.mock.pstmn
 
 A service that calls the mock gets the URL through configuration, never in code, e.g. `UserRegistration__BaseUrl=https://<id>.mock.pstmn.io`.
 
-When you change the mock: edit the examples in Postman, export the collection (v2.1) over the file in `mocks/`, and update the mock tests to match. Watch the Postman plan's monthly mock-call limit. If it gets tight, run the mock tests on PRs only.
+When you change the mock: edit the examples in Postman, export the collection (v2.1) over the file in `mocks/`, and update the mock tests to match. The tests assert status codes, headers and bodies, never response times: the mock server is on the internet, so its timing depends on the network, not on our code (`tools/ci/api-tests.test.sh` checks this, #135). Watch the Postman plan's monthly mock-call limit. If it gets tight, run the mock tests on PRs only.
 
 ## Running
 

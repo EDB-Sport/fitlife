@@ -4,6 +4,7 @@
 # breaking-without-MAJOR fails, breaking-with-MAJOR passes, and a hotfix touching two services fails.
 # Shared code (issue #112): a changed libs/ project the service references (directly or not) or a changed
 # root build file counts as a change of the service; a libs/ project it doesn't reference doesn't.
+# Linked files (issue #182): a libs/ file the service links in as Content, None or Compile counts too.
 # Needs git and Docker (the breaking-change check runs oasdiff from its image). Usage: tools/ci/release-gate.test.sh
 set -uo pipefail
 
@@ -145,6 +146,26 @@ expect 1 release/1.6.0 "a root build file change fails a service that references
 expect 1 release/1.6.0 "a root build file change: a service with no tag yet still passes" "no notificationservice/v\* tag yet"
 service MemberPortal.Web 1.6.0; commit "raise the portal"
 expect 0 release/1.6.0 "a root build file change with every version raised passes"
+
+# Linked shared files (#182): BookingService links libs/nlog.config into its output as Content, MembershipService doesn't.
+git -C "$repo" tag bookingservice/v1.6.0
+git -C "$repo" tag membershipservice/v1.6.0
+git -C "$repo" tag memberportal/v1.6.0
+git -C "$repo" checkout -q -B release/1.7.0
+service BookingService 1.7.0 '$(RepoRoot)libs/FitLife.Shared/FitLife.Shared.csproj'
+sed -i 's:</Project>:  <ItemGroup>\n    <Content Include="$(RepoRoot)libs/nlog.config" Link="nlog.config" CopyToOutputDirectory="PreserveNewest" />\n  </ItemGroup>\n</Project>:' "$repo/src/BookingService/BookingService.csproj"
+echo "<nlog />" > "$repo/libs/nlog.config"
+commit "booking links libs/nlog.config"
+git -C "$repo" tag bookingservice/v1.7.0
+expect 0 release/1.7.0 "nothing changed since the 1.7.0 tag passes" "BookingService: unchanged since bookingservice/v1.7.0"
+
+echo "<nlog><!-- change --></nlog>" > "$repo/libs/nlog.config"; commit "change libs/nlog.config"
+expect 1 release/1.7.0 "a changed libs/ file linked into a service without a raised version fails" "BookingService.*libs/nlog.config"
+expect 1 release/1.7.0 "a changed libs/ file doesn't count for a service that doesn't link it" "MembershipService: unchanged"
+service BookingService 1.8.0 '$(RepoRoot)libs/FitLife.Shared/FitLife.Shared.csproj'
+sed -i 's:</Project>:  <ItemGroup>\n    <Content Include="$(RepoRoot)libs/nlog.config" Link="nlog.config" CopyToOutputDirectory="PreserveNewest" />\n  </ItemGroup>\n</Project>:' "$repo/src/BookingService/BookingService.csproj"
+commit "raise booking"
+expect 0 release/1.7.0 "a changed linked libs/ file with a raised version passes" "BookingService: 1.7.0 -> 1.8.0"
 
 echo
 if [ "$failures" -eq 0 ]; then echo "release-gate.sh works."; else echo "$failures check(s) failed."; fi

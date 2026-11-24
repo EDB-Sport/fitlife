@@ -3,7 +3,9 @@
 # For each service src/<Service>/<Service>.csproj, compared with its newest <prefix>/vX.Y.Z tag (tools/ci/services.sh):
 #   - changed since the tag  -> the <Version> in the .csproj is higher than the tag. A change counts when it is in
 #                               src/<Service>/, in a libs/ project the service references (directly or through
-#                               another libs/ project), or in a root build file (issue #112)
+#                               another libs/ project), in a libs/ file the .csproj links in (an item other than a
+#                               ProjectReference whose Include is $(RepoRoot)libs/..., e.g. libs/nlog.config as
+#                               Content, None or Compile; issue #182), or in a root build file (issue #112)
 #   - a breaking API change  -> the MAJOR is raised (tools/ci/oasdiff-breaking.sh)
 #   - a hotfix branch        -> only one service changed, and only its PATCH is raised
 #   - no tag yet             -> passes: that's the service's first release
@@ -45,11 +47,17 @@ lib_dirs() {
   done
 }
 
-# shared_changes <tag> <csproj>: the shared paths (libs/ folders, root files) that go into the service
+# linked_files <csproj>: the libs/ files the project links in, an Include="$(RepoRoot)libs/..." on any item
+# but a ProjectReference (issue #182)
+linked_files() {
+  sed -n '/<ProjectReference/!s:.*<[A-Za-z]* [^>]*Include="\$(RepoRoot)\(libs/[^"]*\)".*:\1:p' "$1"
+}
+
+# shared_changes <tag> <csproj>: the shared paths (libs/ folders and linked files, root files) that go into the service
 # and changed since the tag, separated by spaces
 shared_changes() {
   local path
-  for path in "${root_files[@]}" $(lib_dirs "$2" | sort -u); do
+  for path in "${root_files[@]}" $( { lib_dirs "$2"; linked_files "$2"; } | sort -u); do
     git diff --quiet "$1" HEAD -- "$path" || printf '%s ' "$path"
   done
 }

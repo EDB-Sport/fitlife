@@ -30,7 +30,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # the service tags are needed
       - name: Every changed service has a higher version
@@ -45,7 +45,7 @@ jobs:
       services: ${{ steps.plan.outputs.services }}
       tags: ${{ steps.plan.outputs.tags }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # the service tags are needed
       - name: Which services this merge releases
@@ -69,7 +69,7 @@ jobs:
     env:
       IMAGE: ${{ vars.DOCKERHUB_NAMESPACE }}/${{ matrix.service.prefix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
       - name: Image tags X.Y.Z, X.Y, X and latest
         id: meta
@@ -118,7 +118,7 @@ jobs:
     permissions:
       contents: write # pushes the tags
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Tag the merge commit
         run: |
           git config user.name "github-actions[bot]"

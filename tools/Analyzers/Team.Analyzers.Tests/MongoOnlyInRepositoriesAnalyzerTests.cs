@@ -34,8 +34,10 @@ public sealed class MongoOnlyInRepositoriesAnalyzerTests
         }
         """;
 
-    private static Task VerifyAsync(string source, params DiagnosticResult[] expected) =>
-        VerifyAsync(source, OutputKind.DynamicallyLinkedLibrary, expected);
+    private static Task VerifyAsync(string source, params DiagnosticResult[] expected)
+    {
+        return VerifyAsync(source, OutputKind.DynamicallyLinkedLibrary, expected);
+    }
 
     private static Task VerifyAsync(string source, OutputKind outputKind, params DiagnosticResult[] expected)
     {

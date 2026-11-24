@@ -38,7 +38,7 @@ public sealed class MongoOnlyInRepositoriesAnalyzer : DiagnosticAnalyzer
 
     private static void AnalyzeName(SyntaxNodeAnalysisContext context)
     {
-        SimpleNameSyntax name = (SimpleNameSyntax)context.Node;
+        var name = (SimpleNameSyntax)context.Node;
         if (context.SemanticModel.GetSymbolInfo(name, context.CancellationToken).Symbol is not INamedTypeSymbol type
             || !IsDriverNamespace(type.ContainingNamespace))
         {
@@ -70,6 +70,8 @@ public sealed class MongoOnlyInRepositoriesAnalyzer : DiagnosticAnalyzer
     }
 
     // BookingService.Repositories: the last segment of the namespace
-    private static bool IsRepositoriesNamespace(INamespaceSymbol ns) =>
-        string.Equals(ns.Name, "Repositories", StringComparison.Ordinal);
+    private static bool IsRepositoriesNamespace(INamespaceSymbol ns)
+    {
+        return string.Equals(ns.Name, "Repositories", StringComparison.Ordinal);
+    }
 }

@@ -33,6 +33,11 @@
     <PackageVersion Include="RabbitMQ.Client" Version="7.2.2" />
   </ItemGroup>
 
+  <!-- MongoDB, only in a service's *.Repositories namespace (TEAM001) -->
+  <ItemGroup Label="Storage">
+    <PackageVersion Include="MongoDB.Driver" Version="3.13.0" />
+  </ItemGroup>
+
   <!-- Added to every test project automatically by tests/Directory.Build.props. -->
   <ItemGroup Label="Test framework">
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />

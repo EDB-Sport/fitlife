@@ -5,6 +5,7 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/BookingService/BookingService.csproj" />
+    <Project Path="src/NotificationService/NotificationService.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/FitLife.Correlation.Tests/FitLife.Correlation.Tests.csproj" />
@@ -14,6 +15,8 @@
     <Project Path="tests/FitLife.Messaging.IntegrationTests/FitLife.Messaging.IntegrationTests.csproj" />
     <Project Path="tests/BookingService.IntegrationTests/BookingService.IntegrationTests.csproj" />
     <Project Path="tests/BookingService.Tests/BookingService.Tests.csproj" />
+    <Project Path="tests/NotificationService.Tests/NotificationService.Tests.csproj" />
+    <Project Path="tests/NotificationService.IntegrationTests/NotificationService.IntegrationTests.csproj" />
   </Folder>
   <Folder Name="/tools/" />
   <Folder Name="/tools/Analyzers/">

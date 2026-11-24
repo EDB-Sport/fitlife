@@ -67,13 +67,42 @@ public sealed class ControllerActionContractAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    // ASP.NET Core's own rule: public, non-static, ordinary methods of a controller, unless marked [NonAction]
+    // ASP.NET Core's own rule (DefaultApplicationModelProvider.IsAction): public, non-static, ordinary methods
+    // of a controller, unless marked [NonAction], an override of an object method, or IDisposable.Dispose
     private static bool IsAction(IMethodSymbol method, KnownTypes known)
     {
         bool publicInstanceMethod = method is { MethodKind: MethodKind.Ordinary, DeclaredAccessibility: Accessibility.Public, IsStatic: false };
-        return publicInstanceMethod
-            && InheritsFrom(method.ContainingType, known.ControllerBase)
-            && !method.GetAttributes().Any(attribute => SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, known.NonActionAttribute));
+        if (!publicInstanceMethod || !InheritsFrom(method.ContainingType, known.ControllerBase))
+        {
+            return false;
+        }
+
+        return !method.GetAttributes().Any(attribute => SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, known.NonActionAttribute))
+            && !OverridesObjectMethod(method)
+            && !ImplementsDispose(method, known);
+    }
+
+    // Follow the override chain to the first declaration
+    private static bool OverridesObjectMethod(IMethodSymbol method)
+    {
+        IMethodSymbol current = method;
+        while (current.OverriddenMethod is not null)
+        {
+            current = current.OverriddenMethod;
+        }
+
+        return current.ContainingType.SpecialType == SpecialType.System_Object;
+    }
+
+    private static bool ImplementsDispose(IMethodSymbol method, KnownTypes known)
+    {
+        if (known.DisposeMethod is null)
+        {
+            return false;
+        }
+
+        ISymbol? implementation = method.ContainingType.FindImplementationForInterfaceMember(known.DisposeMethod);
+        return SymbolEqualityComparer.Default.Equals(implementation, method);
     }
 
     // Task<T> and ValueTask<T> are judged by their T
@@ -126,5 +155,7 @@ public sealed class ControllerActionContractAnalyzer : DiagnosticAnalyzer
         public INamedTypeSymbol? TaskOfT { get; } = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
 
         public INamedTypeSymbol? ValueTaskOfT { get; } = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask`1");
+
+        public IMethodSymbol? DisposeMethod { get; } = compilation.GetSpecialType(SpecialType.System_IDisposable).GetMembers(nameof(IDisposable.Dispose)).OfType<IMethodSymbol>().FirstOrDefault();
     }
 }

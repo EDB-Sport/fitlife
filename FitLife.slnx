@@ -1,4 +1,11 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BookingService/BookingService.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BookingService.IntegrationTests/BookingService.IntegrationTests.csproj" />
+    <Project Path="tests/BookingService.Tests/BookingService.Tests.csproj" />
+  </Folder>
   <Folder Name="/tools/" />
   <Folder Name="/tools/Analyzers/">
     <Project Path="tools/Analyzers/Team.Analyzers.Tests/Team.Analyzers.Tests.csproj" />

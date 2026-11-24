@@ -2,12 +2,13 @@ namespace BookingService.Domain;
 
 /// <summary>
 /// Hold: one scheduled run of a class (GLOSSARY.md). The aggregate root of Booking: reservations change only through it,
-/// so the number of reservations never exceeds the capacity, a member has at most one, and the waitlist keeps its order (src/BookingService/CONTEXT.md).
+/// so the number of reservations never exceeds the capacity, a member has at most one, the waitlist keeps its order, and a freed seat goes to the first waitlist entry (src/BookingService/CONTEXT.md).
 /// </summary>
 public sealed class ClassSession
 {
     private readonly List<Reservation> _reservations = [];
     private readonly List<WaitlistEntry> _waitlist = [];
+    private readonly List<DomainEvent> _domainEvents = [];
 
     /// <summary>Creates a class session with no reservations.</summary>
     /// <param name="id">The class session's id.</param>
@@ -29,6 +30,9 @@ public sealed class ClassSession
 
     /// <summary>The waitlist entries, first come first served.</summary>
     public IReadOnlyList<WaitlistEntry> Waitlist => _waitlist.AsReadOnly();
+
+    /// <summary>What happened to the class session, in order, for the service to publish.</summary>
+    public IReadOnlyList<DomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 
     /// <summary>Reserves a seat for the member, unless the member already has one or every seat is taken.</summary>
     /// <param name="memberId">The member who wants a seat.</param>
@@ -77,5 +81,30 @@ public sealed class ClassSession
 
         _waitlist.Add(new WaitlistEntry(memberId));
         return WaitlistResult.Joined;
+    }
+
+    /// <summary>Cancels the member's reservation. When someone is on the waitlist, the first waitlist entry gets the seat.</summary>
+    /// <param name="memberId">The member who gives up the seat.</param>
+    /// <returns><see cref="CancellationResult.NoReservation"/> when the member has no reservation; then nothing changes.</returns>
+    public CancellationResult CancelReservation(Guid memberId)
+    {
+        int index = _reservations.FindIndex(reservation => reservation.MemberId == memberId);
+        if (index < 0)
+        {
+            return CancellationResult.NoReservation;
+        }
+
+        _reservations.RemoveAt(index);
+        _domainEvents.Add(new ReservationCancelled(Id, memberId));
+
+        if (_waitlist.Count > 0)
+        {
+            WaitlistEntry firstWaitlistEntry = _waitlist[0];
+            _waitlist.RemoveAt(0);
+            _reservations.Add(new Reservation(firstWaitlistEntry.MemberId));
+            _domainEvents.Add(new ReservationMade(Id, firstWaitlistEntry.MemberId));
+        }
+
+        return CancellationResult.Cancelled;
     }
 }

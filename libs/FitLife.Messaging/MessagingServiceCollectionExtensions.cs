@@ -41,6 +41,7 @@ public static class MessagingServiceCollectionExtensions
             provider.GetRequiredService<RabbitMqConnection>(),
             provider.GetRequiredService<IServiceScopeFactory>(),
             provider.GetRequiredService<ILogger<RabbitMqEventConsumer<TEvent>>>(),
+            provider.GetService<TimeProvider>() ?? TimeProvider.System,
             queuePrefix));
         return services;
     }

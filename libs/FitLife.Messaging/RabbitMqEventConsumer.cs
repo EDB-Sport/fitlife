@@ -11,37 +11,73 @@ namespace FitLife.Messaging;
 /// <summary>
 /// Consumes one event type from the service's own durable queue, <c>&lt;queuePrefix&gt;.&lt;routing key&gt;</c>, and hands
 /// each event to the <see cref="IEventSubscriber{TEvent}"/> inside the message's correlation ID (#19).
-/// The queue is bound before the host has started, so nothing published after start-up is missed.
+/// It connects in the background and keeps trying while RabbitMQ is not reachable, so the service starts
+/// (and the build-time OpenAPI generator runs) without a broker. <see cref="Consuming"/> completes once the queue is bound.
 /// </summary>
 /// <typeparam name="TEvent">The event type.</typeparam>
-public sealed partial class RabbitMqEventConsumer<TEvent> : IHostedService, IAsyncDisposable
+public sealed partial class RabbitMqEventConsumer<TEvent> : BackgroundService, IAsyncDisposable
     where TEvent : IIntegrationEvent
 {
+    /// <summary>How long it waits before it tries RabbitMQ again.</summary>
+    private static TimeSpan RetryDelay => TimeSpan.FromSeconds(5);
+
     private readonly RabbitMqConnection _connection;
     private readonly IServiceScopeFactory _scopes;
     private readonly ILogger<RabbitMqEventConsumer<TEvent>> _logger;
-    private readonly CancellationTokenSource _stopping = new();
+    private readonly TimeProvider _time;
+    private readonly TaskCompletionSource _consuming = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private CancellationToken _stopping;
     private IChannel? _channel;
 
     /// <summary>Initializes a new instance of the <see cref="RabbitMqEventConsumer{TEvent}"/> class.</summary>
     /// <param name="connection">The service's RabbitMQ connection.</param>
     /// <param name="scopes">Creates a DI scope per message for the subscriber.</param>
     /// <param name="logger">The logger.</param>
+    /// <param name="time">The clock for the wait between tries.</param>
     /// <param name="queuePrefix">The consuming service, e.g. <c>notification</c>: each service gets its own copy of every event.</param>
-    public RabbitMqEventConsumer(RabbitMqConnection connection, IServiceScopeFactory scopes, ILogger<RabbitMqEventConsumer<TEvent>> logger, string queuePrefix)
+    public RabbitMqEventConsumer(RabbitMqConnection connection, IServiceScopeFactory scopes, ILogger<RabbitMqEventConsumer<TEvent>> logger, TimeProvider time, string queuePrefix)
     {
         _connection = connection;
         _scopes = scopes;
         _logger = logger;
+        _time = time;
         Queue = $"{queuePrefix}.{TEvent.RoutingKey}";
     }
 
     /// <summary>Gets the name of the queue this consumer reads.</summary>
     public string Queue { get; }
 
+    /// <summary>Gets a task that completes once the queue is bound and messages are being handed to the subscriber.</summary>
+    public Task Consuming => _consuming.Task;
+
     /// <inheritdoc />
-    public async Task StartAsync(CancellationToken cancellationToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        _stopping = stoppingToken;
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await ConsumeAsync(stoppingToken).ConfigureAwait(false);
+                _consuming.TrySetResult();
+                return;
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                // Once connected, RabbitMQ.Client recovers the connection, queue and consumer by itself
+                LogNotReachable(exception, Queue, RetryDelay);
+                await Task.Delay(RetryDelay, _time, stoppingToken).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private async Task ConsumeAsync(CancellationToken cancellationToken)
+    {
+        if (_channel is not null)
+        {
+            await _channel.DisposeAsync().ConfigureAwait(false);
+        }
+
         _channel = await _connection.CreateChannelAsync(cancellationToken).ConfigureAwait(false);
         await RabbitMqEventPublisher.DeclareExchangeAsync(_channel, cancellationToken).ConfigureAwait(false);
         await _channel.QueueDeclareAsync(Queue, durable: true, exclusive: false, autoDelete: false, cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -54,10 +90,10 @@ public sealed partial class RabbitMqEventConsumer<TEvent> : IHostedService, IAsy
     }
 
     /// <inheritdoc />
-    public async Task StopAsync(CancellationToken cancellationToken)
+    public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        await _stopping.CancelAsync().ConfigureAwait(false);
-        if (_channel is not null)
+        await base.StopAsync(cancellationToken).ConfigureAwait(false);
+        if (_channel is { IsOpen: true })
         {
             await _channel.CloseAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -71,7 +107,7 @@ public sealed partial class RabbitMqEventConsumer<TEvent> : IHostedService, IAsy
             await _channel.DisposeAsync().ConfigureAwait(false);
         }
 
-        _stopping.Dispose();
+        Dispose();
     }
 
     private async Task OnReceivedAsync(object sender, BasicDeliverEventArgs delivery)
@@ -104,7 +140,7 @@ public sealed partial class RabbitMqEventConsumer<TEvent> : IHostedService, IAsy
             AsyncServiceScope scope = _scopes.CreateAsyncScope();
             await using (scope.ConfigureAwait(false))
             {
-                await scope.ServiceProvider.GetRequiredService<IEventSubscriber<TEvent>>().HandleAsync(integrationEvent, _stopping.Token).ConfigureAwait(false);
+                await scope.ServiceProvider.GetRequiredService<IEventSubscriber<TEvent>>().HandleAsync(integrationEvent, _stopping).ConfigureAwait(false);
             }
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -119,6 +155,9 @@ public sealed partial class RabbitMqEventConsumer<TEvent> : IHostedService, IAsy
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Consuming {Queue}")]
     private partial void LogConsuming(string queue);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "RabbitMQ is not reachable for {Queue}; trying again in {RetryDelay}")]
+    private partial void LogNotReachable(Exception exception, string queue, TimeSpan retryDelay);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Dropped a message on {Queue} that is not the event")]
     private partial void LogUnreadable(Exception exception, string queue);

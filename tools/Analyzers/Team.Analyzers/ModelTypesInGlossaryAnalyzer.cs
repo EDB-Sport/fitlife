@@ -63,7 +63,7 @@ public sealed class ModelTypesInGlossaryAnalyzer : DiagnosticAnalyzer
 
     private static void AnalyzeType(SymbolAnalysisContext context, ImmutableHashSet<string>? names)
     {
-        INamedTypeSymbol type = (INamedTypeSymbol)context.Symbol;
+        var type = (INamedTypeSymbol)context.Symbol;
         if (type.DeclaredAccessibility != Accessibility.Public
             || type.ContainingType is not null
             || !string.Equals(type.ContainingNamespace?.Name, "Models", StringComparison.Ordinal))

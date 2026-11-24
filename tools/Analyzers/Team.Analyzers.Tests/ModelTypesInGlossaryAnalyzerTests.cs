@@ -176,7 +176,7 @@ public sealed class ModelTypesInGlossaryAnalyzerTests
     [TestCase("BookingService.ViewModels")]
     public Task PublicTypeOutsideModelsNamespace_ReportsNothing(string ns)
     {
-        var source = $$"""
+        string source = $$"""
             namespace {{ns}}
             {
                 public class Booking { }

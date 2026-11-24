@@ -67,7 +67,7 @@ public sealed class NoWaitInTestsAnalyzerTests
     [TestCase("Task.Delay(100, CancellationToken.None)")]
     public Task TaskDelay_InTestProject_ReportsTeam007(string call)
     {
-        var source = $$"""
+        string source = $$"""
             using System;
             using System.Threading;
             using System.Threading.Tasks;
@@ -97,7 +97,7 @@ public sealed class NoWaitInTestsAnalyzerTests
                 }
             }
             """;
-        var expected = new DiagnosticResult(NoWaitInTestsAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
+        DiagnosticResult expected = new DiagnosticResult(NoWaitInTestsAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
             .WithSpan(7, 15, 7, 30)
             .WithMessage("Found Task.Delay in test project BookingService.Tests. Do advance a FakeTimeProvider (Microsoft.Extensions.Time.Testing) instead of waiting, in the test and in the code under test.");
         return VerifyAsync(source, "BookingService.Tests", expected);

@@ -44,9 +44,15 @@ public sealed class NlogOnlyInProgramAnalyzerTests
         return test;
     }
 
-    private static Task VerifyAsync(string source, string fileName) => Create(source, fileName).RunAsync();
+    private static Task VerifyAsync(string source, string fileName)
+    {
+        return Create(source, fileName).RunAsync();
+    }
 
-    private static Task VerifyAsync(CSharpAnalyzerTest<NlogOnlyInProgramAnalyzer, DefaultVerifier> test) => test.RunAsync();
+    private static Task VerifyAsync(CSharpAnalyzerTest<NlogOnlyInProgramAnalyzer, DefaultVerifier> test)
+    {
+        return test.RunAsync();
+    }
 
     [Test]
     public Task LogManager_InService_ReportsTeam002()
@@ -172,7 +178,7 @@ public sealed class NlogOnlyInProgramAnalyzerTests
                 void Run() => NLog.{|#0:LogManager|}.Shutdown();
             }
             """;
-        var test = Create(source, "Service.cs");
+        CSharpAnalyzerTest<NlogOnlyInProgramAnalyzer, DefaultVerifier> test = Create(source, "Service.cs");
         test.ExpectedDiagnostics.Add(new DiagnosticResult("TEAM002", DiagnosticSeverity.Error)
             .WithMessage("Found NLog 'LogManager' outside Program.cs. Do inject ILogger<T> and log through it, and keep the NLog setup in Program.cs.")
             .WithLocation(0));

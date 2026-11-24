@@ -15,7 +15,7 @@
 #   6. MongoDB's init script and Vault's start and seed scripts are the compose files, so there is one source
 set -euo pipefail
 
-# The limit per container group for Linux containers without GPU in most regions, northeurope included
+# The limit per container group for Linux containers without GPU in most regions, switzerlandnorth included
 # (Microsoft Learn: "Resource availability and quota limits for ACI", standard SKU).
 LIMIT_CPU=4
 LIMIT_MEMORY_GB=16

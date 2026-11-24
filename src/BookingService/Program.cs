@@ -11,7 +11,7 @@ try
     WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
     // Course rule #9: the secret/booking-svc secret from Vault (Vault:Address, Vault:Token), read through IConfiguration
-    builder.Configuration.AddVault();
+    await builder.Configuration.AddVaultAsync().ConfigureAwait(false);
 
     // Course rule #8: NLog → Loki, with the shared libs/nlog.config
     builder.Logging.ClearProviders();

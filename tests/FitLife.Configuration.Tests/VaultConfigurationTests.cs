@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
 using Microsoft.Extensions.Configuration;
@@ -38,13 +39,18 @@ public sealed class VaultConfigurationTests
         return new HttpResponseMessage(status) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
     }
 
-    // Moves the fake clock on, a second at a time, until the load has finished: no test waits in real time
-    private static async Task RunWithClockAsync(Task load, FakeTimeProvider time)
+    // Moves the fake clock on by one second, each time after the code has sent its next request, until the load has
+    // finished. No test waits in real time.
+    private static async Task RunWithClockAsync(Task load, FakeTimeProvider time, FakeVault vault)
     {
         for (int second = 0; second < 600 && !load.IsCompleted; second++)
         {
-            await Task.Yield();
+            int sent = vault.Requests.Count;
             time.Advance(TimeSpan.FromSeconds(1));
+            for (int spin = 0; spin < 100_000 && !load.IsCompleted && vault.Requests.Count == sent; spin++)
+            {
+                await Task.Yield();
+            }
         }
 
         await load.ConfigureAwait(false);
@@ -94,9 +100,9 @@ public sealed class VaultConfigurationTests
 
         // Assert
         Assert.That(vault.Requests, Has.Count.EqualTo(1));
-        Assert.That(vault.Requests[0].Method, Is.EqualTo(HttpMethod.Get));
-        Assert.That(vault.Requests[0].Uri, Is.EqualTo(new Uri("http://vault:8200/v1/secret/data/booking-svc")));
-        Assert.That(vault.Requests[0].Token, Is.EqualTo("root-token"));
+        Assert.That(vault.Requests.First().Method, Is.EqualTo(HttpMethod.Get));
+        Assert.That(vault.Requests.First().Uri, Is.EqualTo(new Uri("http://vault:8200/v1/secret/data/booking-svc")));
+        Assert.That(vault.Requests.First().Token, Is.EqualTo("root-token"));
     }
 
     [TestCase("http://vault:8200/", "secret", "http://vault:8200/v1/secret/data/booking-svc")]
@@ -112,7 +118,7 @@ public sealed class VaultConfigurationTests
         await configuration.AddVaultAsync(vault).ConfigureAwait(false);
 
         // Assert
-        Assert.That(vault.Requests[0].Uri, Is.EqualTo(new Uri(expected)));
+        Assert.That(vault.Requests.First().Uri, Is.EqualTo(new Uri(expected)));
     }
 
     [Test]
@@ -124,7 +130,7 @@ public sealed class VaultConfigurationTests
         var time = new FakeTimeProvider();
 
         // Act
-        InvalidOperationException? exception = Assert.ThrowsAsync<InvalidOperationException>(() => configuration.AddVaultAsync(vault, time));
+        InvalidOperationException? exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await configuration.AddVaultAsync(vault, time).ConfigureAwait(false));
 
         // Assert
         Assert.That(exception?.Message, Does.Contain("403").And.Contain("secret/booking-svc"));
@@ -142,7 +148,7 @@ public sealed class VaultConfigurationTests
         configuration[missing] = string.Empty;
 
         // Act
-        InvalidOperationException? exception = Assert.ThrowsAsync<InvalidOperationException>(() => configuration.AddVaultAsync(vault));
+        InvalidOperationException? exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await configuration.AddVaultAsync(vault).ConfigureAwait(false));
 
         // Assert
         Assert.That(exception?.Message, Does.Contain(missing));
@@ -170,7 +176,7 @@ public sealed class VaultConfigurationTests
         var time = new FakeTimeProvider();
 
         // Act
-        await RunWithClockAsync(configuration.AddVaultAsync(vault, time), time).ConfigureAwait(false);
+        await RunWithClockAsync(configuration.AddVaultAsync(vault, time), time, vault).ConfigureAwait(false);
 
         // Assert
         Assert.That(configuration["MongoDb:Password"], Is.EqualTo("db-secret"));
@@ -196,7 +202,7 @@ public sealed class VaultConfigurationTests
         var time = new FakeTimeProvider();
 
         // Act
-        await RunWithClockAsync(configuration.AddVaultAsync(vault, time), time).ConfigureAwait(false);
+        await RunWithClockAsync(configuration.AddVaultAsync(vault, time), time, vault).ConfigureAwait(false);
 
         // Assert
         Assert.That(configuration["MongoDb:Password"], Is.EqualTo("db-secret"));
@@ -214,11 +220,12 @@ public sealed class VaultConfigurationTests
 
         // Act
         InvalidOperationException? exception = Assert.ThrowsAsync<InvalidOperationException>(
-            () => RunWithClockAsync(configuration.AddVaultAsync(vault, time), time));
+            async () => await RunWithClockAsync(configuration.AddVaultAsync(vault, time), time, vault).ConfigureAwait(false));
 
         // Assert
         Assert.That(exception?.Message, Does.Contain("404").And.Contain("10 s"));
-        Assert.That(time.GetUtcNow() - start, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(10)).And.LessThan(TimeSpan.FromSeconds(13)));
+        Assert.That(time.GetUtcNow() - start, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(10)).And.LessThan(TimeSpan.FromSeconds(12)));
+        Assert.That(vault.Requests, Has.Count.GreaterThan(1));
     }
 
     private sealed record SentRequest(HttpMethod Method, Uri? Uri, string? Token);
@@ -226,7 +233,7 @@ public sealed class VaultConfigurationTests
     // Answers each request with the response the test gives, and keeps what was sent
     private sealed class FakeVault(Func<int, HttpResponseMessage> answer) : HttpMessageHandler
     {
-        public List<SentRequest> Requests { get; } = [];
+        public ConcurrentQueue<SentRequest> Requests { get; } = new();
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -236,7 +243,7 @@ public sealed class VaultConfigurationTests
                 token = values.Single();
             }
 
-            Requests.Add(new SentRequest(request.Method, request.RequestUri, token));
+            Requests.Enqueue(new SentRequest(request.Method, request.RequestUri, token));
             return Task.FromResult(answer(Requests.Count));
         }
     }

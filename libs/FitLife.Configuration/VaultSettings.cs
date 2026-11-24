@@ -1,11 +1,13 @@
+using System.Globalization;
 using Microsoft.Extensions.Configuration;
 
 namespace FitLife.Configuration;
 
 /// <summary>Where the service's secret is in Vault, read from the <c>Vault</c> configuration section.</summary>
-internal sealed record VaultSettings(Uri Address, string Token, string Mount, string Path)
+internal sealed record VaultSettings(Uri Address, string Token, string Mount, string Path, TimeSpan Wait)
 {
     private const string Section = "Vault";
+    private const int DefaultWaitSeconds = 60;
 
     /// <summary>The URL of the secret in the KV v2 engine: <c>{Address}/v1/{Mount}/data/{Path}</c>.</summary>
     public Uri SecretUrl => new(Address, $"v1/{Mount}/data/{Path}");
@@ -32,7 +34,15 @@ internal sealed record VaultSettings(Uri Address, string Token, string Mount, st
         {
             root += "/";
         }
-        return new VaultSettings(new Uri(root, UriKind.Absolute), Required(vault, "Token"), mount, Required(vault, "Path"));
+
+        int waitSeconds = DefaultWaitSeconds;
+        if (int.TryParse(vault["WaitSeconds"], NumberStyles.None, CultureInfo.InvariantCulture, out int configured))
+        {
+            waitSeconds = configured;
+        }
+
+        return new VaultSettings(
+            new Uri(root, UriKind.Absolute), Required(vault, "Token"), mount, Required(vault, "Path"), TimeSpan.FromSeconds(waitSeconds));
     }
 
     private static string Required(IConfigurationSection vault, string key)

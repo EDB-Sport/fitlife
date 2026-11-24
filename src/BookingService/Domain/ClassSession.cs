@@ -52,11 +52,24 @@ public sealed class ClassSession
         return ReservationResult.Made;
     }
 
-    /// <summary>Puts the member at the end of the waitlist, if every seat is taken.</summary>
+    /// <summary>Puts the member at the end of the waitlist, if every seat is taken and the member has neither a seat nor a waitlist entry.</summary>
     /// <param name="memberId">The member who wants a seat.</param>
-    /// <returns><see cref="WaitlistResult.ClassSessionNotFull"/> when a seat is free; then nothing changes.</returns>
+    /// <returns>
+    /// <see cref="WaitlistResult.MemberAlreadyHasReservation"/>, <see cref="WaitlistResult.MemberAlreadyOnWaitlist"/> or
+    /// <see cref="WaitlistResult.ClassSessionNotFull"/> when no waitlist entry is made; then nothing changes.
+    /// </returns>
     public WaitlistResult JoinWaitlist(Guid memberId)
     {
+        if (_reservations.Exists(reservation => reservation.MemberId == memberId))
+        {
+            return WaitlistResult.MemberAlreadyHasReservation;
+        }
+
+        if (_waitlist.Exists(waitlistEntry => waitlistEntry.MemberId == memberId))
+        {
+            return WaitlistResult.MemberAlreadyOnWaitlist;
+        }
+
         if (_reservations.Count < Capacity.Value)
         {
             return WaitlistResult.ClassSessionNotFull;

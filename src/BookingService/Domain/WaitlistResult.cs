@@ -8,4 +8,10 @@ public enum WaitlistResult
 
     /// <summary>A seat is free, so the member can reserve it instead; no waitlist entry was made.</summary>
     ClassSessionNotFull,
+
+    /// <summary>The member already has a seat on this class session, so no waitlist entry was made.</summary>
+    MemberAlreadyHasReservation,
+
+    /// <summary>The member already has a waitlist entry on this class session, so no second one was made.</summary>
+    MemberAlreadyOnWaitlist,
 }

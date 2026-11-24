@@ -35,7 +35,7 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | # | Rule (TO-BE §8) | Test or issue |
 |---|---|---|
 | 1 | The reservations never exceed the capacity | `ClassSessionTests.Reserve_WhenClassSessionIsFull_IsRejected` |
-| 2 | A member can't reserve the same class session twice | `ClassSessionTests.Reserve_WhenTheMemberAlreadyHasAReservation_IsRejected` |
+| 2 | A member can't reserve the same class session twice, and has at most one place on it: a seat or a waitlist entry | `ClassSessionTests.Reserve_WhenTheMemberAlreadyHasAReservation_IsRejected`, `ClassSessionTests.JoinWaitlist_WhenTheMemberAlreadyHasAReservation_IsRejected`, `ClassSessionTests.JoinWaitlist_WhenTheMemberIsAlreadyOnTheWaitlist_IsRejected` |
 | 3 | A full class session offers a waitlist entry, first come first served | `ClassSessionTests.JoinWaitlist_WhenClassSessionIsFull_AddsWaitlistEntriesInTheOrderTheyWereMade`, `ClassSessionTests.JoinWaitlist_WithFreeSeats_IsRejected` |
 | 4 | A freed seat goes to the first waitlist entry | #158 |
 | 5 | Class sessions can be reserved at most 4 weeks ahead | #159 |
@@ -48,7 +48,7 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | Kind | Name | Notes |
 |---|---|---|
 | Command | `ClassSession.Reserve(memberId)` | Returns `ReservationResult.Made`, `MemberAlreadyHasReservation` or `ClassSessionFull` |
-| Command | `ClassSession.JoinWaitlist(memberId)` | Returns `WaitlistResult.Joined` or `ClassSessionNotFull` |
+| Command | `ClassSession.JoinWaitlist(memberId)` | Returns `WaitlistResult.Joined`, `MemberAlreadyHasReservation`, `MemberAlreadyOnWaitlist` or `ClassSessionNotFull` |
 
 ## Talks to
 

@@ -236,6 +236,60 @@ public static class CalculatorTests
 EOF
 expect_pass "test project builds without XML comments and with underscores" "$t"
 
+# 13. TEAM analyzers run on every project (tools/Analyzers/README.md, issue #48)
+pragma_code() {
+  write_code "$1" Calculator <<EOF
+namespace BuildCheck;
+
+/// <summary>Adds numbers.</summary>
+public static class Calculator
+{
+#pragma warning disable CS0219$2
+    /// <summary>Returns the sum of two numbers.</summary>
+    /// <param name="left">The first number.</param>
+    /// <param name="right">The second number.</param>
+    /// <returns>The sum.</returns>
+    public static int Add(int left, int right)
+    {
+        return left + right;
+    }
+#pragma warning restore CS0219
+}
+EOF
+}
+write_project "$a"
+pragma_code "$a" ""
+expect_error "pragma without an issue reference fails in src/ (TEAM004)" "$a" "TEAM004"
+
+write_project "$t"
+pragma_code "$t" ""
+expect_error "pragma without an issue reference fails in tests/ (TEAM004)" "$t" "TEAM004"
+
+write_project "$a"
+pragma_code "$a" " // #48: checks that a justified pragma builds"
+expect_pass "pragma with an issue reference builds" "$a"
+
+# 14. TEAM008 reads the repo root's GLOSSARY.md: every project gets it as an AdditionalFile (issue #76)
+model_code() {
+  write_code "$1" "$2" <<EOF
+namespace BuildCheck.Models;
+
+/// <summary>A model type for the glossary check.</summary>
+public sealed class $2
+{
+    /// <summary>Gets the name.</summary>
+    public string Name { get; init; } = string.Empty;
+}
+EOF
+}
+write_project "$a"
+model_code "$a" Member
+expect_pass "a *.Models type that is in GLOSSARY.md builds (TEAM008)" "$a"
+
+write_project "$a"
+model_code "$a" Customer
+expect_error "a *.Models type that isn't in GLOSSARY.md fails (TEAM008)" "$a" "is not in the 'In code' column of GLOSSARY.md"
+
 echo
 if [ "$failures" -eq 0 ]; then
   echo "All build rules work."

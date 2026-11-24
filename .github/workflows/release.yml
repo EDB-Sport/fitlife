@@ -1,0 +1,132 @@
+# Releases (issues #94 and #95, docs/CSHARP_SETUP_TODO.md sections 9 and 10, METHODOLOGY section 2.1).
+#
+# release-gate: on every PR into main (release/x.y.z or hotfix/<service>-x.y.z), each service that changed since
+#   its last <service>/vX.Y.Z tag has a higher version, a breaking API change is a new MAJOR, and a hotfix
+#   raises only one service's PATCH. Logic: tools/ci/release-gate.sh. Make "release-gate" a required check on main.
+# plan, images, tags: on the merge to main, every service whose version has no tag yet is built, scanned by Trivy,
+#   pushed to Docker Hub as X.Y.Z, X.Y, X and latest, and only then tagged. Logic: tools/ci/release-plan.sh.
+#   deploy.yml (#10) runs after this workflow by its name.
+#
+# Needs from the owner: the repository variable DOCKERHUB_NAMESPACE and the secrets DOCKERHUB_USERNAME and
+# DOCKERHUB_TOKEN (a Docker Hub access token with push rights). They are used only in this workflow.
+name: release
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# One release at a time, and never cancelled halfway
+concurrency:
+  group: release-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-gate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the service tags are needed
+      - name: Every changed service has a higher version
+        run: tools/ci/release-gate.sh
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+
+  plan:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.plan.outputs.services }}
+      tags: ${{ steps.plan.outputs.tags }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the service tags are needed
+      - name: Which services this merge releases
+        id: plan
+        run: |
+          # The merged branch, from GitHub's merge commit: "Merge pull request #12 from <owner>/release/1.2.0"
+          RELEASE_REF=$(git log -1 --format=%s | grep -oE '(release|hotfix)/[^ ]+' | head -1 || true)
+          export RELEASE_REF
+          tools/ci/release-plan.sh
+        env:
+          DOCKERHUB_NAMESPACE: ${{ vars.DOCKERHUB_NAMESPACE }}
+
+  images:
+    needs: plan
+    if: needs.plan.outputs.services != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        service: ${{ fromJSON(needs.plan.outputs.services) }}
+    env:
+      IMAGE: ${{ vars.DOCKERHUB_NAMESPACE }}/${{ matrix.service.prefix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - name: Image tags X.Y.Z, X.Y, X and latest
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ matrix.service.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ matrix.service.version }}
+            type=semver,pattern={{major}},value=${{ matrix.service.version }}
+            type=raw,value=latest
+      - name: Build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: src/${{ matrix.service.name }}/Dockerfile
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          load: true
+      # Scanned before the push, so an image with HIGH or CRITICAL findings never reaches Docker Hub
+      - name: Trivy scan (HIGH and CRITICAL fail the release)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}:${{ matrix.service.version }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: src/${{ matrix.service.name }}/Dockerfile
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          push: true
+
+  # Tagged last, so a failed build, scan or push leaves no tag and a re-run releases the same versions
+  tags:
+    needs: [plan, images]
+    if: needs.plan.outputs.tags != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # pushes the tags
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Tag the merge commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          read -ra release_tags <<<"$TAGS"
+          for tag in "${release_tags[@]}"; do
+            git tag -a "$tag" -m "Release $tag"
+          done
+          git push origin "${release_tags[@]}"
+        env:
+          TAGS: ${{ needs.plan.outputs.tags }}

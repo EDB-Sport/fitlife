@@ -116,15 +116,25 @@ if [[ -d $AZURE_DIR ]]; then
   done < <(grep -rnE --include='*.bicep' --include='*.bicepparam' "[:']latest'" "$AZURE_DIR" || true)
 
   if [[ -f $BICEPPARAM_FILE ]]; then
-    # An image parameter (name contains "image", not "tag") must have a tag or a digest.
+    # An image parameter (name contains "image", not "tag") must have a tag or a digest, unless a
+    # companion parameter <name>Tag sets its version, e.g. serviceImage + serviceImageTag (#78). That one
+    # is checked below like any tag parameter, and 'latest' anywhere is caught above.
     param_re="^[[:space:]]*param[[:space:]]+([A-Za-z0-9_]+)[[:space:]]*=[[:space:]]*'([^']*)'"
+    tag_params=" $(sed -nE 's/^[[:space:]]*param[[:space:]]+([A-Za-z0-9_]+Tag)[[:space:]]*=.*/\1/p' "$BICEPPARAM_FILE" | tr '\n' ' ')"
+    # A tag parameter read from the environment, e.g. readEnvironmentVariable('SERVICE_IMAGE_TAG', '0.1.0'),
+    # must not fall back to an empty version.
+    while IFS= read -r hit; do
+      fail "$BICEPPARAM_FILE:${hit%%:*} a tag parameter defaults to an empty version: set one"
+    done < <(grep -nE "^[[:space:]]*param[[:space:]]+[A-Za-z0-9_]+Tag[[:space:]]*=.*''" "$BICEPPARAM_FILE" || true)
     lineno=0
     while IFS= read -r line || [[ -n $line ]]; do
       lineno=$((lineno + 1))
       if [[ $line =~ $param_re ]]; then
         param=${BASH_REMATCH[1]} value=${BASH_REMATCH[2]}
         lower=$(printf '%s' "$param" | tr '[:upper:]' '[:lower:]')
-        if [[ $lower == *image* && $lower != *tag* ]]; then
+        if [[ $lower == *image* && $lower != *tag* && $tag_params == *" ${param}Tag "* ]]; then
+          ok "$BICEPPARAM_FILE:$lineno param $param: $value, version in ${param}Tag"
+        elif [[ $lower == *image* && $lower != *tag* ]]; then
           check_image "$BICEPPARAM_FILE:$lineno param $param" "$value"
         elif [[ $lower == *tag* && -z $value ]]; then
           fail "$BICEPPARAM_FILE:$lineno param $param is empty: set a version"

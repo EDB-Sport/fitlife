@@ -10,6 +10,7 @@ services:
       BOOKING_URL: http://booking-svc:8080
       MEMBERSHIP_URL: http://membership-svc:8080
       IDENTITY_URL: http://identity-svc:8080
+      MEMBER_PORTAL_URL: http://member-portal:8080 # the Blazor UI (#8), on every path that isn't /api/ or /health
       GRAFANA_URL: http://grafana:3000 # monitoring.yml
     volumes:
       - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
@@ -17,6 +18,20 @@ services:
       - "${GATEWAY_PORT:-8080}:80"
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  booking-svc:
+    # BookingService, built from the repo root (src/BookingService/Dockerfile, #93).
+    build:
+      context: ../..
+      dockerfile: src/BookingService/Dockerfile
+    image: fitlife/bookingservice:local
+    environment:
+      Loki__Url: http://loki:3100 # monitoring.yml; Loki:App is booking-svc in appsettings.json
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
       interval: 5s
       timeout: 5s
       retries: 10

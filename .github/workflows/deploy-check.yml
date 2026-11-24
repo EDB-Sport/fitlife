@@ -1,0 +1,29 @@
+# Broken deployment files fail on the PR, not during a deploy (issue #21).
+# Compose config, nginx -t on the rendered gateway template, no :latest images, gcx lint of the Grafana
+# files, az bicep build/lint, and the acceptance checks deploy/**/*.test.sh (#77). The logic is in tools/ci/deploy-check.sh, which runs the same way locally.
+#
+# A workflow of its own until #5 adds ci.yml: then this job moves into ci.yml as job 9
+# (docs/CSHARP_SETUP_TODO.md section 10) and this file is deleted.
+# Make "deploy-check" a required check on develop and main (repo ruleset, done by hand).
+name: deploy-check
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Needs only bash, git, jq, python3 and Docker Compose v2, which the runner has. Every tool runs in a
+      # pinned container; the versions are at the top of the script.
+      - name: deploy-check
+        run: tools/ci/deploy-check.sh

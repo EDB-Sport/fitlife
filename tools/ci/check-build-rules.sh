@@ -120,6 +120,17 @@ write_project "$a" "<PropertyGroup><GenerateDocumentationFile>false</GenerateDoc
 undocumented_code "$a"
 expect_error "GenerateDocumentationFile=false in a .csproj is overridden" "$a" "CS1591"
 
+# 5b. dotnet publish works and ships the XML documentation file (issue #64)
+write_project "$a"
+clean_code "$a"
+if out=$(dotnet publish "$a" -c Release -o "$a/publish" -v q -clp:NoSummary -tl:off 2>&1) && [ -f "$a/publish/BuildCheckA.xml" ]; then
+  echo "PASS  dotnet publish works and ships the XML documentation file"
+else
+  echo "FAIL  dotnet publish works and ships the XML documentation file"
+  grep -E 'error' <<<"$out" | head -5
+  failures=$((failures + 1))
+fi
+
 # 6. Nullable can't be switched off per project
 write_project "$a" "<PropertyGroup><Nullable>disable</Nullable></PropertyGroup>"
 write_code "$a" Names <<'EOF'
@@ -226,7 +237,61 @@ public static class CalculatorTests
 EOF
 expect_pass "test project builds without XML comments and with underscores" "$t"
 
-# 13. Unit-test projects can't reference real infrastructure (issue #13, docs/CSHARP_SETUP_TODO.md section 6)
+# 13. TEAM analyzers run on every project (tools/Analyzers/README.md, issue #48)
+pragma_code() {
+  write_code "$1" Calculator <<EOF
+namespace BuildCheck;
+
+/// <summary>Adds numbers.</summary>
+public static class Calculator
+{
+#pragma warning disable CS0219$2
+    /// <summary>Returns the sum of two numbers.</summary>
+    /// <param name="left">The first number.</param>
+    /// <param name="right">The second number.</param>
+    /// <returns>The sum.</returns>
+    public static int Add(int left, int right)
+    {
+        return left + right;
+    }
+#pragma warning restore CS0219
+}
+EOF
+}
+write_project "$a"
+pragma_code "$a" ""
+expect_error "pragma without an issue reference fails in src/ (TEAM004)" "$a" "TEAM004"
+
+write_project "$t"
+pragma_code "$t" ""
+expect_error "pragma without an issue reference fails in tests/ (TEAM004)" "$t" "TEAM004"
+
+write_project "$a"
+pragma_code "$a" " // #48: checks that a justified pragma builds"
+expect_pass "pragma with an issue reference builds" "$a"
+
+# 14. TEAM008 reads the repo root's GLOSSARY.md: every project gets it as an AdditionalFile (issue #76)
+model_code() {
+  write_code "$1" "$2" <<EOF
+namespace BuildCheck.Models;
+
+/// <summary>A model type for the glossary check.</summary>
+public sealed class $2
+{
+    /// <summary>Gets the name.</summary>
+    public string Name { get; init; } = string.Empty;
+}
+EOF
+}
+write_project "$a"
+model_code "$a" Member
+expect_pass "a *.Models type that is in GLOSSARY.md builds (TEAM008)" "$a"
+
+write_project "$a"
+model_code "$a" Customer
+expect_error "a *.Models type that isn't in GLOSSARY.md fails (TEAM008)" "$a" "is not in the 'In code' column of GLOSSARY.md"
+
+# 15. Unit-test projects can't reference real infrastructure (issue #13, docs/CSHARP_SETUP_TODO.md section 6)
 write_project "$t" '<ItemGroup><PackageReference Include="Testcontainers.MongoDb" /></ItemGroup>'
 expect_error "*.Tests project referencing Testcontainers.MongoDb fails" "$t" "FITLIFE002"
 

@@ -8,6 +8,7 @@ integration/<a>-<b>.postman_collection.json         two or more services working
 mocks/<system>.mock.postman_collection.json         saved examples that back a Postman Mock Server
 mocks/<system>.mock-tests.postman_collection.json   API tests against that mock server
 e2e/booking-flow.postman_collection.json            log in → find a class session → reserve → see it → cancel
+smoke/thin-slice.postman_collection.json            after each Azure deploy: HTTPS gateway, the service, the member portal
 environments/local|ci|azure.postman_environment.json
 ```
 
@@ -45,4 +46,10 @@ npx newman run tests/postman/mocks/user-registration.mock-tests.postman_collecti
   -e tests/postman/environments/local.postman_environment.json
 ```
 
-CI runs every collection with the `cli`, `junit` and `htmlextra` reporters and uploads the HTML reports as evidence (issue #5).
+Every collection against the compose stack, the way CI runs it (needs Docker and `npm install --global newman newman-reporter-htmlextra`):
+
+```bash
+tools/ci/api-tests.sh
+```
+
+It starts the stack from `deploy/compose/`, runs `services/`, `integration/`, `e2e/` and the `mocks/*.mock-tests.*` collections with `environments/ci` and the `cli`, `junit` and `htmlextra` reporters, and stops the stack again. The reports go to `newman-reports/`. The `api-tests` CI job uploads them as evidence (issue #22).

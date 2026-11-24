@@ -4,6 +4,7 @@ using FitLife.Messaging;
 using FitLife.Messaging.Events;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -22,7 +23,7 @@ public sealed class ReservationMadeTests
     {
         // Arrange
         using var logs = new WaitingLoggerProvider();
-        using WebApplicationFactory<Program> factory = Start(logs);
+        using WebApplicationFactory<Program> factory = await StartAsync(logs).ConfigureAwait(false);
         ReservationMade reservationMade = NewReservationMade();
 
         // Act
@@ -41,8 +42,8 @@ public sealed class ReservationMadeTests
     {
         // Arrange
         using var logs = new WaitingLoggerProvider();
-        using WebApplicationFactory<Program> factory = Start(logs);
-        IEventPublisher publisher = PublisherOf(factory);
+        using WebApplicationFactory<Program> factory = await StartAsync(logs).ConfigureAwait(false);
+        RabbitMqEventPublisher publisher = PublisherOf(factory);
         ReservationMade twice = NewReservationMade();
         ReservationMade after = NewReservationMade();
         await publisher.PublishAsync(twice, CancellationToken.None).ConfigureAwait(false);
@@ -56,15 +57,17 @@ public sealed class ReservationMadeTests
         Assert.That(logs.Lines.Count(line => line.Contains(twice.MemberId, StringComparison.Ordinal) && line.Contains("Notification to member", StringComparison.Ordinal)), Is.EqualTo(1));
     }
 
-    private static WebApplicationFactory<Program> Start(WaitingLoggerProvider logs)
+    private static async Task<WebApplicationFactory<Program>> StartAsync(WaitingLoggerProvider logs)
     {
         var factory = new NotificationServiceFactory(logs);
-        // Creating the client starts the host, and the host has bound its queue once it has started
+        // Creating the client starts the host; the consumer then binds its queue in the background
         factory.CreateClient().Dispose();
+        await factory.Services.GetServices<IHostedService>().OfType<RabbitMqEventConsumer<ReservationMade>>().Single()
+            .Consuming.WaitAsync(Timeout).ConfigureAwait(false);
         return factory;
     }
 
-    private static IEventPublisher PublisherOf(WebApplicationFactory<Program> factory)
+    private static RabbitMqEventPublisher PublisherOf(WebApplicationFactory<Program> factory)
     {
         return new RabbitMqEventPublisher(factory.Services.GetRequiredService<RabbitMqConnection>());
     }

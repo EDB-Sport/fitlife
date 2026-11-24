@@ -20,6 +20,8 @@ public sealed class ReservationMadeSubscriberTests
         "member-1",
         new DateTimeOffset(2026, 12, 1, 18, 0, 0, TimeSpan.FromHours(1)));
 
+    private static readonly string[] StoredIds = ["reservation-made:reservation-1"];
+
     [Test]
     public async Task HandleAsync_TheSchemasExample_LogsANotificationToTheMember()
     {
@@ -78,7 +80,7 @@ public sealed class ReservationMadeSubscriberTests
         await subscriber.HandleAsync(Sample, CancellationToken.None).ConfigureAwait(false);
 
         // Assert
-        Assert.That(repository.Stored.Select(notification => notification.Id), Is.EqualTo(new[] { "reservation-made:reservation-1" }));
+        Assert.That(repository.Stored.Select(notification => notification.Id), Is.EquivalentTo(StoredIds));
     }
 
     /// <summary>The repository's contract: a second notification with the same id is not added.</summary>

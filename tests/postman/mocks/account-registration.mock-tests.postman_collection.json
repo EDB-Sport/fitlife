@@ -1,13 +1,13 @@
 {
   "info": {
     "_postman_id": "cb5cf188-89da-56af-b322-c5cad25280c3",
-    "name": "FitLife user registration (mock tests)",
-    "description": "API tests against the user registration Postman Mock Server: the happy path and the error cases. Needs userRegistrationMockUrl from an environment in tests/postman/environments/.",
+    "name": "FitLife account registration (mock tests)",
+    "description": "API tests against the account registration Postman Mock Server: the happy path and the error cases. Needs accountRegistrationMockUrl from an environment in tests/postman/environments/.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "Create user: 201 Created",
+      "name": "Create account: 201 Created",
       "event": [
         {
           "listen": "test",
@@ -17,17 +17,17 @@
               "pm.test(\"Status is 201\", function () {",
               "    pm.response.to.have.status(201);",
               "});",
-              "pm.test(\"Body is a user without a password\", function () {",
-              "    const user = pm.response.json();",
-              "    pm.expect(user.id).to.match(/^[0-9a-f-]{36}$/);",
-              "    pm.expect(user.email).to.eql(\"anna.jensen@example.com\");",
-              "    pm.expect(user).to.have.property(\"firstName\");",
-              "    pm.expect(user).to.have.property(\"lastName\");",
-              "    pm.expect(user).to.not.have.property(\"password\");",
+              "pm.test(\"Body is an account without a password\", function () {",
+              "    const account = pm.response.json();",
+              "    pm.expect(account.id).to.match(/^[0-9a-f-]{36}$/);",
+              "    pm.expect(account.email).to.eql(\"anna.jensen@example.com\");",
+              "    pm.expect(account).to.have.property(\"firstName\");",
+              "    pm.expect(account).to.have.property(\"lastName\");",
+              "    pm.expect(account).to.not.have.property(\"password\");",
               "});",
               "",
-              "pm.test(\"Location points at the new user\", function () {",
-              "    pm.expect(pm.response.headers.get(\"Location\")).to.eql(\"/users/\" + pm.response.json().id);",
+              "pm.test(\"Location points at the new account\", function () {",
+              "    pm.expect(pm.response.headers.get(\"Location\")).to.eql(\"/accounts/\" + pm.response.json().id);",
               "});"
             ]
           }
@@ -38,7 +38,7 @@
         "header": [
           {
             "key": "x-mock-response-name",
-            "value": "user-created"
+            "value": "account-created"
           },
           {
             "key": "Content-Type",
@@ -46,12 +46,12 @@
           }
         ],
         "url": {
-          "raw": "{{userRegistrationMockUrl}}/users",
+          "raw": "{{accountRegistrationMockUrl}}/accounts",
           "host": [
-            "{{userRegistrationMockUrl}}"
+            "{{accountRegistrationMockUrl}}"
           ],
           "path": [
-            "users"
+            "accounts"
           ]
         },
         "body": {
@@ -61,7 +61,7 @@
       }
     },
     {
-      "name": "Create user: 400 on invalid input",
+      "name": "Create account: 400 on invalid input",
       "event": [
         {
           "listen": "test",
@@ -92,7 +92,7 @@
         "header": [
           {
             "key": "x-mock-response-name",
-            "value": "user-invalid"
+            "value": "account-invalid"
           },
           {
             "key": "Content-Type",
@@ -100,12 +100,12 @@
           }
         ],
         "url": {
-          "raw": "{{userRegistrationMockUrl}}/users",
+          "raw": "{{accountRegistrationMockUrl}}/accounts",
           "host": [
-            "{{userRegistrationMockUrl}}"
+            "{{accountRegistrationMockUrl}}"
           ],
           "path": [
-            "users"
+            "accounts"
           ]
         },
         "body": {
@@ -115,7 +115,7 @@
       }
     },
     {
-      "name": "Create user: 409 when email is taken",
+      "name": "Create account: 409 when email is taken",
       "event": [
         {
           "listen": "test",
@@ -140,7 +140,7 @@
         "header": [
           {
             "key": "x-mock-response-name",
-            "value": "user-email-taken"
+            "value": "account-email-taken"
           },
           {
             "key": "Content-Type",
@@ -148,12 +148,12 @@
           }
         ],
         "url": {
-          "raw": "{{userRegistrationMockUrl}}/users",
+          "raw": "{{accountRegistrationMockUrl}}/accounts",
           "host": [
-            "{{userRegistrationMockUrl}}"
+            "{{accountRegistrationMockUrl}}"
           ],
           "path": [
-            "users"
+            "accounts"
           ]
         },
         "body": {
@@ -163,7 +163,7 @@
       }
     },
     {
-      "name": "Get user: 200 OK",
+      "name": "Get account: 200 OK",
       "event": [
         {
           "listen": "test",
@@ -173,13 +173,13 @@
               "pm.test(\"Status is 200\", function () {",
               "    pm.response.to.have.status(200);",
               "});",
-              "pm.test(\"Body is a user without a password\", function () {",
-              "    const user = pm.response.json();",
-              "    pm.expect(user.id).to.match(/^[0-9a-f-]{36}$/);",
-              "    pm.expect(user.email).to.eql(\"anna.jensen@example.com\");",
-              "    pm.expect(user).to.have.property(\"firstName\");",
-              "    pm.expect(user).to.have.property(\"lastName\");",
-              "    pm.expect(user).to.not.have.property(\"password\");",
+              "pm.test(\"Body is an account without a password\", function () {",
+              "    const account = pm.response.json();",
+              "    pm.expect(account.id).to.match(/^[0-9a-f-]{36}$/);",
+              "    pm.expect(account.email).to.eql(\"anna.jensen@example.com\");",
+              "    pm.expect(account).to.have.property(\"firstName\");",
+              "    pm.expect(account).to.have.property(\"lastName\");",
+              "    pm.expect(account).to.not.have.property(\"password\");",
               "});"
             ]
           }
@@ -190,23 +190,23 @@
         "header": [
           {
             "key": "x-mock-response-name",
-            "value": "user-found"
+            "value": "account-found"
           }
         ],
         "url": {
-          "raw": "{{userRegistrationMockUrl}}/users/3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c",
+          "raw": "{{accountRegistrationMockUrl}}/accounts/3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c",
           "host": [
-            "{{userRegistrationMockUrl}}"
+            "{{accountRegistrationMockUrl}}"
           ],
           "path": [
-            "users",
+            "accounts",
             "3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c"
           ]
         }
       }
     },
     {
-      "name": "Get user: 404 when unknown",
+      "name": "Get account: 404 when unknown",
       "event": [
         {
           "listen": "test",
@@ -231,16 +231,16 @@
         "header": [
           {
             "key": "x-mock-response-name",
-            "value": "user-not-found"
+            "value": "account-not-found"
           }
         ],
         "url": {
-          "raw": "{{userRegistrationMockUrl}}/users/00000000-0000-0000-0000-000000000000",
+          "raw": "{{accountRegistrationMockUrl}}/accounts/00000000-0000-0000-0000-000000000000",
           "host": [
-            "{{userRegistrationMockUrl}}"
+            "{{accountRegistrationMockUrl}}"
           ],
           "path": [
-            "users",
+            "accounts",
             "00000000-0000-0000-0000-000000000000"
           ]
         }

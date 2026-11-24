@@ -14,35 +14,35 @@ environments/local|ci|azure.postman_environment.json
 
 Secrets never go in an environment file. They go in GitHub Actions secrets.
 
-## Mock server: user registration
+## Mock server: account registration
 
-Creating users isn't built yet, so a Postman Mock Server stands in for it. Services and the UI can be built against it now.
+Creating accounts isn't built yet, so a Postman Mock Server stands in for it. Services and the UI can be built against it now.
 
 | Request | Example (`x-mock-response-name`) | Response |
 |---|---|---|
-| `POST /users` | `user-created` | 201, the new user and a `Location` header |
-| `POST /users` | `user-invalid` | 400, ProblemDetails with the invalid fields in `errors` |
-| `POST /users` | `user-email-taken` | 409, ProblemDetails |
-| `GET /users/{id}` | `user-found` | 200, the user (never the password) |
-| `GET /users/{id}` | `user-not-found` | 404, ProblemDetails |
+| `POST /accounts` | `account-created` | 201, the new account and a `Location` header |
+| `POST /accounts` | `account-invalid` | 400, ProblemDetails with the invalid fields in `errors` |
+| `POST /accounts` | `account-email-taken` | 409, ProblemDetails |
+| `GET /accounts/{id}` | `account-found` | 200, the account (never the password) |
+| `GET /accounts/{id}` | `account-not-found` | 404, ProblemDetails |
 
 Without the header, Postman picks the example that best matches the request.
 
 **Create the mock server once** (it lives in a Postman account, so a person does this):
-1. In Postman: **Import** → `mocks/user-registration.mock.postman_collection.json`.
-2. Right-click the collection: **More → Create mock server**. Name it `FitLife user registration`, leave **Make mock server private** unticked (the data is made up, so CI needs no Postman API key), and create it.
-3. Copy the mock URL (`https://<id>.mock.pstmn.io`) and put it in `userRegistrationMockUrl` in all three files in `environments/`.
+1. In Postman: **Import** → `mocks/account-registration.mock.postman_collection.json`.
+2. Right-click the collection: **More → Create mock server**. Name it `FitLife account registration`, leave **Make mock server private** unticked (the data is made up, so CI needs no Postman API key), and create it.
+3. Copy the mock URL (`https://<id>.mock.pstmn.io`) and put it in `accountRegistrationMockUrl` in all three files in `environments/`.
 
 The mock server exists: `https://688e6cb8-8645-488f-922d-b533f91aec84.mock.pstmn.io` (in Lucas's Workspace). The steps above are only needed if it is ever recreated.
 
-A service that calls the mock gets the URL through configuration, never in code, e.g. `UserRegistration__BaseUrl=https://<id>.mock.pstmn.io`.
+A service that calls the mock gets the URL through configuration, never in code, e.g. `AccountRegistration__BaseUrl=https://<id>.mock.pstmn.io`.
 
 When you change the mock: edit the examples in Postman, export the collection (v2.1) over the file in `mocks/`, and update the mock tests to match. The tests assert status codes, headers and bodies, never response times: the mock server is on the internet, so its timing depends on the network, not on our code (`tools/ci/api-tests.test.sh` checks this, #135). Watch the Postman plan's monthly mock-call limit. If it gets tight, run the mock tests on PRs only.
 
 ## Running
 
 ```bash
-npx newman run tests/postman/mocks/user-registration.mock-tests.postman_collection.json \
+npx newman run tests/postman/mocks/account-registration.mock-tests.postman_collection.json \
   -e tests/postman/environments/local.postman_environment.json
 ```
 

@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    RabbitMQ events between services (#190): the event types from contracts/events/, a publisher and a consumer.
+    The only project that references RabbitMQ.Client, so every service uses the same exchange, format and headers.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <!-- Shared code has its own version (docs/CSHARP_SETUP_TODO.md section 1), raised when it changes -->
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="RabbitMQ.Client" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The correlation ID goes in the message headers (#19) -->
+    <ProjectReference Include="$(RepoRoot)libs/FitLife.Correlation/FitLife.Correlation.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -56,11 +56,10 @@ One context = one service in `src/<Service>/` = one database. Each context gets 
 | Context | Service | Subdomain(s) | Owns data about | Key terms (see `GLOSSARY.md`) | Phase |
 |---|---|---|---|---|---|
 | Booking | `BookingService` | Class scheduling and booking (core) | Centres, class types, class sessions, reservations, waitlist entries | Hold, Holdtype, Booking, Ventelisteplads, Instruktør | NOW |
-| Training | `TrainingService` | Personal training (core) | Programmes, training sessions, notes | PT-forløb, Træningspas, Personlig træner | NEXT |
+| Training | `TrainingService` | Personal training (core); consent for health data | Programmes, training sessions, notes; consents and the access log for health data | PT-forløb, Træningspas, Personlig træner, Samtykke | NEXT |
 | Membership | `MembershipService` | Membership administration | Members, memberships, membership types | Medlem, Medlemskab, Medlemstype | NOW |
 | Notification | `NotificationService` | Member communication | Notification preferences, sent notifications | Notifikation | NOW |
 | Identity | `IdentityService` | Identity and access | Accounts, roles | Konto, Rolle | NOW (minimal) |
-| Consent | – | Consent for health data | Consents and the access log for health data | Samtykke | With Training |
 | Access | – | Access control | Key fobs, check-ins | Adgangsbrik, Check-in | NEXT |
 | Engagement | – | Engagement | Challenges, groups, points | – | LATER |
 
@@ -70,6 +69,8 @@ Other contexts refer to a member only by `MemberId`.
 
 **Sign-up takes two steps.** A person first creates a `Konto` in Identity, and then joins in Membership with the token. Membership keeps the account's id from the token on the `Medlem`. The password never passes through Membership, and no event is needed.
 
+**From token to member.** The token carries the account's id and roles, not the `MemberId`. A service that needs the member asks Membership by account id (section 4) and stores the `MemberId` it gets back.
+
 ## 4. Relations
 
 Patterns [M4.01 p. 10]: Customer–Supplier, Open Host Service, Anticorruption Layer (ACL), Separate Ways.
@@ -78,7 +79,7 @@ Patterns [M4.01 p. 10]: Customer–Supplier, Open Host Service, Anticorruption L
 |---|---|---|---|---|
 | Finance system and payment provider | Membership | ACL | REST + callback. A Postman Mock Server in the PoC [PB p. 9] | External systems outside FitLife Digital. Their names and data model stay outside ours |
 | Identity | All services | Open Host Service | JWT with roles as claims [M10.03] | Every service checks the same token in the same way |
-| Membership | Booking | Open Host Service | REST: "is this member active?" when a reservation is made | Several contexts need the same answer. Synchronous, so nobody books on a membership that just ended (group choice, DDD_PLAN step 7) |
+| Membership | Booking; Access (NEXT) | Open Host Service | REST, when a reservation is made or a door asks: the caller sends the account id from the token, and the answer is the `MemberId` and whether the membership is active | Several contexts need the same answer. Synchronous, so nobody books on a membership that just ended (group choice, DDD_PLAN step 7) |
 | Membership | Booking | Customer–Supplier | Events: `MembershipPaused`, `MembershipCancelled` | Booking cancels future reservations without Membership knowing what a reservation is |
 | Booking | Notification | Customer–Supplier | Events | A reservation must not wait for a message to be sent. Notification follows what Booking publishes |
 | Membership | Notification | Customer–Supplier | Events | Same reason |

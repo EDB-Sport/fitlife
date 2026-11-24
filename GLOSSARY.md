@@ -36,7 +36,7 @@ People and agents use these words, and only these words, in code, tests, issues,
 | Personlig træner | A trainer in a personal training programme with one member (NEXT) | `PersonalTrainer` | Person | Training | Entity | Instructor, Coach, PT |
 | Træningspas | One completed training session in a personal training programme (NEXT) | `TrainingSession` | ExerciseAction | Training | Entity | Session, Workout, Visit |
 | PT-forløb | A personal training programme: one member's series of training sessions with their personal trainer, with follow-up (NEXT) | `TrainingProgram` | ExercisePlan | Training | Aggregate root | Course, Plan, Package |
-| Samtykke | A member's permission to share their training and health data with a trainer or an external app. It can be withdrawn (principle P4 in the target architecture; designed with Training) | `Consent` | – | Consent | Aggregate root | Permission, Approval, Acceptance |
+| Samtykke | A member's permission to share their training and health data with a trainer or an external app. It can be withdrawn (principle P4 in the target architecture) | `Consent` | – | Training | Aggregate root | Permission, Approval, Acceptance |
 | Adgangsbrik | The key fob a member uses to get into a centre. Today the 2012 system handles the key fobs [PB p. 4] (NEXT) | `KeyFob` | – | Access | Entity | Key card, Tag, Badge |
 | Check-in | One registered entry of a member into a centre (NEXT) | `CheckIn` | CheckInAction | Access | Entity | Visit, Entry, Scan |
 | Notifikation | One message to one member about something that happened, with its delivery log | `Notification` | – | Notification | Aggregate root | Message, Alert, Push |

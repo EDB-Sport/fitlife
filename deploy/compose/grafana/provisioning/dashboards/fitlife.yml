@@ -1,0 +1,13 @@
+# Loads every dashboard JSON in fitlife/ into the FitLife folder. Change a dashboard by changing
+# its JSON in a PR; edits made in the Grafana UI can't be saved over a provisioned dashboard.
+apiVersion: 1
+
+providers:
+  - name: fitlife
+    folder: FitLife
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards/fitlife

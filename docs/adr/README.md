@@ -9,3 +9,6 @@ Planned first ADRs (`../CSHARP_SETUP_TODO.md`, suggested order step 1):
 | 001-monorepo | All services in one repo, instead of the course's one repo per service |
 | 002-azure-container-instances | Production on Azure Container Instances, one container group |
 | 003-blazor-render-mode | Static and Interactive Server, not WebAssembly |
+| [004-pinned-image-versions](004-pinned-image-versions.md) | Pinned image versions instead of the course's `latest` (proposed) |
+| [005-nunit](005-nunit.md) | NUnit (IT-arkitektur) instead of Agil udvikling's MSTest (proposed) |
+| [006-kanban-and-review-signoff](006-kanban-and-review-signoff.md) | Kanban flow with milestones instead of Scrum sprints, and review signoff instead of pair programming (proposed) |

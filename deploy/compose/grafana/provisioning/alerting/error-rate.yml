@@ -51,6 +51,7 @@ groups:
         annotations:
           summary: 'booking-svc logged more than 5 errors in 5 minutes'
           description: 'Open the FitLife logs dashboard, pick booking-svc and level Error, then follow a CorrelationId.'
+          runbook_url: 'http://localhost:8080/grafana/d/fitlife-logs'
           __dashboardUid__: fitlife-logs
           __panelId__: '3'
       - uid: membership-svc-error-rate
@@ -94,6 +95,7 @@ groups:
         annotations:
           summary: 'membership-svc logged more than 5 errors in 5 minutes'
           description: 'Open the FitLife logs dashboard, pick membership-svc and level Error, then follow a CorrelationId.'
+          runbook_url: 'http://localhost:8080/grafana/d/fitlife-logs'
           __dashboardUid__: fitlife-logs
           __panelId__: '3'
       - uid: identity-svc-error-rate
@@ -137,6 +139,7 @@ groups:
         annotations:
           summary: 'identity-svc logged more than 5 errors in 5 minutes'
           description: 'Open the FitLife logs dashboard, pick identity-svc and level Error, then follow a CorrelationId.'
+          runbook_url: 'http://localhost:8080/grafana/d/fitlife-logs'
           __dashboardUid__: fitlife-logs
           __panelId__: '3'
       - uid: notification-svc-error-rate
@@ -180,5 +183,6 @@ groups:
         annotations:
           summary: 'notification-svc logged more than 5 errors in 5 minutes'
           description: 'Open the FitLife logs dashboard, pick notification-svc and level Error, then follow a CorrelationId.'
+          runbook_url: 'http://localhost:8080/grafana/d/fitlife-logs'
           __dashboardUid__: fitlife-logs
           __panelId__: '3'

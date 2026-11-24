@@ -10,7 +10,7 @@ internet --HTTPS 443--> caddy --:80--> nginx --/api/<context>/--> service       
 
 | Container | Port inside the group | Notes |
 |---|---|---|
-| `caddy` | 443 (public), 8081 | Let's Encrypt certificate for `<dnsNameLabel>.<region>.azurecontainer.io`, kept on the `caddy-data` file share. Only 443 is public: `http://` is not answered. |
+| `caddy` | 443 (public), 8081 | Let's Encrypt certificate for `edb-fitlife.switzerlandnorth.azurecontainer.io`, kept on the `caddy-data` file share. Only 443 is public: `http://` is not answered. |
 | `nginx` | 80 | The same template as compose: `deploy/compose/nginx/default.conf.template`, mounted as a secret volume. |
 | `<context>-svc` | 5001 booking, 5002 membership, 5003 identity | One service in the thin slice (`serviceContext`). The others' routes answer 502. |
 | `member-portal` | 5101 | The Blazor UI. |

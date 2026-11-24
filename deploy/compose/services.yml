@@ -1,0 +1,22 @@
+# Services group: the Nginx gateway, and the services and UIs as they are built (#18, #8).
+# The gateway is the only entry point: http://localhost:8080 (GATEWAY_PORT in .env).
+services:
+  gateway:
+    image: nginx:1.30.7-alpine
+    environment:
+      # Rendered into nginx/default.conf.template by the image's envsubst at start.
+      # In compose a service is reached by its container name; in Azure by http://127.0.0.1:<port> (section 9a).
+      NGINX_RESOLVER: 127.0.0.11 # Docker's internal DNS
+      BOOKING_URL: http://booking-svc:8080
+      MEMBERSHIP_URL: http://membership-svc:8080
+      IDENTITY_URL: http://identity-svc:8080
+      GRAFANA_URL: http://grafana:3000 # monitoring.yml
+    volumes:
+      - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+    ports:
+      - "${GATEWAY_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10

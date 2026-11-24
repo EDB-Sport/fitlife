@@ -1,0 +1,14 @@
+# The Loki datasource. LOKI_URL is set on the Grafana container: http://loki:3100 in compose,
+# http://127.0.0.1:3100 in Azure. The uid is fixed, so dashboards and alert rules can refer to it.
+apiVersion: 1
+
+datasources:
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: ${LOKI_URL}
+    isDefault: true
+    editable: false
+    jsonData:
+      maxLines: 1000

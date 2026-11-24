@@ -28,6 +28,15 @@ expect() {
   fi
 }
 
+# One compile error fails build only: format and test wait for it and are skipped (issue #134).
+# The job names stay the same, so required checks keep working.
+for job in build format test; do
+  expect "ci.yml has a $job job" test -n "$(job_block "$job")"
+done
+for job in format test; do
+  expect "$job runs only after build" grep -qE '^    needs: \[?build\]?$' <<<"$(job_block "$job")"
+done
+
 build_rules=$(job_block build-rules)
 
 expect "ci.yml runs on pull requests" grep -qE '^  pull_request:' "$ci"

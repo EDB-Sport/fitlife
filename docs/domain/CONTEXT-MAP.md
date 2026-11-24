@@ -1,7 +1,6 @@
 # Context map: FitLife Digital
 
-> **Status: proposed, not decided.** Draft for the group session on issue #2. The answers below are Jesper's proposal (2026-11-23) and must be confirmed by the group. Nothing here is decided until ADR 007 says `accepted`. Open questions: [ADR 007](../adr/007-bounded-contexts.md#questions-for-the-group-session).
-> **Agents:** don't build on rows marked with an open question (Q5, Q6, Q8–Q12). Which context the PoC builds first is decided in #18, not here.
+> **Status:** follows [ADR 007](../adr/007-bounded-contexts.md), which holds the reasons and the alternatives.
 > This file is a **group decision**. To change it, open an issue and write an ADR (`METHODOLOGY.md` section 11).
 > Method: IT-arkitektur M4, *Læringsguide M4.01* (its examples use the course's practice company HaaV; we apply the method to FitLife) and the worksheet *HaaV-domænemodel (Skabelon)*.
 
@@ -15,7 +14,7 @@ Agents: keep these apart. Most wrong code comes from mixing them.
 |---|---|---|
 | The case (AS-IS) | What does FitLife have today? | A membership system from 2012 handles payment and key fobs [PB p. 4] |
 | The target architecture (TO-BE) | What have we decided FitLife should have? | Our own Membership and Access contexts, built from scratch. The 2012 system is retired after a one-time migration of the members |
-| The PoC | What actually runs in our code? | No 2012 system and no integration with it. Members are created in our own Membership service; until it exists, a Postman Mock Server stands in for member registration (#35; Q11) |
+| The PoC | What actually runs in our code? | Our own services, starting with `BookingService`. Everything outside FitLife Digital is a mock: the payment provider and the finance system on a Postman Mock Server [PB p. 9], the messaging channels (mocked or only logged) and wearables (a mock at most). No 2012 system. Until Identity exists, the mock in `tests/postman/mocks/` stands in for account registration |
 
 ## 1. Core capability and core subdomains
 
@@ -27,42 +26,37 @@ Agents: keep these apart. Most wrong code comes from mixing them.
 | Hard to copy | Yes | It lives in people and local relationships. The competitors win on price and opening hours [I1, I2] |
 | Supports the strategy directly | Yes | The hybrid model must support community, motivation and flexibility "uden at fjerne det menneskelige aspekt" [PB p. 4] |
 
-**Core subdomains (Q1, option A, as in the target architecture from part 1):** class scheduling and booking, and personal training. That is the maximum of two [M4.01 p. 5].
+**Core subdomains (as in the target architecture from part 1):** class scheduling and booking, and personal training. That is the maximum of two [M4.01 p. 5].
 
 **The reverse test** [M4.01 p. 4]: if FitLife did this as well as everyone else, would anyone still choose FitLife? For personal training, clearly yes. For booking, the answer only holds if the argument is the local class with a known instructor, not the booking software: competitors already offer booking in an app [I1]. The report must make that argument. Options B and C and why they were not chosen are in ADR 007.
 
 ## 2. Subdomains
 
-**Build or integrate** follows the group's line (proposal, Q8): we build FitLife Digital ourselves with the tools from the courses and from Azure, and buy nothing at this stage. What lies outside FitLife Digital, such as the finance system, is integrated. This conflicts with principle P5 in the target architecture from part 1, which says that payment, key fobs and messaging channels are bought or integrated. Q8 settles it.
+**Build or integrate** follows principle P5 in the target architecture from part 1: we build what sets FitLife apart, and buy or integrate the rest through open interfaces. P5 names payment, key fobs, messaging channels and streaming as bought or integrated. In the PoC we build our own services and mock everything external, so a whole flow can be shown without a real supplier (the PoC row in "Three kinds of truth").
 
 | Subdomain | Responsibility | Type | Build / integrate | Why |
 |---|---|---|---|---|
 | Class scheduling and booking | One class schedule for all six centres; book, cancel, join a waitlist | Core | Build | The local class with a known instructor. Also the informants' biggest shared pain point [I1–I4] |
 | Personal training | Programmes, sessions and follow-up between a member and their personal trainer | Core | Build | The relationship with the trainer is the core capability. Today the data lives in each trainer's own Excel sheet [PB p. 4; I2, I3] |
 | Membership administration | Join, pause, change and cancel a membership digitally | Supporting | Build from scratch | Replaces the 2012 system's membership part [PB p. 4]. The informants ask for pause and flexible memberships [I3, I4], which the single membership type doesn't offer [PB p. 3] |
-| Access control | Who may enter a centre: key fobs and check-ins | Supporting | Build from scratch (NEXT) | Replaces the 2012 system's key fob part [PB p. 4], so the new platform can at least do what the old one did. The door hardware asks Access; it is not part of our model |
+| Access control | Who may enter a centre: key fobs and check-ins | Supporting | Build the access rules; integrate the door and key fob system (NEXT) | Replaces the 2012 system's key fob part [PB p. 4], so the new platform can at least do what the old one did. Our context holds who may enter and the check-ins. The door and key fob system is bought or integrated (P5) and asks Access |
 | Consent for health data | Members' consent to share training and health data, and a log of who saw it | Supporting | Build together with personal training; minimal in the PoC | Pulse and weight are health data [PB p. 4]. Principle P4 in the target architecture |
-| Member communication | Tell the right members about cancellations and changes | Supporting | Build simply | Who gets a message follows from the bookings. How SMS and e-mail are sent is open; in the PoC messages are only logged |
-| Identity and access | Log-in, roles and tokens | Generic | Build simply ourselves | Our own `IdentityService` with JWT, as taught in IT-arkitektur M10 [M10.03]. Small in the PoC. No MitID |
-| Payment and finance | Charging the membership fee, accounting | Generic | Integrate (external) | Outside FitLife Digital. FitLife's finance system and a payment provider; mocked in the PoC |
+| Member communication | Tell the right members about cancellations and changes | Supporting | Build the service; integrate the channels | Who gets a message follows from the bookings. SMS, e-mail and push are external channels (P5); in the PoC they are mocked or only logged |
+| Identity and access | Log-in, roles and tokens | Generic | Build simply ourselves | Our own `IdentityService` with JWT, as taught in IT-arkitektur M10 [M10.03]. Small in the PoC: test users and roles |
+| Payment and finance | Charging the membership fee, accounting | Generic | Integrate (external) | Outside FitLife Digital (P5). FitLife's finance system and a payment provider; mocked in the PoC with a Postman Mock Server [PB p. 9] |
 | Insight | Reports on bookings, attendance and churn per centre | Supporting | Build simply, later | Built on data the other contexts already create |
 | Engagement | Challenges, groups and points | Supporting | Later | From the case's idea for FitLife Digital [PB p. 5]; not in the first phases |
 
 At most two subdomains are core: "hvis alt er core, er intet core" [M4.01 p. 5].
 
-### Not in this version (deliberate choice)
-
-- **Live-streamed and on-demand classes and videos.** The case's idea for FitLife Digital includes them [PB p. 5], and the online classes during corona were "overraskende populært" [PB p. 3]. We leave them out because the core capability is the relationship with trainers and instructors in the centre, and the first versions strengthen that. Streaming and video content are a separate effort. (Proposed reason, the group confirms the wording.)
-- **MitID.** Not part of the target architecture or the PoC.
-
 ## 3. Bounded contexts
 
-One context = one service in `src/<Service>/` = one database. Each context gets its own `src/<Service>/CONTEXT.md` (DDD_PLAN step 3). Phase: NOW = the first phase; NEXT and LATER = later phases (from the TO-BE context document). The phases are a proposal. **What the PoC builds, and in which order, is decided in #18** (Q7).
+One context = one service in `src/<Service>/` = one database. Each context gets its own `src/<Service>/CONTEXT.md` (DDD_PLAN step 3). Phase: NOW = the first phase; NEXT and LATER = later phases (from the TO-BE context document). The PoC starts with `BookingService`; each further service gets its own issue.
 
 | Context | Service | Subdomain(s) | Owns data about | Key terms (see `GLOSSARY.md`) | Phase |
 |---|---|---|---|---|---|
 | Booking | `BookingService` | Class scheduling and booking (core) | Centres, class types, class sessions, reservations, waitlist entries | Hold, Holdtype, Booking, Ventelisteplads, Instruktør | NOW |
-| Training | `TrainingService` | Personal training (core) | Programmes, training sessions, notes | PT-forløb, Træningspas, Personlig træner | NEXT (#18 decides) |
+| Training | `TrainingService` | Personal training (core) | Programmes, training sessions, notes | PT-forløb, Træningspas, Personlig træner | NEXT |
 | Membership | `MembershipService` | Membership administration | Members, memberships, membership types | Medlem, Medlemskab, Medlemstype | NOW |
 | Notification | `NotificationService` | Member communication | Notification preferences, sent notifications | Notifikation | NOW |
 | Identity | `IdentityService` | Identity and access | Accounts, roles | Konto, Rolle | NOW (minimal) |
@@ -70,9 +64,11 @@ One context = one service in `src/<Service>/` = one database. Each context gets 
 | Access | – | Access control | Key fobs, check-ins | Adgangsbrik, Check-in | NEXT |
 | Engagement | – | Engagement | Challenges, groups, points | – | LATER |
 
-**Not bounded contexts:** the member app and web, the trainer portal, the API gateway and the MCP server are channels or platform components. They hold no business rules and call the services above (principle PA3 in the TO-BE context document). The MCP server is LATER and not part of the MVP (Q9).
+**Not bounded contexts:** the member app and web, the trainer portal, the API gateway and the MCP server are channels or platform components. They hold no business rules and call the services above (principle PA3 in the TO-BE context document). The MCP server lets a member's AI assistant use our API. It is LATER in the target architecture; whether the PoC shows it is its own issue.
 
 Other contexts refer to a member only by `MemberId`.
+
+**Sign-up takes two steps.** A person first creates a `Konto` in Identity, and then joins in Membership with the token. Membership keeps the account's id from the token on the `Medlem`. The password never passes through Membership, and no event is needed.
 
 ## 4. Relations
 
@@ -86,11 +82,12 @@ Patterns [M4.01 p. 10]: Customer–Supplier, Open Host Service, Anticorruption L
 | Membership | Booking | Customer–Supplier | Events: `MembershipPaused`, `MembershipCancelled` | Booking cancels future reservations without Membership knowing what a reservation is |
 | Booking | Notification | Customer–Supplier | Events | A reservation must not wait for a message to be sent. Notification follows what Booking publishes |
 | Membership | Notification | Customer–Supplier | Events | Same reason |
-| Messaging channels (SMS, e-mail, push) | Notification | ACL | Logged only in the PoC | Their formats stay outside our model. How they are sent is open |
-| Wearables and health apps | Training | ACL | LATER. Direct import or through the MCP server is open (Q9) | Every vendor has its own data model |
+| Messaging channels (SMS, e-mail, push) | Notification | ACL | Mocked or only logged in the PoC | External channels (P5). Their formats stay outside our model |
+| Door and key fob system | Access | ACL | NEXT | Bought or integrated (P5). It asks Access who may enter; its data model stays outside ours |
+| Wearables and health apps | Training | ACL | LATER. Described in the report; a mock in the PoC at most | Every vendor has its own data model |
 | CRM module | – | Separate Ways | None | Used sporadically today [PB p. 4] and not part of this version |
 
-**The 2012 membership system has no relation at runtime.** Its members are migrated once into Membership during the transition (target architecture part 6). The migration is not part of the PoC.
+**The 2012 membership system has no relation at runtime.** Its members are migrated once into Membership during the transition (target architecture part 6). Membership and Access take over from it together, so a new member can always open the door; until then it keeps handling payment and key fobs [PB p. 4]. The migration is not part of the PoC.
 
 ```plantuml
 @startuml

@@ -1,7 +1,7 @@
 # Glossary: the ubiquitous language of FitLife Digital
 
 > Rules: `docs/METHODOLOGY.md` sections 6 and 11.
-> **Status: proposed** (issue #2). The rows below are the first terms the context map needs. Kinds are a first guess and are settled per context in DDD_PLAN step 4. Sources are explained at the top of `docs/domain/CONTEXT-MAP.md`.
+> The rows below are the first terms the context map needs (ADR 007). Kinds are a first guess and are settled per context in DDD_PLAN step 4. Sources are explained at the top of `docs/domain/CONTEXT-MAP.md`.
 
 People and agents use these words, and only these words, in code, tests, issues, PRs and prompts.
 
@@ -10,7 +10,7 @@ People and agents use these words, and only these words, in code, tests, issues,
 - **Add the term first.** A new domain concept gets its row in the same PR that introduces it, before or together with the code.
 - **One meaning per row.** If a word means different things in two bounded contexts, it gets two rows, one for each context. That's the language test from IT-arkitektur M4.
 - **Don't rename the columns.** The TEAM008 analyzer checks public types in `*.Models` against the **In code** column.
-- **Term is the Danish word the business uses** (proposed, Q5 in ADR 007, open). It is the word in the report, the user journey and conversations with FitLife. **In code** is the English name we use in C#, APIs and event names. Where a Danish Term is spelled like an English name in its own **Avoid** cell (Booking), Avoid means the name in code: the Danish text says *booking*, the code says `Reservation`.
+- **Term is the Danish word the business uses.** It is the word in the report, the user journey and conversations with FitLife. **In code** is the English name we use in C#, APIs and event names. Where a Danish Term is spelled like an English name in its own **Avoid** cell (Booking), Avoid means the name in code: the Danish text says *booking*, the code says `Reservation`.
 - **Avoid** lists the synonyms nobody may use for this concept. If an agent writes one of them, the reviewer asks for the glossary name.
 - **schema.org** is the type the English name is taken from (course rule #5). Write `–` if none fits.
 - **Kind** is one of: `Aggregate root`, `Entity`, `Value object`, `Domain event`, `Command`, `Query`, `Domain service`, or `Term` for a word that is not a type. A `Term` has `–` in **In code**; it gets a code name when it becomes a type.
@@ -22,7 +22,7 @@ People and agents use these words, and only these words, in code, tests, issues,
 | Medlem | A person with a membership at FitLife, identified by a member id | `Member` | Person | Membership | Aggregate root | User, Customer, Client, Kunde |
 | Medlemskab | A member's agreement with FitLife: membership type, status, start date and any binding period | `Membership` | ProgramMembership | Membership | Aggregate root | Subscription, Contract, Plan |
 | Medlemstype | The kind of membership offered. The case has exactly one today [PB p. 3]; more are a TO-BE choice | `MembershipType` | – | Membership | Value object | Plan, Tier, Product |
-| Medlemskabets tilstand | Where a membership is in its life: Afventer samtykke, Aktiv, Pause, Betaling mangler, Opsagt, Afsluttet. Only Aktiv gives access and the right to book. Afventer samtykke waits for a parent's approval of a member under 18 (TO-BE context document section 8, group choice). It is not the health-data consent in the row Samtykke (Q12 in ADR 007) | `MembershipStatus` | – | Membership | Value object | State, Phase, Active flag |
+| Medlemskabets tilstand | Where a membership is in its life: Aktiv, Pause, Betaling mangler, Opsagt, Afsluttet. Only Aktiv gives access and the right to book | `MembershipStatus` | – | Membership | Value object | State, Phase, Active flag |
 | Konto | The log-in identity of a person: user name, password hash and roles | `Account` | – | Identity | Aggregate root | User, Member, Login |
 | Rolle | What an account may do: Medlem, Træner or Admin, carried as a claim in the token | `Role` | Role | Identity | Value object | Permission, Group, UserType |
 | Center | One of FitLife's six centres [PB p. 3] | `Center` | ExerciseGym | Booking | Entity | Gym, Location, Club, Site |
@@ -50,7 +50,7 @@ People and agents use these words, and only these words, in code, tests, issues,
 
 ## Words that mean different things in different contexts
 
-From the language test, step 1 of `docs/DDD_PLAN.md`. Each line here points at a context boundary, except *hold* (see the note under the table). The references point to where the word is used in the interviews; the group checks them and adds quotes with informant code before the ADR is accepted.
+From the language test, step 1 of `docs/DDD_PLAN.md`. Each line here points at a context boundary, except *hold* (see the note under the table). The references point to where the word is used in the interviews. Checking them against the transcripts and adding quotes is #126.
 
 | Word | Meaning in context A | Meaning in context B | Names in code |
 |---|---|---|---|

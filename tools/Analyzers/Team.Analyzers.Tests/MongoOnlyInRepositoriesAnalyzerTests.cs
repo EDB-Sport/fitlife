@@ -23,6 +23,7 @@ public sealed class MongoOnlyInRepositoriesAnalyzerTests
             }
             public interface IMongoDatabase { IMongoCollection<T> GetCollection<T>(string name); }
             public interface IMongoCollection<T> { }
+            public static class Filters { }
         }
         namespace MongoDB.Driver.Linq
         {
@@ -181,6 +182,24 @@ public sealed class MongoOnlyInRepositoriesAnalyzerTests
                         _sessions = client.GetDatabase("booking").GetCollection<ClassSession>("sessions");
                     }
                 }
+            }
+            """;
+        return VerifyAsync(source);
+    }
+
+    // With a file-scoped namespace the usings sit outside it, but they belong to the repository file
+    [TestCase("using Db = MongoDB.Driver.IMongoDatabase;")]
+    [TestCase("using static MongoDB.Driver.Filters;")]
+    public Task FileLevelUsingInARepositoryFile_ReportsNothing(string usingDirective)
+    {
+        string source = $$"""
+            {{usingDirective}}
+
+            namespace BookingService.Repositories;
+
+            public class ClassSessionRepository
+            {
+                public ClassSessionRepository(MongoDB.Driver.IMongoDatabase database) { }
             }
             """;
         return VerifyAsync(source);

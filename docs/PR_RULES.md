@@ -17,7 +17,7 @@ Agents: `gh pr create --fill` and `--body` skip the template. Fill in `.github/p
 A review comment follows the verdict format from `docs/METHODOLOGY.md` section 3:
 
 ```
-Agent review: ACCEPT
+Agent review: approve
 
 - All acceptance criteria are met.
 - Tests express the behaviour correctly.
@@ -29,7 +29,7 @@ Reviewed at `a1b2c3d`
 For a rejection:
 
 ```
-Agent review: REJECT
+Agent review: request changes
 
 - The domain invariant is not protected by the aggregate root.
 - Tests do not fail when the rule is removed.

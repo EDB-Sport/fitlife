@@ -188,6 +188,9 @@
           "Microsoft.AspNetCore.Authentication.JwtBearer": "[10.0.15, )"
         }
       },
+      "fitlife.configuration": {
+        "type": "Project"
+      },
       "fitlife.correlation": {
         "type": "Project"
       },

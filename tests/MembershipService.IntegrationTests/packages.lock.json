@@ -654,6 +654,9 @@
           "Microsoft.AspNetCore.Authentication.JwtBearer": "[10.0.15, )"
         }
       },
+      "fitlife.configuration": {
+        "type": "Project"
+      },
       "fitlife.correlation": {
         "type": "Project"
       },
@@ -661,6 +664,7 @@
         "type": "Project",
         "dependencies": {
           "FitLife.Authentication": "[0.1.0, )",
+          "FitLife.Configuration": "[0.1.0, )",
           "FitLife.Correlation": "[0.1.0, )",
           "Microsoft.AspNetCore.OpenApi": "[10.0.15, )",
           "MongoDB.Driver": "[3.14.1, )",

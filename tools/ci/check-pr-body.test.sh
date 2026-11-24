@@ -138,6 +138,11 @@ Something.
 - [x] No existing test was changed or removed
 EOF
 
+# 14. Dependabot PRs are opened by a bot: no issue, no template (issue #281). Only that author is exempt.
+dependabot_body=$'Bumps the github-actions group with 1 update.\n\nUpdates `actions/checkout` from 4.4.0 to 5.0.0'
+PR_AUTHOR='dependabot[bot]' expect "Dependabot PR without the template passes" pass <<<"$dependabot_body"
+PR_AUTHOR='someone' expect "same body from a person still fails" fail "no linked issue" <<<"$dependabot_body"
+
 echo
 if [ "$failures" -eq 0 ]; then
   echo "All PR description checks work."

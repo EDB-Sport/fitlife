@@ -18,6 +18,8 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | Booking | A member's seat on one class session | `Reservation` |
 | Ventelisteplads | A member's place in the queue for a full class session | `WaitlistEntry` |
 | Medlem | Booking only knows the member's id | `MemberId` (a `Guid`) |
+| Booking oprettet | A member got a seat, directly or from the waitlist | `ReservationMade` |
+| Booking afmeldt | A member gave up their seat | `ReservationCancelled` |
 
 ## Aggregates
 

@@ -11,6 +11,7 @@ The project's own Roslyn rules (`docs/CSHARP_SETUP_TODO.md` section 4). Each rul
 
 | ID | Rule | Analyzer |
 |---|---|---|
+| TEAM001 | Types from `MongoDB.Driver` (and its sub-namespaces) are used only in a namespace whose last segment is `Repositories`. `MongoDB.Bson` attributes on models are allowed. | `MongoOnlyInRepositoriesAnalyzer` |
 | TEAM002 | No NLog API (`LogManager`, `NLog.Logger`, `NLog.ILogger`) outside `Program.cs`. Classes inject `ILogger<T>`. | `NlogOnlyInProgramAnalyzer` |
 | TEAM003 | An `ILogger` call (`Log`, `LogInformation`, …, `BeginScope`) whose template placeholders or arguments have a name containing `password`, `token`, `secret`, `connectionString`, `jwt` or `cpr` (any case). Log an id or a masked value instead. | `NoSecretsInLogsAnalyzer` |
 | TEAM004 | `#pragma warning disable` and `#nullable disable` end with `// #<issue>: <reason>` on the same line. `[SuppressMessage]` and `[UnconditionalSuppressMessage]` have `Justification = "#<issue>: <reason>"`. | `JustifiedSuppressionAnalyzer` |

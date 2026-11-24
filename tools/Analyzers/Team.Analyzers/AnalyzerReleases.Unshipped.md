@@ -6,6 +6,7 @@
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
 TEAM004 | Maintainability | Error | JustifiedSuppressionAnalyzer: suppressions must name an issue
+TEAM001 | Design | Error | MongoOnlyInRepositoriesAnalyzer: MongoDB.Driver types only in *.Repositories
 TEAM002 | Design | Error | NlogOnlyInProgramAnalyzer: NLog API only in Program.cs
 TEAM003 | Security | Error | NoSecretsInLogsAnalyzer: no secrets or personal data in log calls
 TEAM005 | Maintainability | Error | ReadabilityLimitsAnalyzer: no dynamic, goto, query syntax, nested ternaries or deeply nested lambdas

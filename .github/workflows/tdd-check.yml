@@ -6,10 +6,18 @@ name: tdd-check
 on:
   pull_request:
     branches: [develop, main]
-    types: [opened, synchronize, reopened, labeled, unlabeled] # adding or removing "refactor" re-runs the check
+    types: [opened, synchronize, reopened, labeled, unlabeled] # adding or removing "refactor" re-runs the check;
+    # any other label reports the last result again (tools/ci/tdd-check.sh, issue #136)
 
 permissions:
   contents: read
+  checks: read # a label event other than refactor reports the last tdd-check result again (issue #136)
+
+# A new push to a PR cancels its run in progress. A label run never cancels one: it may be the run that decides
+# the result its own run reports (issue #136).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: ${{ github.event.action != 'labeled' && github.event.action != 'unlabeled' }}
 
 jobs:
   tdd-check:
@@ -29,6 +37,10 @@ jobs:
         run: BASE_SHA=$(git rev-parse HEAD^1) tools/ci/tdd-check.sh
         env:
           PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          EVENT_ACTION: ${{ github.event.action }}
+          EVENT_LABEL: ${{ github.event.label.name }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ github.token }}
           TEST_CMD: dotnet test -c Release
           SRC_DIR: src/
           TEST_DIR: tests/
@@ -42,6 +54,10 @@ jobs:
         run: BASE_SHA=$(git rev-parse HEAD^1) tools/ci/tdd-check.sh
         env:
           PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          EVENT_ACTION: ${{ github.event.action }}
+          EVENT_LABEL: ${{ github.event.label.name }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ github.token }}
           TEST_CMD: dotnet test -c Release
           SRC_DIR: tools/Analyzers/Team.Analyzers/
           TEST_DIR: tools/Analyzers/Team.Analyzers.Tests/

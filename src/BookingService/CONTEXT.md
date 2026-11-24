@@ -1,7 +1,7 @@
 # Booking (`src/BookingService/`)
 
 > From `docs/templates/CONTEXT.md`. Keep it under about 80 lines, and update it in the same PR that changes the model.
-> **Status: invariants 1–3 modelled (#155–#157).** The context map (`docs/domain/CONTEXT-MAP.md`) is decided in ADR 007. The tactical model below is DDD_PLAN step 4; the rules come from the TO-BE-kontekst §8 (Booking). Each further invariant is its own issue.
+> **Status: invariants 1–4 modelled (#155–#158).** The context map (`docs/domain/CONTEXT-MAP.md`) is decided in ADR 007. The tactical model below is DDD_PLAN step 4; the rules come from the TO-BE-kontekst §8 (Booking). Each further invariant is its own issue.
 
 ## Purpose
 
@@ -28,7 +28,7 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | `ClassSession` | Aggregate root | Id, `Capacity`, the reservations, the waitlist |
 | `Reservation` | Entity, inside the aggregate | Made only by `ClassSession.Reserve` |
 | `Capacity` | Value object | At least 1 seat |
-| `WaitlistEntry` | Entity, inside the aggregate | Made only by `ClassSession.JoinWaitlist` |
+| `WaitlistEntry` | Entity, inside the aggregate | Made only by `ClassSession.JoinWaitlist`; becomes a `Reservation` when a seat is freed |
 
 ### Invariants
 
@@ -37,7 +37,7 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | 1 | The reservations never exceed the capacity | `ClassSessionTests.Reserve_WhenClassSessionIsFull_IsRejected` |
 | 2 | A member can't reserve the same class session twice | `ClassSessionTests.Reserve_WhenTheMemberAlreadyHasAReservation_IsRejected` |
 | 3 | A full class session offers a waitlist entry, first come first served | `ClassSessionTests.JoinWaitlist_WhenClassSessionIsFull_AddsWaitlistEntriesInTheOrderTheyWereMade`, `ClassSessionTests.JoinWaitlist_WithFreeSeats_IsRejected` |
-| 4 | A freed seat goes to the first waitlist entry | #158 |
+| 4 | A freed seat goes to the first waitlist entry | `ClassSessionTests.CancelReservation_OnAFullClassSession_GivesTheSeatToTheFirstWaitlistEntry`, `ClassSessionTests.CancelReservation_WithAnEmptyWaitlist_FreesTheSeat` |
 | 5 | Class sessions can be reserved at most 4 weeks ahead | #159 |
 | 6 | The waitlist closes 2 hours before start | #160 |
 | 7 | A cancellation under 2 hours before start is a late cancellation | #161 |
@@ -49,6 +49,9 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 |---|---|---|
 | Command | `ClassSession.Reserve(memberId)` | Returns `ReservationResult.Made`, `MemberAlreadyHasReservation` or `ClassSessionFull` |
 | Command | `ClassSession.JoinWaitlist(memberId)` | Returns `WaitlistResult.Joined` or `ClassSessionNotFull` |
+| Command | `ClassSession.CancelReservation(memberId)` | Returns `CancellationResult.Cancelled` or `NoReservation` |
+| Event | `ReservationCancelled` | Raised when a member gives up their seat |
+| Event | `ReservationMade` | Raised when the first waitlist entry gets the freed seat. Published later (#171 and after); the events wait in `ClassSession.DomainEvents` |
 
 ## Talks to
 

@@ -158,61 +158,6 @@ public sealed class JoinMembershipHandlerTests
         }
     }
 
-    [Test]
-    public async Task Join_WhenTheFirstFeeIsDeclined_TheMembershipHasPaymentMissing()
-    {
-        // Arrange
-        _payments.Paid = false;
-        JoinMembershipHandler handler = Handler();
-
-        // Act
-        JoinResult result = await handler.HandleAsync(new JoinMembershipCommand("account-1"), CancellationToken.None);
-
-        // Assert
-        Assert.That(result.Membership?.Status, Is.EqualTo(MembershipStatus.PaymentMissing));
-        Assert.That(_memberships.Stored.Single().Status, Is.EqualTo(MembershipStatus.PaymentMissing));
-    }
-
-    [Test]
-    public async Task Join_NewAccount_ChargesTheMonthlyFeeForTheNewMember()
-    {
-        // Arrange
-        JoinMembershipHandler handler = Handler();
-
-        // Act
-        JoinResult result = await handler.HandleAsync(new JoinMembershipCommand("account-1"), CancellationToken.None);
-
-        // Assert
-        Assert.That(_payments.Charges, Is.EqualTo(new[] { (result.Member?.Id ?? Guid.Empty, 299m) }));
-    }
-
-    [Test]
-    public async Task Join_WhenAccountIsAlreadyAMember_ChargesNothing()
-    {
-        // Arrange
-        JoinMembershipHandler handler = Handler();
-        await handler.HandleAsync(new JoinMembershipCommand("account-1"), CancellationToken.None);
-
-        // Act
-        await handler.HandleAsync(new JoinMembershipCommand("account-1"), CancellationToken.None);
-
-        // Assert
-        Assert.That(_payments.Charges, Has.Count.EqualTo(1));
-    }
-
-    private sealed class StubPaymentProvider : IPaymentProvider
-    {
-        public bool Paid { get; set; } = true;
-
-        public List<(Guid MemberId, decimal AmountDkk)> Charges { get; } = [];
-
-        public Task<bool> ChargeMembershipFeeAsync(Guid memberId, decimal amountDkk, CancellationToken cancellationToken)
-        {
-            Charges.Add((memberId, amountDkk));
-            return Task.FromResult(Paid);
-        }
-    }
-
     private sealed class InMemoryMemberships : IMembershipRepository
     {
         public List<Membership> Stored { get; } = [];

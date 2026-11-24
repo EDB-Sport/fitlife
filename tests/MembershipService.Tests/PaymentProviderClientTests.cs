@@ -17,10 +17,10 @@ public sealed class PaymentProviderClientTests
     public async Task Charge_WhenTheProviderApproves_IsPaid()
     {
         // Arrange
-        var provider = new StubProvider(HttpStatusCode.Created, """{ "charge_id": "ch_1001", "outcome": "approved" }""");
+        using var provider = new StubProvider(HttpStatusCode.Created, """{ "charge_id": "ch_1001", "outcome": "approved" }""");
 
         // Act
-        bool paid = await Client(provider).ChargeMembershipFeeAsync(MemberId, 299m, CancellationToken.None);
+        bool paid = await Charge(provider);
 
         // Assert
         Assert.That(paid, Is.True);
@@ -30,10 +30,10 @@ public sealed class PaymentProviderClientTests
     public async Task Charge_WhenTheProviderDeclines_IsNotPaid()
     {
         // Arrange
-        var provider = new StubProvider(HttpStatusCode.PaymentRequired, """{ "charge_id": "ch_1002", "outcome": "declined", "decline_code": "insufficient_funds" }""");
+        using var provider = new StubProvider(HttpStatusCode.PaymentRequired, """{ "charge_id": "ch_1002", "outcome": "declined", "decline_code": "insufficient_funds" }""");
 
         // Act
-        bool paid = await Client(provider).ChargeMembershipFeeAsync(MemberId, 299m, CancellationToken.None);
+        bool paid = await Charge(provider);
 
         // Assert
         Assert.That(paid, Is.False);
@@ -43,10 +43,10 @@ public sealed class PaymentProviderClientTests
     public async Task Charge_WhenTheProviderFails_IsNotPaid()
     {
         // Arrange
-        var provider = new StubProvider(HttpStatusCode.ServiceUnavailable, """{ "error": "service_unavailable" }""");
+        using var provider = new StubProvider(HttpStatusCode.ServiceUnavailable, """{ "error": "service_unavailable" }""");
 
         // Act
-        bool paid = await Client(provider).ChargeMembershipFeeAsync(MemberId, 299m, CancellationToken.None);
+        bool paid = await Charge(provider);
 
         // Assert
         Assert.That(paid, Is.False);
@@ -56,10 +56,10 @@ public sealed class PaymentProviderClientTests
     public async Task Charge_WhenTheProviderCannotBeReached_IsNotPaid()
     {
         // Arrange
-        var provider = new StubProvider(new HttpRequestException("connection refused"));
+        using var provider = new StubProvider(new HttpRequestException("connection refused"));
 
         // Act
-        bool paid = await Client(provider).ChargeMembershipFeeAsync(MemberId, 299m, CancellationToken.None);
+        bool paid = await Charge(provider);
 
         // Assert
         Assert.That(paid, Is.False);
@@ -69,10 +69,10 @@ public sealed class PaymentProviderClientTests
     public async Task Charge_PostsTheFeeInTheProvidersTermsToItsChargesApi()
     {
         // Arrange
-        var provider = new StubProvider(HttpStatusCode.Created, """{ "charge_id": "ch_1001", "outcome": "approved" }""");
+        using var provider = new StubProvider(HttpStatusCode.Created, """{ "charge_id": "ch_1001", "outcome": "approved" }""");
 
         // Act
-        await Client(provider).ChargeMembershipFeeAsync(MemberId, 299m, CancellationToken.None);
+        await Charge(provider);
 
         // Assert
         Assert.That(provider.Method, Is.EqualTo(HttpMethod.Post));
@@ -83,10 +83,10 @@ public sealed class PaymentProviderClientTests
         Assert.That(body.RootElement.GetProperty("currency").GetString(), Is.EqualTo("DKK"));
     }
 
-    private static PaymentProviderClient Client(StubProvider provider)
+    private static async Task<bool> Charge(StubProvider provider)
     {
-        var http = new HttpClient(provider) { BaseAddress = new Uri("https://payment-provider.test") };
-        return new PaymentProviderClient(http);
+        using var http = new HttpClient(provider, disposeHandler: false) { BaseAddress = new Uri("https://payment-provider.test") };
+        return await new PaymentProviderClient(http).ChargeMembershipFeeAsync(MemberId, 299m, CancellationToken.None).ConfigureAwait(false);
     }
 
     private sealed class StubProvider : HttpMessageHandler

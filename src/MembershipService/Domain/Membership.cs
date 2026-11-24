@@ -22,7 +22,7 @@ public sealed class Membership
     public MembershipType Type { get; }
 
     /// <summary>Where the membership is in its life.</summary>
-    public MembershipStatus Status { get; }
+    public MembershipStatus Status { get; private set; }
 
     /// <summary>The day the membership started.</summary>
     public DateOnly StartDate { get; }
@@ -37,6 +37,12 @@ public sealed class Membership
     public static Membership Start(Guid memberId, DateOnly startDate)
     {
         return new Membership(Guid.NewGuid(), memberId, MembershipType.Standard, MembershipStatus.Active, startDate);
+    }
+
+    /// <summary>The membership fee was not paid: the membership no longer gives access or the right to book.</summary>
+    public void MarkPaymentMissing()
+    {
+        Status = MembershipStatus.PaymentMissing;
     }
 
     /// <summary>Rebuilds a stored membership.</summary>

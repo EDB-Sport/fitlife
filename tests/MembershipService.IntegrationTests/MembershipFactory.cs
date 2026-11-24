@@ -17,7 +17,7 @@ public sealed class MembershipFactory(MongoDbFixture? mongo = null) : WebApplica
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("Jwt:SigningKey", TestTokens.SigningKey);
-        builder.ConfigureTestServices(services => services.AddSingleton<IPaymentProvider, AcceptingPaymentProvider>());
+        builder.ConfigureTestServices(services => services.AddSingleton<IPaymentProvider>(new AcceptingPaymentProvider()));
         if (mongo is not null)
         {
             builder.UseSetting("MongoDb:Host", mongo.Host);

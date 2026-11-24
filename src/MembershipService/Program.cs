@@ -5,6 +5,7 @@ using FitLife.Authentication;
 using FitLife.Correlation;
 using MembershipService.Api;
 using MembershipService.Application;
+using MembershipService.PaymentProvider;
 using MembershipService.Repositories;
 using NLog;
 using NLog.Web;
@@ -30,7 +31,9 @@ try
 
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddMongoRepositories();
-    builder.Services.AddSingleton<JoinMembershipHandler>();
+    builder.Services.AddOptions<MembershipFeeSettings>().BindConfiguration(MembershipFeeSettings.Section);
+    builder.Services.AddPaymentProvider();
+    builder.Services.AddScoped<JoinMembershipHandler>();
 
     WebApplication app = builder.Build();
 

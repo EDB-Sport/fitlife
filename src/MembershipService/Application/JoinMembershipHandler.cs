@@ -1,12 +1,23 @@
 using MembershipService.Domain;
+using Microsoft.Extensions.Options;
 
 namespace MembershipService.Application;
 
-/// <summary>Joins an account to FitLife: one member per account, with an active membership.</summary>
+/// <summary>
+/// Joins an account to FitLife: one member per account, with an active membership, and the first fee charged.
+/// A fee that isn't paid gives the membership Betaling mangler.
+/// </summary>
 /// <param name="members">The members.</param>
 /// <param name="memberships">The memberships.</param>
+/// <param name="payments">The payment provider, behind its anticorruption layer.</param>
+/// <param name="fee">The monthly fee.</param>
 /// <param name="clock">Today's date.</param>
-public sealed class JoinMembershipHandler(IMemberRepository members, IMembershipRepository memberships, TimeProvider clock)
+public sealed class JoinMembershipHandler(
+    IMemberRepository members,
+    IMembershipRepository memberships,
+    IPaymentProvider payments,
+    IOptions<MembershipFeeSettings> fee,
+    TimeProvider clock)
 {
     /// <summary>Joins the account, unless it is already a member.</summary>
     /// <param name="command">The account that joins.</param>
@@ -30,6 +41,14 @@ public sealed class JoinMembershipHandler(IMemberRepository members, IMembership
             // Another join for the same account got there first
             await memberships.RemoveAsync(membership.Id, cancellationToken).ConfigureAwait(false);
             return JoinResult.AlreadyAMember();
+        }
+
+        // Charged once the membership is stored, so a paid fee always has a membership
+        bool paid = await payments.ChargeMembershipFeeAsync(member.Id, fee.Value.MonthlyFeeDkk, cancellationToken).ConfigureAwait(false);
+        if (!paid)
+        {
+            membership.MarkPaymentMissing();
+            await memberships.SaveAsync(membership, cancellationToken).ConfigureAwait(false);
         }
 
         return JoinResult.Success(member, membership);

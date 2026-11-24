@@ -99,9 +99,10 @@
       },
       "MembershipStatus": {
         "enum": [
-          "Active"
+          "Active",
+          "PaymentMissing"
         ],
-        "description": "Medlemskabets tilstand: where a membership is in its life (TO-BE-kontekst §8). Only MembershipStatus.Active\ngives access and the right to book. The other states (Pause, Betaling mangler, Opsagt, Afsluttet) come with their issues."
+        "description": "Medlemskabets tilstand: where a membership is in its life (TO-BE-kontekst §8). Only MembershipStatus.Active\ngives access and the right to book. The other states (Pause, Opsagt, Afsluttet) come with their issues."
       },
       "ProblemDetails": {
         "type": "object",

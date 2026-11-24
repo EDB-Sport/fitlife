@@ -33,14 +33,16 @@ public static class RepositoryServiceCollectionExtensions
     {
         string connectionString = configuration["MongoDb:ConnectionString"]
             ?? throw new InvalidOperationException("Set MongoDb:ConnectionString.");
-        var url = new MongoUrl(connectionString);
-        var settings = MongoClientSettings.FromUrl(url);
+        // The URL names the user only; the password comes from its own setting (Vault). Put it in before the URL is parsed into
+        // settings, which reject a user without a password.
+        var url = new MongoUrlBuilder(connectionString);
         string? password = configuration["MongoDb:Password"];
-        if (!string.IsNullOrEmpty(password) && url.Username is not null)
+        if (!string.IsNullOrEmpty(password))
         {
-            settings.Credential = MongoCredential.CreateCredential(url.AuthenticationSource ?? url.DatabaseName ?? "admin", url.Username, password);
+            url.Password = password;
         }
 
+        var settings = MongoClientSettings.FromUrl(url.ToMongoUrl());
         return settings;
     }
 }

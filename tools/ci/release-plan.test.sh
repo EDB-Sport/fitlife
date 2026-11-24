@@ -44,6 +44,7 @@ plan release/1.1.0
 check "a changed service gets its tag" "tag bookingservice/v1.1.0"
 check "a changed service gets its images" "image example/bookingservice: 1.1.0 1.1 1 latest"
 check "a UI is named without .web" "tag memberportal/v0.2.0"
+check "a 0.y.z version gets no major-only image tag, as docker/metadata-action makes none" "image example/memberportal: 0.2.0 0.2 latest"
 check "the release gets its vx.y.z tag" "tag v1.1.0"
 check "an unchanged service is skipped" "membershipservice/v1.0.0 exists, skipped"
 check "an unchanged service gets no image" "image example/membershipservice" absent

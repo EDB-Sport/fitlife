@@ -78,7 +78,7 @@ public sealed class ClassSessionTests
         // Assert
         Assert.Multiple(() =>
         {
-            Assert.That(result, Is.EqualTo(ReservationResult.AlreadyReserved));
+            Assert.That(result, Is.EqualTo(ReservationResult.MemberAlreadyHasReservation));
             Assert.That(session.Reservations, Has.Count.EqualTo(1));
         });
     }
@@ -95,7 +95,7 @@ public sealed class ClassSessionTests
         ReservationResult result = session.Reserve(memberId);
 
         // Assert
-        Assert.That(result, Is.EqualTo(ReservationResult.AlreadyReserved));
+        Assert.That(result, Is.EqualTo(ReservationResult.MemberAlreadyHasReservation));
     }
 
     [TestCase(0)]

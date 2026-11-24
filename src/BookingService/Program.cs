@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using FitLife.Configuration;
 using FitLife.Correlation;
 using NLog;
 using NLog.Web;
@@ -7,7 +8,10 @@ using Scalar.AspNetCore;
 
 try
 {
-    var builder = WebApplication.CreateBuilder(args);
+    WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+    // Course rule #9: the secret/booking-svc secret from Vault (Vault:Address, Vault:Token), read through IConfiguration
+    await builder.Configuration.AddVaultAsync().ConfigureAwait(false);
 
     // Course rule #8: NLog → Loki, with the shared libs/nlog.config
     builder.Logging.ClearProviders();
@@ -16,7 +20,7 @@ try
     builder.Services.AddOpenApi();
     builder.Services.AddHealthChecks();
 
-    var app = builder.Build();
+    WebApplication app = builder.Build();
 
     // First, so every log line of the request carries its X-Correlation-ID
     app.UseMiddleware<CorrelationIdMiddleware>();
@@ -33,7 +37,7 @@ try
     // The startup line: which service and which release is running (the version is also a Loki label)
     if (app.Logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information))
     {
-        var version = typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        string? version = typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
         app.Logger.LogInformation("Starting {Service} {Version}", app.Environment.ApplicationName, version);
     }
 

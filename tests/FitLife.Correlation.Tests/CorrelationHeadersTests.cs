@@ -9,7 +9,7 @@ public sealed class CorrelationHeadersTests
     public void Write_DuringARequestWithAnId_PutsTheIdInTheHeaders()
     {
         // Arrange
-        using var scope = CorrelationContext.Begin(new ScopeCapturingLogger<CorrelationHeadersTests>(), "abc-123");
+        using IDisposable scope = CorrelationContext.Begin(new ScopeCapturingLogger<CorrelationHeadersTests>(), "abc-123");
         var headers = new Dictionary<string, object?>(StringComparer.Ordinal);
 
         // Act
@@ -29,7 +29,7 @@ public sealed class CorrelationHeadersTests
         };
 
         // Act
-        var id = CorrelationHeaders.Read(headers);
+        string? id = CorrelationHeaders.Read(headers);
 
         // Assert
         Assert.That(id, Is.EqualTo("abc-123"));
@@ -42,7 +42,7 @@ public sealed class CorrelationHeadersTests
         var headers = new Dictionary<string, object?>(StringComparer.Ordinal);
 
         // Act
-        var id = CorrelationHeaders.Read(headers);
+        string? id = CorrelationHeaders.Read(headers);
 
         // Assert
         Assert.That(id, Is.Null);

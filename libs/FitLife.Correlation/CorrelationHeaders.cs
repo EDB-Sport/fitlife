@@ -13,7 +13,7 @@ public static class CorrelationHeaders
     public static void Write(IDictionary<string, object?> headers)
     {
         ArgumentNullException.ThrowIfNull(headers);
-        var id = CorrelationContext.Current;
+        string? id = CorrelationContext.Current;
         if (id is not null)
         {
             headers[CorrelationContext.HeaderName] = id;
@@ -25,7 +25,7 @@ public static class CorrelationHeaders
     /// <returns>The ID, or null if the message has none.</returns>
     public static string? Read(IDictionary<string, object?>? headers)
     {
-        if (headers is null || !headers.TryGetValue(CorrelationContext.HeaderName, out var value))
+        if (headers is null || !headers.TryGetValue(CorrelationContext.HeaderName, out object? value))
         {
             return null;
         }

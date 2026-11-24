@@ -132,6 +132,67 @@ git -C "$repo" checkout --quiet -b feature/b develop && commit "$repo" b
 git -C "$repo" checkout --quiet -b feature/a feature/b && commit "$repo" a
 expect "bottom of a stack with the higher number passes" pass "" -- "$repo" develop feature/b 11 "$open_prs"
 
+# 12b. Numbers reversed, then develop merged into the bottom PR (issue #140, like #55 under #32): the
+#      bottom's head is no longer an ancestor of the other tip, but its own commits are all in it.
+repo=$(fixture)
+git -C "$repo" checkout --quiet -b feature/b develop && commit "$repo" b
+git -C "$repo" checkout --quiet -b feature/a feature/b && commit "$repo" a
+git -C "$repo" checkout --quiet develop && commit "$repo" later
+git -C "$repo" checkout --quiet feature/b && git -C "$repo" merge --quiet develop -m "Merge develop"
+expect "bottom of a reversed stack passes after develop is merged into it" pass "" -- \
+  "$repo" develop feature/b 11 "$open_prs"
+
+# expect_without <description> <text the output must not contain> -- <repo> <base> <head> <PR number> <open PRs>
+# The check must still fail (exit 1), but without <text> in its output (issue #116).
+expect_without() {
+  local description=$1 text=$2 out status
+  shift 3
+  out=$(run_check "$@")
+  status=$?
+  if [ "$status" -eq 1 ] && ! grep -qF -- "$text" <<<"$out"; then
+    echo "PASS  $description"
+  else
+    echo "FAIL  $description: expected fail without '$text', got exit $status"
+    sed 's/^/      /' <<<"$out"
+    failures=$((failures + 1))
+  fi
+}
+
+# 13. Siblings on one parent (issue #116, like #103 and #105 on #73): #10 and #11 are both built on #9.
+#     #11 fails for #9, its parent, with base advice. It also shares #9's commits with #10, but #10 is
+#     a sibling, not its parent: the check names #10 without telling the author to set the base to it.
+repo=$(fixture)
+git -C "$repo" checkout --quiet -b feature/c develop && commit "$repo" c
+git -C "$repo" checkout --quiet -b feature/a feature/c && commit "$repo" a
+git -C "$repo" checkout --quiet -b feature/b feature/c && commit "$repo" b
+sibling_prs=$'9 feature/c\n10 feature/a\n11 feature/b'
+expect "sibling stack: the parent still gets base advice" fail "set the base to feature/c" -- \
+  "$repo" develop feature/b 11 "$sibling_prs"
+expect "sibling stack: the sibling is named" fail "shares unmerged commits with #10" -- \
+  "$repo" develop feature/b 11 "$sibling_prs"
+expect_without "sibling stack: no base advice for the sibling" "set the base to feature/a" -- \
+  "$repo" develop feature/b 11 "$sibling_prs"
+
+# 14. The same siblings after the parent moved on (PR #120 review, reason 1). The graph alone can't
+#     tell #9 from #10, so the lower number is the source, as for parents: #9 keeps its base advice.
+git -C "$repo" checkout --quiet feature/c && commit "$repo" c2
+expect "sibling stack, parent moved: the parent still gets base advice" fail "set the base to feature/c" -- \
+  "$repo" develop feature/b 11 "$sibling_prs"
+expect "sibling stack, parent moved: the sibling is named" fail "shares unmerged commits with #10" -- \
+  "$repo" develop feature/b 11 "$sibling_prs"
+expect_without "sibling stack, parent moved: no base advice for the sibling" "set the base to feature/a" -- \
+  "$repo" develop feature/b 11 "$sibling_prs"
+
+# 15. A PR stacked on the checked one doesn't make its moved parent a sibling (PR #120 review, reason 2):
+#     #12 is built on #11, which is built on #9, and #9 moved on.
+repo=$(fixture)
+git -C "$repo" checkout --quiet -b feature/c develop && commit "$repo" c
+git -C "$repo" checkout --quiet -b feature/b feature/c && commit "$repo" b
+git -C "$repo" checkout --quiet -b feature/d feature/b && commit "$repo" d
+git -C "$repo" checkout --quiet feature/c && commit "$repo" c2
+expect "child of this PR open, parent moved: the parent still gets base advice" fail "set the base to feature/c" -- \
+  "$repo" develop feature/b 11 $'9 feature/c\n11 feature/b\n12 feature/d'
+
 echo
 if [ "$failures" -eq 0 ]; then
   echo "stack-check behaves as specified."

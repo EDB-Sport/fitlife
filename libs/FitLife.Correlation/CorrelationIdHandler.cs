@@ -10,7 +10,7 @@ public sealed class CorrelationIdHandler : DelegatingHandler
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var id = CorrelationContext.Current;
+        string? id = CorrelationContext.Current;
         if (id is not null && !request.Headers.Contains(CorrelationContext.HeaderName))
         {
             request.Headers.Add(CorrelationContext.HeaderName, id);

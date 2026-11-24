@@ -4,17 +4,25 @@
     <TargetFramework>net10.0</TargetFramework>
     <!-- The service's own version (METHODOLOGY section 2.1), raised on a release branch -->
     <Version>0.1.0</Version>
+    <!-- The OpenAPI contract, generated on build and committed; CI fails when it is stale (docs/CSHARP_SETUP_TODO.md section 8) -->
+    <OpenApiDocumentsDirectory>$(RepoRoot)contracts/openapi</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocumentsOptions>--file-name bookingservice</OpenApiGenerateDocumentsOptions>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Scalar.AspNetCore" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="NLog.Web.AspNetCore" />
     <PackageReference Include="NLog.Targets.Loki" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- Shared code: correlation ID middleware and handler (docs/CSHARP_SETUP_TODO.md section 7) -->
+    <ProjectReference Include="$(RepoRoot)libs/FitLife.Configuration/FitLife.Configuration.csproj" />
     <ProjectReference Include="$(RepoRoot)libs/FitLife.Correlation/FitLife.Correlation.csproj" />
   </ItemGroup>
 

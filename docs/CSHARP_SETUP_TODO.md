@@ -306,7 +306,7 @@ The project description's test terms map onto this as: *unit tests* = Unit, *int
   - **Results as evidence:** Newman runs with the `cli`, `junit` and `htmlextra` reporters (`newman-reporter-htmlextra`). CI uploads the HTML reports as build artifacts: those are the result tables and screenshots the report asks for.
 
   *Why:* the project description asks for exactly these four kinds of Postman evidence (integration, API, mock server, end-to-end), and the Agil udvikling course: most real bugs live in error paths, and a wrong status code should turn the build red just like a failing unit test.
-- [ ] **Stryker.NET mutation testing on PRs:** `dotnet stryker --since:origin/${{ github.base_ref }}` (usually `develop`), with `"thresholds": { "break": 60 }` in a code-owned `stryker-config.json`. Raise the threshold over time.
+- [ ] **Stryker.NET mutation testing on PRs:** `tools/ci/mutation.sh`: Stryker on the C# files changed since `origin/${{ github.base_ref }}` (usually `develop`), with `"thresholds": { "break": 60 }` in a code-owned `stryker-config.json`. Raise the threshold over time.
   *Why:* proves the tests catch changes to the code, which a coverage number alone doesn't. The project description still asks for coverage reports, so CI produces both (section 10, job 4). It also answers the course question "if you remove the rule from the model, does the test fail?" (M4.02) for every rule at once.
 - [ ] **Adopt the tdd-check workflow** (`.github/workflows/tdd-check.yml`):
   - `TEST_CMD="dotnet test -c Release"`
@@ -414,7 +414,7 @@ These follow `METHODOLOGY.md` §2.1, with one repo and a separate version per se
 
   *Why:* Git Flow merges the whole of `develop` into `main`, so every changed service has to be released together, or `main` would contain unreleased code.
 - [ ] **A release gate on PRs into `main`.** For each service, it fails unless:
-  - changes since the service's last tag mean its version has been raised
+  - changes since the service's last tag mean its version has been raised. A change is one in `src/<Service>/`, in a `libs/` project the service references (directly or through another `libs/` project), or in `Directory.Packages.props`, `Directory.Build.props`, `Directory.Build.targets` or `global.json` (#112)
   - a hotfix raises only PATCH, for only one service
   - if oasdiff reports a breaking change against the service's last tag, its MAJOR has been raised
 
@@ -477,7 +477,7 @@ The project description says the solution runs container-based, with monitoring,
 | 3 | format | `dotnet format --verify-no-changes --no-restore` |
 | 4 | test | `dotnet test -c Release --no-build --collect:"XPlat Code Coverage"`: NUnit unit tests, bUnit component tests, `WebApplicationFactory` (including the Scalar-in-production test), Testcontainers, event-schema tests, the NLog config tests, and the analyzer tests. Coverage comes from `coverlet.collector` in every test project, and ReportGenerator turns it into an HTML report, uploaded as an artifact |
 | 5 | tdd-check | section 6 |
-| 6 | mutation | `dotnet stryker --since:origin/<base branch>` |
+| 6 | mutation | `tools/ci/mutation.sh`: `dotnet stryker` with `--mutate` on each C# file changed since `origin/<base branch>`, on PRs only, with the break threshold from `stryker-config.json` and the HTML report as an artifact. Not Stryker's own `--since`: in solution mode Stryker 5.1 treats every changed file as a test file and drops a changed source file's mutants |
 | 7 | contract | OpenAPI stale check + oasdiff per service |
 | 8 | security | gitleaks, hadolint |
 | 9 | deploy-check | `docker compose -f deploy/compose/<each group> config -q`, `nginx -t` on the rendered Nginx template (run in the pinned nginx image), the `:latest` check (compose files and `main.bicepparam`), linting of Grafana dashboards and alert rules with Grafana's `gcx` CLI, `az bicep build` and `az bicep lint` on `deploy/azure/main.bicep` |

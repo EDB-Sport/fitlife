@@ -26,11 +26,11 @@ public sealed class HealthEndpointTests : IDisposable
     public async Task HealthEndpoint_ReturnsOkAndHealthy()
     {
         // Act
-        using var response = await _client.GetAsync(new Uri("/health", UriKind.Relative)).ConfigureAwait(false);
+        using HttpResponseMessage response = await _client.GetAsync(new Uri("/health", UriKind.Relative)).ConfigureAwait(false);
 
         // Assert
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         Assert.That(content, Is.EqualTo("Healthy"));
     }
 }

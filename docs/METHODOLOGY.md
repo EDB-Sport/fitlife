@@ -25,7 +25,7 @@ These rules apply to everyone, whatever setup they use:
 issue → failing test → simplest implementation → refactor (if small) → PR → CI → at least one signoff → merge
 ```
 
-- **Issue:** states the behaviour, the acceptance criteria and which glossary terms it touches. Issues live on the group's GitHub Projects board (To Do → In Progress → Review → Done), and each one belongs to the milestone of the release it is meant for.
+- **Issue:** states the behaviour, the acceptance criteria and which glossary terms it touches. Issues live on the group's GitHub Projects board (To Do → In Progress → Review → Done, section 2.2), and each one belongs to the milestone of the release it is meant for.
 - **Branch:** created from `develop` and named after the issue, e.g. `feature/12-reserve-class-session`.
 - **Commit:** small and focused. Don't commit generated noise, local agent config or logs. Optionally, prefix commits with `red:`, `green:` or `refactor:` so the TDD cycle shows in the history.
 - **PR:** targets `develop`. It says `Closes #<issue>`, which links and auto-closes the issue, or `Refs #<issue>` when the PR is only part of the issue. Release and hotfix PRs into `main` have no issue. It says in one or two lines what changed and why. It also says whether any existing test was changed, and why.
@@ -51,14 +51,54 @@ Rules:
 - **The `git flow` CLI:** use it to start branches (`git flow feature start ...`). Finish through a PR instead of `git flow ... finish`, because finish merges and pushes locally, and branch protection blocks that.
 - **Delete** feature, release and hotfix branches after they are merged.
 - **Keep feature branches short-lived.** Rebase on, or merge in, `develop` often to avoid large conflicts between parallel agents.
+- **Start every branch from an up-to-date `develop`,** and get a PR signed off and merged before work that builds on it starts. A branch built on an unmerged one re-sends that code in its own diff and every reviewer reads it again (#106).
+- **When stacking can't be avoided,** the PR's base is its parent branch, so its diff shows only its own change. Retarget it to `develop` once the parent merges. The `stack-check` (#110) enforces this.
+
+### 2.2 The board
+
+Every issue is a card on the group's GitHub Projects board. The board shows who is doing what, so an agent or a person who starts work checks the board first and doesn't start a card someone else has.
+
+| Column | Means | A card moves here when |
+|---|---|---|
+| To Do | Agreed work that nobody has started | It is added to the project (automatic) |
+| In Progress | Someone is working on it: the assignee | The assignee starts work, by hand. It moves back here by hand when a review requests changes |
+| Review | A PR for it is open | A PR that says `Closes #<issue>` opens, draft or not (automatic). For a `Refs #<issue>` PR, by hand |
+| Done | The issue is closed | Its PR is merged with `Closes #<issue>`, or the issue is closed (automatic) |
+
+**Starting a card.** Take only an unassigned card. Assign yourself, move it to In Progress, and write a short **Started** comment on the issue saying who (or whose agent) does it and what the first PR will be. An assignee or a Started comment means the card is taken. Ask on the issue before taking it over.
+
+**Project automations** (the project's *Workflows* settings):
+
+| Automation | What it does | Sets Status to |
+|---|---|---|
+| Auto-add to project | Adds new issues from this repo to the board (not PRs) | – (*Item added to project* sets the status) |
+| Auto-add sub-issues | Adds a sub-issue of a card that is already on the board | – (*Item added to project* sets the status) |
+| Item added to project | Runs on every new card | To Do |
+| Pull request linked to issue | Runs when a PR is linked to the issue: only by a closing keyword (`Closes`, `Fixes`, `Resolves #<issue>`) or the Development sidebar, not by `Refs #<issue>`. Also for a draft PR | Review |
+| Pull request merged | Runs when the PR is merged | Done |
+| Item closed | Runs when the issue is closed, also by hand | Done |
+
+If a card lands somewhere else, the board's Workflows page has changed: correct this table in a PR.
+
+**Moved by hand:** To Do → In Progress when you start before there is a PR, and Review → In Progress after a request for changes. A `Closes` PR moves the card to Review when it opens. A `Refs #<issue>` PR doesn't link the issue, so every move for it is by hand (In Progress, Review), and the card stays in Review or In Progress until the last PR for it is merged.
+
+**Milestone and assignee.**
+- **Milestone:** the person who creates the issue sets it to the release the issue is meant for (section 2). An issue without a milestone isn't planned yet. The group moves an issue to another milestone when the plan changes.
+- **Assignee:** the person who starts the work assigns themselves, never someone else. One assignee per issue. An agent works under the assignee of the person who controls it.
+
+**When to split an issue into sub-issues.** Split it when it needs more than one PR, so that each PR can close its own sub-issue with `Closes #<sub-issue>`. Examples are a list of rules or services that are delivered one by one, or a part that waits for another issue. The parent issue keeps the goal and closes when its last sub-issue closes. Use `Refs #<issue>` for a PR that is only part of an issue that isn't worth splitting (section 2).
 
 ## 3. Review:
 
 No PR merges without at least one signoff: a group member other than the author, or an agent controlled by one, approves the PR on GitHub.
 
+An agent review starts from the shared prompt in `docs/REVIEW_PROMPT.md`, so every review checks the same things (#118).
+
 Rules for reviewers:
 - **Changes to existing tests get extra scrutiny.** A weakened or deleted test is the usual way generated code fakes success. The PR has to explain the change.
 - **Don't re-run what CI already proved.** Read the diff and the CI result.
+- **A re-review reads only the commits since the last review.** When re-reviewing a PR after the author has pushed new commits, review `git diff <reviewed-sha>..<new-head>` plus the earlier review reasons, and say which reasons are resolved; do not re-read the entire PR from the beginning.
+- **A review comment records the head sha it reviewed.** Include a line ``Reviewed at `<sha>` `` in the review comment.
 - **Domain changes:** when a PR touches a domain model, go through the DDD checklist in section 11.3.
 - **Verdict:** approve, or request changes with at most three concrete reasons. Off-topic remarks go in a separate comment and never block.
 

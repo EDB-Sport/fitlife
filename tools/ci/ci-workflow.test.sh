@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Checks that .github/workflows/ci.yml runs the CI scripts that aren't *.test.sh (issue #54).
+# Checks that .github/workflows/ci.yml runs the CI scripts that aren't *.test.sh (issue #54),
+# and that it never cancels a push run on develop or main (issue #131).
 # Usage: tools/ci/ci-workflow.test.sh   (exit code 0 = every check passes)
 set -uo pipefail
 
@@ -28,9 +29,22 @@ expect() {
   fi
 }
 
+# One compile error fails build only: format and test wait for it and are skipped (issue #134).
+# The job names stay the same, so required checks keep working.
+for job in build format test; do
+  expect "ci.yml has a $job job" test -n "$(job_block "$job")"
+done
+for job in format test; do
+  expect "$job runs only after build" grep -qE '^    needs: \[?build\]?$' <<<"$(job_block "$job")"
+done
+
 build_rules=$(job_block build-rules)
 
 expect "ci.yml runs on pull requests" grep -qE '^  pull_request:' "$ci"
+# A newer push cancels a PR's run, but never a push run on develop or main (issue #131):
+# close merges would cancel each other's runs and leave a merge without a verdict.
+expect "ci.yml cancels in-progress runs for pull requests only" \
+  grep -qF "cancel-in-progress: \${{ github.event_name == 'pull_request' }}" "$ci"
 expect "ci.yml has a build-rules job" test -n "$build_rules"
 expect "build-rules runs tools/ci/check-build-rules.sh" \
   grep -qE 'run: tools/ci/check-build-rules\.sh$' <<<"$build_rules"

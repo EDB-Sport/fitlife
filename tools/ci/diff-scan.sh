@@ -67,11 +67,12 @@ fi
 if [ -n "$(git diff --name-only "$range" -- contracts/)" ]; then
   labels+=(contract-change)
 fi
-for label in "${labels[@]}"; do
+# ${labels[@]+...}: an empty array is "unbound" under set -u in bash 3.2 (macOS /bin/bash, #87)
+for label in ${labels[@]+"${labels[@]}"}; do
   echo "label: $label"
 done
 if [ -n "${GITHUB_OUTPUT:-}" ]; then
-  (IFS=,; echo "labels=${labels[*]}") >>"$GITHUB_OUTPUT"
+  (IFS=,; echo "labels=${labels[*]+${labels[*]}}") >>"$GITHUB_OUTPUT"
 fi
 
 if [ "$failures" -gt 0 ]; then

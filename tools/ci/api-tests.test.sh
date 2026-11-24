@@ -109,6 +109,11 @@ check "a stack that doesn't start fails the job" [ "$status" -ne 0 ]
 check "no collection runs without the stack" no_call '^newman'
 check "the stack is stopped after a failed start" has_call '^docker compose down -v'
 
+# 5. The repo's own collections assert status codes and bodies, never response times: a timing
+#    assertion against a mock server on the internet depends on the network, not on the code (#135)
+timed=$(grep -rlE 'responseTime' "$here/../../tests/postman" --include='*.postman_collection.json' || true)
+check "no collection asserts a response time" [ -z "$timed" ]
+
 echo
 if [ "$failures" -eq 0 ]; then
   echo "All api-tests.sh cases pass."

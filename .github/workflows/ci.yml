@@ -14,9 +14,11 @@ on:
 permissions:
   contents: read
 
+# A new push to a PR cancels the run in progress. Push runs on develop and main always run to the end,
+# so every merge gets a verdict (issue #131), as in security.yml.
 concurrency:
   group: ci-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   DOTNET_NOLOGO: true

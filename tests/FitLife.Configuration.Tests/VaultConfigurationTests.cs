@@ -37,7 +37,7 @@ public sealed class VaultConfigurationTests
     {
         // Arrange
         using var vault = new FakeVault(HttpStatusCode.OK, SecretJson);
-        ConfigurationManager configuration = Settings(("Vault:Path", "booking-svc"));
+        using ConfigurationManager configuration = Settings(("Vault:Path", "booking-svc"));
 
         // Act
         configuration.AddVault(vault);
@@ -52,7 +52,7 @@ public sealed class VaultConfigurationTests
     {
         // Arrange
         using var vault = new FakeVault(HttpStatusCode.OK, SecretJson);
-        ConfigurationManager configuration = VaultSettings();
+        using ConfigurationManager configuration = VaultSettings();
 
         // Act
         configuration.AddVault(vault);
@@ -70,13 +70,15 @@ public sealed class VaultConfigurationTests
         // Arrange
         using var vault = new FakeVault(HttpStatusCode.OK, SecretJson);
 
+        using ConfigurationManager configuration = VaultSettings();
+
         // Act
-        VaultSettings().AddVault(vault);
+        configuration.AddVault(vault);
 
         // Assert
         Assert.That(vault.Request?.Method, Is.EqualTo(HttpMethod.Get));
         Assert.That(vault.Request?.RequestUri, Is.EqualTo(new Uri("http://vault:8200/v1/secret/data/booking-svc")));
-        Assert.That(vault.Request?.Headers.GetValues("X-Vault-Token"), Is.EqualTo(new[] { "root-token" }));
+        Assert.That(vault.Request?.Headers.GetValues("X-Vault-Token").Single(), Is.EqualTo("root-token"));
     }
 
     [TestCase("http://vault:8200/", "secret", "http://vault:8200/v1/secret/data/booking-svc")]
@@ -85,7 +87,7 @@ public sealed class VaultConfigurationTests
     {
         // Arrange
         using var vault = new FakeVault(HttpStatusCode.OK, SecretJson);
-        ConfigurationManager configuration = Settings(
+        using ConfigurationManager configuration = Settings(
             ("Vault:Address", address), ("Vault:Token", "root-token"), ("Vault:Mount", mount), ("Vault:Path", "booking-svc"));
 
         // Act
@@ -100,7 +102,7 @@ public sealed class VaultConfigurationTests
     {
         // Arrange
         using var vault = new FakeVault(HttpStatusCode.Forbidden, """{ "errors": ["permission denied"] }""");
-        ConfigurationManager configuration = VaultSettings();
+        using ConfigurationManager configuration = VaultSettings();
 
         // Act
         InvalidOperationException? exception = Assert.Throws<InvalidOperationException>(() => configuration.AddVault(vault));
@@ -116,7 +118,7 @@ public sealed class VaultConfigurationTests
     {
         // Arrange
         using var vault = new FakeVault(HttpStatusCode.OK, SecretJson);
-        ConfigurationManager configuration = VaultSettings();
+        using ConfigurationManager configuration = VaultSettings();
         configuration[missing] = string.Empty;
 
         // Act

@@ -203,6 +203,33 @@ public sealed class ControllerActionContractAnalyzerTests
         return VerifyAsync(source);
     }
 
+    // ASP.NET Core leaves these out too (DefaultApplicationModelProvider.IsAction)
+    [Test]
+    public Task OverridesOfObjectMethods_ReportNothing()
+    {
+        const string source = """
+            public class ClassSessionsController : ControllerBase
+            {
+                public override string ToString() => "";
+                public override int GetHashCode() => 0;
+                public override bool Equals(object? obj) => false;
+            }
+            """;
+        return VerifyAsync(source);
+    }
+
+    [Test]
+    public Task DisposeImplementation_ReportsNothing()
+    {
+        const string source = """
+            public class ClassSessionsController : ControllerBase, System.IDisposable
+            {
+                public void Dispose() { }
+            }
+            """;
+        return VerifyAsync(source);
+    }
+
     [Test]
     public Task ClassThatIsNotAController_ReportsNothing()
     {

@@ -46,6 +46,16 @@ public sealed class PaymentProviderClient(HttpClient http) : IPaymentProvider
             // The provider can't be reached, so nothing was charged
             return false;
         }
+        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // HttpClient's own timeout: no answer, so the fee is not paid. The caller's cancellation is passed on
+            return false;
+        }
+        catch (JsonException)
+        {
+            // An answer we can't read is not an approved charge
+            return false;
+        }
     }
 
     private sealed record ChargeRequest(

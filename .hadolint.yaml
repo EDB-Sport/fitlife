@@ -1,0 +1,11 @@
+# hadolint rules for every Dockerfile in the repo (docs/CSHARP_SETUP_TODO.md section 8, issue #20).
+# CI runs it from .github/workflows/security.yml; locally:
+#   docker run --rm -v "$PWD:/repo:ro" -w /repo <HADOLINT_IMAGE from security.yml> hadolint --config .hadolint.yaml <Dockerfile>
+
+# Errors and warnings fail the check; info and style findings are only printed.
+failure-threshold: warning
+
+override:
+  error:
+    # FROM <image>:latest. Images are pinned to a version (section 8). An untagged FROM is DL3006, a warning, which also fails.
+    - DL3007

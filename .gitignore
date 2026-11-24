@@ -499,3 +499,6 @@ StrykerOutput/
 # Throwaway projects from tools/ci/check-build-rules.sh
 src/BuildCheck*/
 tests/BuildCheck*/
+
+# Newman reports from tools/ci/api-tests.sh
+newman-reports/

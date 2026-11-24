@@ -15,6 +15,9 @@ public sealed class JwtAuthenticationTests
     private const string SigningKey = "test-signing-key-for-unit-tests-only-32+";
     private const string OtherKey = "another-signing-key-that-identity-never-used";
 
+    // HS512 needs a key of at least 64 bytes, so the HS512 test uses this one on both sides
+    private const string LongKey = "a-test-signing-key-long-enough-for-hmac-sha512-as-well-as-hs256-0123456789";
+
     [Test]
     public async Task Validate_TokenFromIdentity_IsValid()
     {
@@ -100,6 +103,34 @@ public sealed class JwtAuthenticationTests
     }
 
     [Test]
+    public async Task Validate_TokenSignedWithHs512_IsRejected()
+    {
+        // Arrange: same key, another algorithm. Only HS256 is accepted
+        TokenValidationParameters parameters = ParametersFor(LongKey);
+        string token = Sign(LongKey, algorithm: SecurityAlgorithms.HmacSha512);
+
+        // Act
+        TokenValidationResult result = await Validate(token, parameters);
+
+        // Assert
+        Assert.That(result.IsValid, Is.False);
+    }
+
+    [Test]
+    public async Task Validate_TokenFromIdentity_CarriesTheRoleForIsInRole()
+    {
+        // Arrange
+        TokenValidationParameters parameters = ParametersFor(SigningKey);
+        string token = Sign(SigningKey);
+
+        // Act
+        TokenValidationResult result = await Validate(token, parameters);
+
+        // Assert
+        Assert.That(new ClaimsPrincipal(result.ClaimsIdentity).IsInRole("Medlem"), Is.True);
+    }
+
+    [Test]
     public void Configure_WithoutASigningKey_FailsAndNamesTheConfigurationKey()
     {
         // Arrange
@@ -156,7 +187,12 @@ public sealed class JwtAuthenticationTests
     }
 
     /// <summary>Signs a token the way Identity does (#169), with a test key.</summary>
-    private static string Sign(string key, string issuer = "fitlife-identity", string audience = "fitlife", DateTime? expires = null)
+    private static string Sign(
+        string key,
+        string issuer = "fitlife-identity",
+        string audience = "fitlife",
+        DateTime? expires = null,
+        string algorithm = SecurityAlgorithms.HmacSha256)
     {
         DateTime now = TimeProvider.System.GetUtcNow().UtcDateTime;
         DateTime expiresAt = expires ?? now.AddMinutes(30);
@@ -169,7 +205,7 @@ public sealed class JwtAuthenticationTests
             IssuedAt = expiresAt.AddHours(-1),
             Expires = expiresAt,
             SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)), SecurityAlgorithms.HmacSha256),
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)), algorithm),
         };
         return new JsonWebTokenHandler().CreateToken(descriptor);
     }

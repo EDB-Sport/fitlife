@@ -1,0 +1,13 @@
+# HTTPS in front of Nginx, as a sidecar in the container group (docs/CSHARP_SETUP_TODO.md section 9a).
+# {$NAME} is an environment variable, set by deploy/azure/modules/containers.bicep.
+{
+	# Only port 443 is public. Nginx has port 80 inside the group, so Caddy's plain-HTTP
+	# listener moves to another port, and Let's Encrypt validates the certificate over 443 (TLS-ALPN).
+	http_port {$CADDY_HTTP_PORT}
+	auto_https disable_redirects
+}
+
+{$SITE_ADDRESS} {
+	# Adds X-Forwarded-For and X-Forwarded-Proto: https, which Nginx passes on.
+	reverse_proxy 127.0.0.1:{$GATEWAY_PORT}
+}

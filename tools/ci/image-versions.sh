@@ -14,7 +14,7 @@
 # ADR 004), images built from this repo (fitlife/...), `FROM scratch` and `FROM <earlier stage>`.
 set -euo pipefail
 
-ROOT=${1:-$(git rev-parse --show-toplevel)}
+ROOT=${1:-$(cd "$(dirname "$0")/../.." && pwd)}
 cd "$ROOT"
 
 FLOATING_OK='mcr.microsoft.com/dotnet/aspnet'

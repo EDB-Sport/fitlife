@@ -327,7 +327,7 @@ done
 
 # ---------------------------------------------------------------------------------------------------
 step "7. Image versions: full versions, the same version for the same image"
-if "$ROOT/tools/ci/image-versions.sh"; then
+if (cd "$ROOT" && tools/ci/image-versions.sh "$ROOT"); then
   ok "tools/ci/image-versions.sh"
 else
   fail "tools/ci/image-versions.sh found problems (see above)"

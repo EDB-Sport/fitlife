@@ -118,6 +118,17 @@ public sealed class RabbitMqRoundTripTests
         Assert.That(ConsumerOf(host).Consuming.IsCompleted, Is.False);
     }
 
+    [Test]
+    public async Task Stop_WhileTheConsumerIsStillConnecting_DoesNotThrow()
+    {
+        // Arrange: a service that is stopped right after it started, as a WebApplicationFactory test does
+        using IHost host = BuildHost(new RecordingHandler(), new Uri(_rabbitMq.GetConnectionString()), logs: null);
+        await host.StartAsync().ConfigureAwait(false);
+
+        // Act and assert
+        Assert.DoesNotThrowAsync(() => host.StopAsync());
+    }
+
     /// <summary>A host with a publisher and a consumer on a queue of its own, so the tests don't share messages.</summary>
     private async Task<IHost> StartHostAsync(RecordingHandler handler)
     {

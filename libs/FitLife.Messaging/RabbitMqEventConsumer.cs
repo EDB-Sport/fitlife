@@ -93,9 +93,18 @@ public sealed partial class RabbitMqEventConsumer<TEvent> : BackgroundService, I
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         await base.StopAsync(cancellationToken).ConfigureAwait(false);
-        if (_channel is { IsOpen: true })
+        if (_channel is not { IsOpen: true })
+        {
+            return;
+        }
+
+        try
         {
             await _channel.CloseAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Stopped while still connecting: the cancelled set-up has already torn the channel down
         }
     }
 

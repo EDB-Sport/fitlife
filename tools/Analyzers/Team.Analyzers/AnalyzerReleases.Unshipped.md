@@ -6,14 +6,11 @@
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
 TEAM004 | Maintainability | Error | JustifiedSuppressionAnalyzer: suppressions must name an issue
-<<<<<<< HEAD
-TEAM006 | Reliability | Error | TestHasAssertionAnalyzer: every NUnit test has an assertion or a Moq Verify
-=======
 TEAM002 | Design | Error | NlogOnlyInProgramAnalyzer: NLog API only in Program.cs
 TEAM003 | Security | Error | NoSecretsInLogsAnalyzer: no secrets or personal data in log calls
 TEAM005 | Maintainability | Error | ReadabilityLimitsAnalyzer: no dynamic, goto, query syntax, nested ternaries or deeply nested lambdas
+TEAM006 | Reliability | Error | TestHasAssertionAnalyzer: every NUnit test has an assertion or a Moq Verify
 TEAM007 | Reliability | Error | NoWaitInTestsAnalyzer: no Thread.Sleep or Task.Delay in test projects
 TEAM008 | Naming | Error | ModelTypesInGlossaryAnalyzer: public types in *.Models are in GLOSSARY.md
 TEAM010 | Design | Error | NoHardCodedUrlsAnalyzer: no hard-coded http, https, mongodb or amqp addresses in src/
 TEAM012 | Style | Error | ConditionalExpressionAnalyzer: no conditional expression in place of if/return
->>>>>>> origin/develop

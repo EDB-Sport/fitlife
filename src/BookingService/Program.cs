@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using FitLife.Configuration;
 using FitLife.Correlation;
 using NLog;
 using NLog.Web;
@@ -8,6 +9,9 @@ using Scalar.AspNetCore;
 try
 {
     WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+    // Course rule #9: the secret/booking-svc secret from Vault (Vault:Address, Vault:Token), read through IConfiguration
+    builder.Configuration.AddVault();
 
     // Course rule #8: NLog → Loki, with the shared libs/nlog.config
     builder.Logging.ClearProviders();

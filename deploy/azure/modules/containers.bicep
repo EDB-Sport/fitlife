@@ -304,6 +304,16 @@ resource containerGroup 'Microsoft.ContainerInstance/containerGroups@2025-09-01'
               name: 'ASPNETCORE_HTTP_PORTS'
               value: string(servicePorts[serviceContext])
             }
+            {
+              // Its secret, secret/<context>-svc, from the Vault container in this group (#17). The service
+              // waits for Vault and the seed job itself (Vault:WaitSeconds), as in compose.
+              name: 'Vault__Address'
+              value: 'http://127.0.0.1:${vaultPort}'
+            }
+            {
+              name: 'Vault__Token'
+              secureValue: vaultRootToken
+            }
           ]
           livenessProbe: healthProbe(serviceHealthPath, servicePorts[serviceContext], 30)
           readinessProbe: healthProbe(serviceHealthPath, servicePorts[serviceContext], 10)

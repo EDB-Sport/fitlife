@@ -56,6 +56,8 @@ Rules:
 
 No PR merges without at least one signoff: a group member other than the author, or an agent controlled by one, approves the PR on GitHub.
 
+An agent review starts from the shared prompt in `docs/REVIEW_PROMPT.md`, so every review checks the same things (#118).
+
 Rules for reviewers:
 - **Changes to existing tests get extra scrutiny.** A weakened or deleted test is the usual way generated code fakes success. The PR has to explain the change.
 - **Don't re-run what CI already proved.** Read the diff and the CI result.

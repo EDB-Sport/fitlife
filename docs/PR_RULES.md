@@ -6,6 +6,8 @@ Checked by CI (`PR description`, `tools/ci/check-pr-body.sh`):
 2. Fill in **What changed and why**: one or two lines.
 3. In **Tests**, tick "No existing test was changed or removed", or say which test changed and why.
 
+**Lock file diff filtering**: `.gitattributes` marks `**/packages.lock.json` as `linguist-generated`, so GitHub collapses it in the PR diff. Local `git diff` still shows it. `gh pr diff <pr>` ignores `.gitattributes`: add `--exclude '**/packages.lock.json'` to hide lock files. A lock file change can hide a dependency change, so the PR description must name the packages that changed (locked-mode restore in CI, see issue #47).
+
 The rest of the PR rules live in `docs/METHODOLOGY.md`: one issue, one branch, one PR (section 1), branches and merging (section 2.1), review (section 3) and tests first (section 4).
 
 Agents: `gh pr create --fill` and `--body` skip the template. Fill in `.github/pull_request_template.md` in a file and use `gh pr create --base develop --body-file <file>`.

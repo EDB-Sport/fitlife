@@ -64,10 +64,10 @@ public sealed class JustifiedSuppressionAnalyzer : DiagnosticAnalyzer
 
     private static void AnalyzeDirectives(SyntaxTreeAnalysisContext context)
     {
-        var root = context.Tree.GetRoot(context.CancellationToken);
-        for (var directive = root.GetFirstDirective(); directive is not null; directive = directive.GetNextDirective())
+        SyntaxNode root = context.Tree.GetRoot(context.CancellationToken);
+        for (DirectiveTriviaSyntax? directive = root.GetFirstDirective(); directive is not null; directive = directive.GetNextDirective())
         {
-            var found = DisablingDirectiveName(directive);
+            string? found = DisablingDirectiveName(directive);
             if (found is not null && !HasIssueComment(directive))
             {
                 var location = Location.Create(context.Tree, SpanWithoutComment(directive));
@@ -77,47 +77,52 @@ public sealed class JustifiedSuppressionAnalyzer : DiagnosticAnalyzer
     }
 
     // The name to show in the message, or null when the directive doesn't switch anything off
-    private static string? DisablingDirectiveName(DirectiveTriviaSyntax directive) => directive switch
+    private static string? DisablingDirectiveName(DirectiveTriviaSyntax directive)
     {
-        PragmaWarningDirectiveTriviaSyntax pragma when pragma.DisableOrRestoreKeyword.IsKind(SyntaxKind.DisableKeyword)
-            => "'#pragma warning disable'",
-        NullableDirectiveTriviaSyntax nullable when nullable.SettingToken.IsKind(SyntaxKind.DisableKeyword)
-            => "'#nullable disable'",
-        _ => null,
-    };
+        return directive switch
+        {
+            PragmaWarningDirectiveTriviaSyntax pragma when pragma.DisableOrRestoreKeyword.IsKind(SyntaxKind.DisableKeyword)
+                => "'#pragma warning disable'",
+            NullableDirectiveTriviaSyntax nullable when nullable.SettingToken.IsKind(SyntaxKind.DisableKeyword)
+                => "'#nullable disable'",
+            _ => null,
+        };
+    }
 
     // A comment inside a directive can only be the one at the end of its line
-    private static bool HasIssueComment(DirectiveTriviaSyntax directive) =>
-        directive.DescendantTrivia().Any(trivia =>
+    private static bool HasIssueComment(DirectiveTriviaSyntax directive)
+    {
+        return directive.DescendantTrivia().Any(trivia =>
             trivia.IsKind(SyntaxKind.SingleLineCommentTrivia)
             && IssueReference.IsMatch(trivia.ToString().TrimStart('/').Trim()));
+    }
 
     // From '#' to the last word of the directive, so the error doesn't underline a comment
     private static TextSpan SpanWithoutComment(DirectiveTriviaSyntax directive)
     {
-        var lastToken = directive.DescendantTokens().Last(token => !token.IsKind(SyntaxKind.EndOfDirectiveToken));
+        SyntaxToken lastToken = directive.DescendantTokens().Last(token => !token.IsKind(SyntaxKind.EndOfDirectiveToken));
         return TextSpan.FromBounds(directive.SpanStart, lastToken.Span.End);
     }
 
     private static void AnalyzeAttribute(SyntaxNodeAnalysisContext context)
     {
         var attribute = (AttributeSyntax)context.Node;
-        var constructor = context.SemanticModel.GetSymbolInfo(attribute, context.CancellationToken).Symbol;
-        var attributeType = constructor?.ContainingType;
+        ISymbol? constructor = context.SemanticModel.GetSymbolInfo(attribute, context.CancellationToken).Symbol;
+        INamedTypeSymbol? attributeType = constructor?.ContainingType;
         if (attributeType is null || !SuppressionAttributes.Contains(attributeType.ToDisplayString()))
         {
             return;
         }
 
-        var justification = attribute.ArgumentList?.Arguments
+        AttributeArgumentSyntax? justification = attribute.ArgumentList?.Arguments
             .FirstOrDefault(argument => string.Equals(argument.NameEquals?.Name.Identifier.ValueText, "Justification", StringComparison.Ordinal));
-        var text = justification is null
+        string? text = justification is null
             ? null
             : context.SemanticModel.GetConstantValue(justification.Expression, context.CancellationToken).Value as string;
 
         if (text is null || !IssueReference.IsMatch(text))
         {
-            var found = $"[{attributeType.Name.Replace("Attribute", string.Empty)}]";
+            string found = $"[{attributeType.Name.Replace("Attribute", string.Empty)}]";
             context.ReportDiagnostic(Diagnostic.Create(Rule, attribute.GetLocation(), found, JustificationFix));
         }
     }

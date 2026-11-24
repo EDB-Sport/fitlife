@@ -19,7 +19,7 @@ on:
         required: true
         type: string
       ui_tag:
-        description: Version of the member portal image (X.Y.Z). Empty while the portal has no release, which deploys without it
+        description: Version of the member portal image (X.Y.Z). Empty means the newest memberportal/v* release, or no portal while it has none
         required: false
         type: string
 
@@ -70,7 +70,8 @@ jobs:
           }
           if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
             service_tag="$INPUT_SERVICE_TAG"
-            ui_tag="$INPUT_UI_TAG"
+            # Empty means the released member portal, so redeploying a service by hand keeps a live portal.
+            ui_tag="${INPUT_UI_TAG:-$(released_version "$UI_TAG_PREFIX")}"
           else
             service_tag="$(released_version "$SERVICE_TAG_PREFIX")"
             ui_tag="$(released_version "$UI_TAG_PREFIX")"

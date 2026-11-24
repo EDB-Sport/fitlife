@@ -14,6 +14,9 @@ COPY .globalconfig .
 COPY GLOSSARY.md .
 COPY tools/Analyzers/ tools/Analyzers/
 
+# Shared code (correlation ID, nlog.config)
+COPY libs/ libs/
+
 # Copy the project, then restore and publish. The whole folder is needed for restore: the Web SDK adds
 # an implicit package (Microsoft.AspNetCore.App.Internal.Assets) only when it sees the project's assets,
 # and the lock file must match. .dockerignore keeps the host's bin/ and obj/ out.

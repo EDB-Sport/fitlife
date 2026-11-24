@@ -31,7 +31,7 @@ jobs:
       - name: Install Newman and the htmlextra reporter (pinned)
         run: npm install --global newman@6.2.3 newman-reporter-htmlextra@1.23.1
       - name: api-tests
-        run: tools/ci/api-tests.sh
+        run: tools/ci/summarize.sh api-tests "Open the Newman HTML report artifact for the failing request, or run tools/ci/api-tests.sh locally." -- tools/ci/api-tests.sh
       - name: Upload the Newman reports
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

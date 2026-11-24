@@ -159,6 +159,21 @@ public sealed class MongoOnlyInRepositoriesAnalyzerTests
         return VerifyAsync(source, expected);
     }
 
+    // A file-level using in a file that declares no namespace belongs to the global namespace
+    [Test]
+    public Task FileLevelAliasWithoutANamespace_ReportsTeam001InTheGlobalNamespace()
+    {
+        const string source = """
+            using Db = MongoDB.Driver.IMongoDatabase;
+
+            public class Startup { }
+            """;
+        DiagnosticResult expected = new DiagnosticResult(MongoOnlyInRepositoriesAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
+            .WithSpan(1, 27, 1, 41)
+            .WithMessage("Found MongoDB.Driver type 'IMongoDatabase' in the global namespace. Do the database work in a repository class in a *.Repositories namespace, and use its interface here.");
+        return VerifyAsync(source, expected);
+    }
+
     // --- reports nothing ---
 
     [Test]

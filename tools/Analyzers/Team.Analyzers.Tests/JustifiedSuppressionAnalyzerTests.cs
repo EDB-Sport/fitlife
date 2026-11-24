@@ -12,11 +12,15 @@ public sealed class JustifiedSuppressionAnalyzerTests
 {
     // The framework's suppression check wraps each snippet in a bare '#pragma warning disable' and expects silence.
     // TEAM004 reports that pragma, and TEAM004 itself can't be suppressed (tested below), so the check is skipped.
-    private static Task VerifyAsync(string source, (string Path, string Content)? analyzerConfigFile = null) =>
-        AnalyzerVerifier.VerifyAsync<JustifiedSuppressionAnalyzer>(source, analyzerConfigFile, TestBehaviors.SkipSuppressionCheck);
+    private static Task VerifyAsync(string source, (string Path, string Content)? analyzerConfigFile = null)
+    {
+        return AnalyzerVerifier.VerifyAsync<JustifiedSuppressionAnalyzer>(source, analyzerConfigFile, TestBehaviors.SkipSuppressionCheck);
+    }
 
-    private static Task VerifyAsync(string source, DiagnosticResult expected) =>
-        AnalyzerVerifier.VerifyAsync<JustifiedSuppressionAnalyzer>(source, analyzerConfigFile: null, TestBehaviors.SkipSuppressionCheck, expected);
+    private static Task VerifyAsync(string source, DiagnosticResult expected)
+    {
+        return AnalyzerVerifier.VerifyAsync<JustifiedSuppressionAnalyzer>(source, analyzerConfigFile: null, TestBehaviors.SkipSuppressionCheck, expected);
+    }
 
     // --- #pragma warning disable ---
 
@@ -28,7 +32,7 @@ public sealed class JustifiedSuppressionAnalyzerTests
     [TestCase(" // #abc: not a number")]
     public Task PragmaWarningDisable_NoIssueReference_ReportsTeam004(string comment)
     {
-        var source = $$"""
+        string source = $$"""
             {|TEAM004:#pragma warning disable CS0168|}{{comment}}
             class C { }
             """;
@@ -77,7 +81,7 @@ public sealed class JustifiedSuppressionAnalyzerTests
     [TestCase(" //#7:no spaces")]
     public Task PragmaWarningDisable_IssueReference_NoDiagnostic(string comment)
     {
-        var source = $$"""
+        string source = $$"""
             #pragma warning disable CS0168{{comment}}
             class C { }
             """;
@@ -102,7 +106,7 @@ public sealed class JustifiedSuppressionAnalyzerTests
     [TestCase("#nullable disable", " // legacy code")]
     public Task NullableDisable_NoIssueReference_ReportsTeam004(string directive, string comment)
     {
-        var source = $$"""
+        string source = $$"""
             {|TEAM004:{{directive}}|}{{comment}}
             class C { }
             """;
@@ -124,7 +128,7 @@ public sealed class JustifiedSuppressionAnalyzerTests
     [TestCase("#nullable enable warnings")]
     public Task NullableEnableOrRestore_WithoutComment_NoDiagnostic(string directive)
     {
-        var source = $$"""
+        string source = $$"""
             {{directive}}
             class C { }
             """;
@@ -143,7 +147,7 @@ public sealed class JustifiedSuppressionAnalyzerTests
     [TestCase("System.Diagnostics.CodeAnalysis.SuppressMessage(\"Style\", \"IDE0060\")")]
     public Task SuppressMessage_NoIssueReference_ReportsTeam004(string attribute)
     {
-        var source = $$"""
+        string source = $$"""
             using System.Diagnostics.CodeAnalysis;
 
             [{|TEAM004:{{attribute}}|}]
@@ -170,7 +174,7 @@ public sealed class JustifiedSuppressionAnalyzerTests
     [TestCase("SuppressMessage(\"Style\", \"IDE0060\", Justification = Reasons.Contract)")]
     public Task SuppressMessage_IssueReference_NoDiagnostic(string attribute)
     {
-        var source = $$"""
+        string source = $$"""
             using System.Diagnostics.CodeAnalysis;
 
             [{{attribute}}]
@@ -299,7 +303,7 @@ public sealed class JustifiedSuppressionAnalyzerTests
         "Found [UnconditionalSuppressMessage] without an issue reference. Add Justification = \"#<issue>: <reason>\" to the attribute, naming the GitHub issue that allows the exception.")]
     public Task Message_UnjustifiedSuppression_IsAnErrorThatSaysWhatToAdd(string source, string message)
     {
-        var expected = new DiagnosticResult(JustifiedSuppressionAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
+        DiagnosticResult expected = new DiagnosticResult(JustifiedSuppressionAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
             .WithLocation(0)
             .WithMessage(message);
         return VerifyAsync(source, expected);

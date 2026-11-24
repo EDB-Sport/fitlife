@@ -1,0 +1,188 @@
+# One alert rule per service: more than 5 Error or Fatal log lines in 5 minutes (section 7).
+# The app label is the service's compose name. A service that logs nothing gives no data, which is OK:
+# a service that is down is caught by its /health probe instead.
+# Notifications go to Grafana's default contact point until the team picks a channel.
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: error-rate
+    folder: FitLife
+    interval: 1m
+    rules:
+      - uid: booking-svc-error-rate
+        title: booking-svc error rate
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              refId: A
+              queryType: range
+              expr: 'sum(count_over_time({app="booking-svc"} | json | __error__="" | level=~"(?i)error|fatal" [5m]))'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              settings:
+                mode: dropNN
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [5]
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        labels:
+          app: booking-svc
+          severity: warning
+        annotations:
+          summary: 'booking-svc logged more than 5 errors in 5 minutes'
+          description: 'Open the FitLife logs dashboard, pick booking-svc and level Error, then follow a CorrelationId.'
+          runbook_url: 'http://localhost:8080/grafana/d/fitlife-logs'
+          __dashboardUid__: fitlife-logs
+          __panelId__: '3'
+      - uid: membership-svc-error-rate
+        title: membership-svc error rate
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              refId: A
+              queryType: range
+              expr: 'sum(count_over_time({app="membership-svc"} | json | __error__="" | level=~"(?i)error|fatal" [5m]))'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              settings:
+                mode: dropNN
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [5]
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        labels:
+          app: membership-svc
+          severity: warning
+        annotations:
+          summary: 'membership-svc logged more than 5 errors in 5 minutes'
+          description: 'Open the FitLife logs dashboard, pick membership-svc and level Error, then follow a CorrelationId.'
+          runbook_url: 'http://localhost:8080/grafana/d/fitlife-logs'
+          __dashboardUid__: fitlife-logs
+          __panelId__: '3'
+      - uid: identity-svc-error-rate
+        title: identity-svc error rate
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              refId: A
+              queryType: range
+              expr: 'sum(count_over_time({app="identity-svc"} | json | __error__="" | level=~"(?i)error|fatal" [5m]))'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              settings:
+                mode: dropNN
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [5]
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        labels:
+          app: identity-svc
+          severity: warning
+        annotations:
+          summary: 'identity-svc logged more than 5 errors in 5 minutes'
+          description: 'Open the FitLife logs dashboard, pick identity-svc and level Error, then follow a CorrelationId.'
+          runbook_url: 'http://localhost:8080/grafana/d/fitlife-logs'
+          __dashboardUid__: fitlife-logs
+          __panelId__: '3'
+      - uid: notification-svc-error-rate
+        title: notification-svc error rate
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              refId: A
+              queryType: range
+              expr: 'sum(count_over_time({app="notification-svc"} | json | __error__="" | level=~"(?i)error|fatal" [5m]))'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              settings:
+                mode: dropNN
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [5]
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        labels:
+          app: notification-svc
+          severity: warning
+        annotations:
+          summary: 'notification-svc logged more than 5 errors in 5 minutes'
+          description: 'Open the FitLife logs dashboard, pick notification-svc and level Error, then follow a CorrelationId.'
+          runbook_url: 'http://localhost:8080/grafana/d/fitlife-logs'
+          __dashboardUid__: fitlife-logs
+          __panelId__: '3'

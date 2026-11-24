@@ -1,3 +1,4 @@
+using AngleSharp.Dom;
 using Bunit;
 using MemberPortal.Web.Components.Pages;
 using NUnit.Framework;
@@ -11,10 +12,10 @@ public class ComponentTests : BunitContext
     public void Home_RendersHeadingWithFitLifeTitle()
     {
         // Arrange & Act
-        var cut = Render<Home>();
+        IRenderedComponent<Home> cut = Render<Home>();
 
         // Assert
-        var heading = cut.Find("h1");
+        IElement heading = cut.Find("h1");
         Assert.That(heading.TextContent, Is.EqualTo("Velkommen til FitLife Digital"));
     }
 }

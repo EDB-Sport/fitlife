@@ -19,8 +19,8 @@ on:
         required: true
         type: string
       ui_tag:
-        description: Version of the member portal image (X.Y.Z)
-        required: true
+        description: Version of the member portal image (X.Y.Z). Empty while the portal has no release, which deploys without it
+        required: false
         type: string
 
 permissions:
@@ -64,8 +64,9 @@ jobs:
         run: |
           set -euo pipefail
           # The newest <prefix>/vX.Y.Z tag on the released commit's history, without the prefix.
+          # Empty if there is none: the service then fails the check below, the member portal is left out (#198).
           released_version() {
-            git describe --tags --abbrev=0 --match "$1/v*" HEAD | sed "s|^$1/v||"
+            { git describe --tags --abbrev=0 --match "$1/v*" HEAD 2>/dev/null || true; } | sed "s|^$1/v||"
           }
           if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
             service_tag="$INPUT_SERVICE_TAG"
@@ -75,13 +76,25 @@ jobs:
             ui_tag="$(released_version "$UI_TAG_PREFIX")"
           fi
           # Released versions only: this also rules out latest, develop and typos.
-          for tag in "$service_tag" "$ui_tag"; do
-            if ! [[ "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "::error::'$tag' is not a released version (X.Y.Z)"
-              exit 1
-            fi
-          done
-          echo "Deploying $SERVICE_TAG_PREFIX $service_tag and $UI_TAG_PREFIX $ui_tag"
+          is_version() { [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; }
+          if ! is_version "$service_tag"; then
+            echo "::error::'$service_tag' is not a released version of $SERVICE_TAG_PREFIX (X.Y.Z)"
+            exit 1
+          fi
+          if [ -n "$ui_tag" ] && ! is_version "$ui_tag"; then
+            echo "::error::'$ui_tag' is not a released version of $UI_TAG_PREFIX (X.Y.Z)"
+            exit 1
+          fi
+          # main.bicepparam reads the versions from the environment. Without UI_IMAGE_TAG it leaves the
+          # member portal out, so the variable is set only when there is a version: a step's env: would set
+          # it to an empty string instead.
+          echo "SERVICE_IMAGE_TAG=$service_tag" >> "$GITHUB_ENV"
+          if [ -n "$ui_tag" ]; then
+            echo "Deploying $SERVICE_TAG_PREFIX $service_tag and $UI_TAG_PREFIX $ui_tag"
+            echo "UI_IMAGE_TAG=$ui_tag" >> "$GITHUB_ENV"
+          else
+            echo "Deploying $SERVICE_TAG_PREFIX $service_tag without $UI_TAG_PREFIX, which has no release yet"
+          fi
           echo "service_tag=$service_tag" >> "$GITHUB_OUTPUT"
           echo "ui_tag=$ui_tag" >> "$GITHUB_OUTPUT"
 
@@ -95,11 +108,10 @@ jobs:
       - name: Pin the Bicep CLI
         run: az bicep install --version v0.49.2
 
-      # main.bicepparam reads these with readEnvironmentVariable(). No secret appears on a command line.
+      # main.bicepparam reads these with readEnvironmentVariable(), and the image versions from the step
+      # above. No secret appears on a command line.
       - name: What-if
         env:
-          SERVICE_IMAGE_TAG: ${{ steps.versions.outputs.service_tag }}
-          UI_IMAGE_TAG: ${{ steps.versions.outputs.ui_tag }}
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_PULL_TOKEN: ${{ secrets.DOCKERHUB_PULL_TOKEN }}
           MONGO_ROOT_PASSWORD: ${{ secrets.MONGO_ROOT_PASSWORD }}
@@ -118,8 +130,6 @@ jobs:
       - name: Deploy
         id: deploy
         env:
-          SERVICE_IMAGE_TAG: ${{ steps.versions.outputs.service_tag }}
-          UI_IMAGE_TAG: ${{ steps.versions.outputs.ui_tag }}
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_PULL_TOKEN: ${{ secrets.DOCKERHUB_PULL_TOKEN }}
           MONGO_ROOT_PASSWORD: ${{ secrets.MONGO_ROOT_PASSWORD }}
@@ -162,11 +172,13 @@ jobs:
         env:
           PUBLIC_URL: ${{ steps.deploy.outputs.public_url }}
           SERVICE_BASE_PATH: ${{ steps.deploy.outputs.service_base_path }}
+          MEMBER_PORTAL: ${{ steps.versions.outputs.ui_tag != '' }}
         run: |
           npx --yes newman@6.2.3 run tests/postman/smoke/thin-slice.postman_collection.json \
             --environment tests/postman/environments/azure.postman_environment.json \
             --env-var "baseUrl=$PUBLIC_URL" \
             --env-var "serviceBasePath=$SERVICE_BASE_PATH" \
+            --env-var "memberPortal=$MEMBER_PORTAL" \
             --reporters cli,junit \
             --reporter-junit-export newman/thin-slice.xml
 

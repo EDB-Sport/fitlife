@@ -25,9 +25,9 @@ public static class CorrelationContext
     public static IDisposable Begin(ILogger logger, string id)
     {
         ArgumentNullException.ThrowIfNull(logger);
-        var previous = CurrentId.Value;
+        string? previous = CurrentId.Value;
         CurrentId.Value = id;
-        var scope = logger.BeginScope(new Dictionary<string, object?>(StringComparer.Ordinal) { [ScopeKey] = id });
+        IDisposable? scope = logger.BeginScope(new Dictionary<string, object?>(StringComparer.Ordinal) { [ScopeKey] = id });
         return new Restore(previous, scope);
     }
 

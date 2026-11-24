@@ -25,7 +25,7 @@ public sealed class CorrelationIdMiddlewareTests
         context.Request.Headers[CorrelationContext.HeaderName] = "abc-123";
 
         // Act
-        var seen = await InvokeAndCaptureAsync(context, new ScopeCapturingLogger<CorrelationIdMiddleware>()).ConfigureAwait(false);
+        string? seen = await InvokeAndCaptureAsync(context, new ScopeCapturingLogger<CorrelationIdMiddleware>()).ConfigureAwait(false);
 
         // Assert
         Assert.That(seen, Is.EqualTo("abc-123"));
@@ -38,7 +38,7 @@ public sealed class CorrelationIdMiddlewareTests
         var context = new DefaultHttpContext();
 
         // Act
-        var seen = await InvokeAndCaptureAsync(context, new ScopeCapturingLogger<CorrelationIdMiddleware>()).ConfigureAwait(false);
+        string? seen = await InvokeAndCaptureAsync(context, new ScopeCapturingLogger<CorrelationIdMiddleware>()).ConfigureAwait(false);
 
         // Assert
         Assert.That(seen, Is.Not.Null.And.Not.Empty);
@@ -56,7 +56,7 @@ public sealed class CorrelationIdMiddlewareTests
         await InvokeAndCaptureAsync(context, logger).ConfigureAwait(false);
 
         // Assert
-        var scope = logger.Scopes.OfType<IEnumerable<KeyValuePair<string, object?>>>().Single();
+        IEnumerable<KeyValuePair<string, object?>> scope = logger.Scopes.OfType<IEnumerable<KeyValuePair<string, object?>>>().Single();
         Assert.That(scope, Has.Member(new KeyValuePair<string, object?>(CorrelationContext.ScopeKey, "abc-123")));
     }
 

@@ -72,8 +72,10 @@ public sealed class TestHasAssertionAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    private static bool IsTestAttribute(AttributeData attribute) =>
-        TestAttributes.Contains(attribute.AttributeClass?.ToDisplayString() ?? string.Empty);
+    private static bool IsTestAttribute(AttributeData attribute)
+    {
+        return TestAttributes.Contains(attribute.AttributeClass?.ToDisplayString() ?? string.Empty);
+    }
 
     // A call on an NUnit assert class (Assert, ClassicAssert, StringAssert, ...) or a Moq Verify*
     private static bool IsAssertion(IMethodSymbol method)

@@ -130,7 +130,7 @@ public sealed class TestHasAssertionAnalyzerTests
     [TestCase("Assert.Warn(\"slow\");")]
     public Task TestWithOnlyANonFailingAssertCall_ReportsTeam006(string call)
     {
-        var source = $$"""
+        string source = $$"""
             public class ReservationTests
             {
                 [Test]
@@ -186,7 +186,7 @@ public sealed class TestHasAssertionAnalyzerTests
     [TestCase("Assert.Multiple(() => { Assert.That(true); });")]
     public Task TestWithAssertion_ReportsNothing(string assertion)
     {
-        var source = $$"""
+        string source = $$"""
             public class ReservationTests
             {
                 [Test]
@@ -218,7 +218,7 @@ public sealed class TestHasAssertionAnalyzerTests
     [TestCase("repository.VerifyAll();")]
     public Task TestWithMoqVerify_ReportsNothing(string verify)
     {
-        var source = $$"""
+        string source = $$"""
             public class ReservationTests
             {
                 [Test]

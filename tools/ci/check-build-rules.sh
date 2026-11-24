@@ -119,6 +119,17 @@ write_project "$a" "<PropertyGroup><GenerateDocumentationFile>false</GenerateDoc
 undocumented_code "$a"
 expect_error "GenerateDocumentationFile=false in a .csproj is overridden" "$a" "CS1591"
 
+# 5b. dotnet publish works and ships the XML documentation file (issue #64)
+write_project "$a"
+clean_code "$a"
+if out=$(dotnet publish "$a" -c Release -o "$a/publish" -v q -clp:NoSummary -tl:off 2>&1) && [ -f "$a/publish/BuildCheckA.xml" ]; then
+  echo "PASS  dotnet publish works and ships the XML documentation file"
+else
+  echo "FAIL  dotnet publish works and ships the XML documentation file"
+  grep -E 'error' <<<"$out" | head -5
+  failures=$((failures + 1))
+fi
+
 # 6. Nullable can't be switched off per project
 write_project "$a" "<PropertyGroup><Nullable>disable</Nullable></PropertyGroup>"
 write_code "$a" Names <<'EOF'

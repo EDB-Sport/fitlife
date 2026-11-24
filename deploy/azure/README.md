@@ -58,12 +58,12 @@ Image versions are pinned, never `latest`.
 `.github/workflows/deploy.yml` runs after `release.yml` succeeds on `main`:
 
 1. waits for one approval on the GitHub environment `production`
-2. picks the versions from the release tags (`bookingservice/vX.Y.Z`, `memberportal/vX.Y.Z`) and refuses anything that isn't `X.Y.Z`. Without a `memberportal/v*` tag it deploys without the member portal, and the smoke test skips the portal's checks
+2. picks the versions from the release tags (`bookingservice/vX.Y.Z`, `memberportal/vX.Y.Z`) and refuses anything that isn't `X.Y.Z`. Without a `memberportal/v*` tag it deploys without the member portal, and the smoke test skips the portal's checks. Until the portal is released, `/` answers 502: Nginx still routes it to the portal, which isn't in the group
 3. logs in to Azure with OpenID Connect (no stored client secret)
 4. prints `az deployment group what-if`, then runs `az deployment group create`
 5. waits for HTTPS, then runs the Newman smoke test `tests/postman/smoke/thin-slice.postman_collection.json`
 
-**Rollback:** run the workflow by hand (Actions → deploy → Run workflow) with the previous release's versions. Leave `ui_tag` empty to deploy without the member portal.
+**Rollback:** run the workflow by hand (Actions → deploy → Run workflow) with the previous release's versions. An empty `ui_tag` means the newest `memberportal/v*` release, or no member portal while it has none.
 
 ## From your own machine
 

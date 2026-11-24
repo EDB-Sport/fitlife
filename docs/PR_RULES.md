@@ -38,4 +38,4 @@ Agent review: REJECT
 Reviewed at `a1b2c3d`
 ```
 
-The `Reviewed at \`<sha>\`` line records the head sha the reviewer read, as required by `docs/METHODOLOGY.md` section 3.
+The ``Reviewed at `<sha>` `` line records the head sha the reviewer read, as required by `docs/METHODOLOGY.md` section 3.

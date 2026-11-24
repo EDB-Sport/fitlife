@@ -22,7 +22,7 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 broken=0
 
-for service in "${services[@]}"; do
+for service in ${services[@]+"${services[@]}"}; do # guarded: an empty array is unbound under set -u in bash 3.2 (#87)
   tag=$(git tag --list "$service/v*" --sort=-v:refname | head -1)
   if [ -z "$tag" ]; then
     echo "$service: no $service/v* tag yet, skipped"

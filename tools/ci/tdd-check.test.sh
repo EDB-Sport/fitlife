@@ -115,27 +115,34 @@ echo 'public static class Calculator { public static int Sum(int a, int b) => a 
 commit "$repo" "refactor that breaks the suite"
 expect "refactor PR with a red suite fails" fail "$repo" "the tests fail" refactor
 
+# edit <file> <sed script>: in-place edit that works with GNU and BSD sed (macOS, #87).
+# GNU and BSD disagree on "sed -i" and on "\n" in a replacement; a backslash-newline works in both.
+edit() {
+  sed "$2" "$1" >"$1.tmp" && mv "$1.tmp" "$1"
+}
+
 # 3. Skipped tests
 for marker in '[Ignore("later")]' '[TestCase(3, 4, IgnoreReason = "later")]' '[Explicit]'; do
   repo=$(feature_pr)
-  sed -i "s|    \[Test\] // needs: Subtract|    $marker\n    [Test] // needs: Subtract|" "$repo/tests/CalculatorTests.cs"
+  edit "$repo/tests/CalculatorTests.cs" "s|    \[Test\] // needs: Subtract|    $marker\\
+    [Test] // needs: Subtract|"
   git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
   expect "added $marker fails" fail "$repo" "adds skipped tests"
 done
 
 repo=$(feature_pr)
-sed -i 's|Subtract_TwoNumbers_ReturnsDifference() { }|Subtract_TwoNumbers_ReturnsDifference() { Assume.That(false); }|' "$repo/tests/CalculatorTests.cs"
+edit "$repo/tests/CalculatorTests.cs" 's|Subtract_TwoNumbers_ReturnsDifference() { }|Subtract_TwoNumbers_ReturnsDifference() { Assume.That(false); }|'
 git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
 expect "added Assume.That fails" fail "$repo" "adds skipped tests"
 
 # 4. Removed tests
 repo=$(fixture)
-sed -i '/\[TestCase(2, 3)\]/d' "$repo/tests/CalculatorTests.cs"
+edit "$repo/tests/CalculatorTests.cs" '/\[TestCase(2, 3)\]/d'
 commit "$repo" "delete a test case"
 expect "deleted test fails" fail "$repo" "removes tests"
 
 repo=$(fixture)
-sed -i 's|    \[Test\] // needs: Add|    // [Test] // needs: Add|' "$repo/tests/CalculatorTests.cs"
+edit "$repo/tests/CalculatorTests.cs" 's|    \[Test\] // needs: Add|    // [Test] // needs: Add|'
 commit "$repo" "comment out a test"
 expect "commented-out [Test] fails" fail "$repo" "removes tests"
 
@@ -169,6 +176,63 @@ echo "${runner//echo \"red: \$word\"/echo \"Calc.cs(1,1): error CS0103: The name
 git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
 expect "compile error from missing production code is red" pass "$repo"
 
+# 4d. Label events (issue #136). A label other than "refactor" doesn't change what tdd-check checks, so the
+# check reports the last completed tdd-check result on the PR's head commit again, read with `gh api`, and
+# doesn't run the suite. Without such a result, or while another tdd-check run is still going, it runs in full.
+stub_bin="$tmp_root/stub-bin"
+mkdir -p "$stub_bin"
+printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\n" "$STUB_CHECK_RUNS"' > "$stub_bin/gh"
+chmod +x "$stub_bin/gh"
+runs() { # runs <status:conclusion>...: a check-runs answer, oldest first, with this run itself last (in progress)
+  local items="" n=0 pair
+  for pair in "$@" "in_progress:"; do
+    n=$((n + 1))
+    items+="${items:+,}{\"name\":\"tdd-check\",\"status\":\"${pair%%:*}\",\"conclusion\":\"${pair#*:}\",\"completed_at\":\"2026-11-24T10:0$n:00Z\"}"
+  done
+  echo "{\"check_runs\":[$items]}"
+}
+label_event() { # label_event <description> <pass|fail> <repo> <action> <label> <check runs> <text the output must contain>
+  local out status
+  out=$(cd "$3" && rm -f suite-ran && BASE_SHA=$(git rev-parse HEAD^) TEST_CMD="bash run-tests-marked.sh" \
+    EVENT_ACTION="$4" EVENT_LABEL="$5" PR_HEAD_SHA=abc123 GITHUB_REPOSITORY=example/repo STUB_CHECK_RUNS="$6" \
+    PATH="$stub_bin:$PATH" "$check" 2>&1)
+  status=$?
+  if { [ "$2" = pass ] && [ "$status" -eq 0 ]; } || { [ "$2" = fail ] && [ "$status" -ne 0 ]; }; then
+    if grep -qF -- "$7" <<<"$out"; then echo "PASS  $1"; return; fi
+  fi
+  echo "FAIL  $1: expected $2 with '$7', got exit $status"
+  echo "$out" | sed 's/^/      /'
+  failures=$((failures + 1))
+}
+marked() { # marked <repo>: the fixture's runner also leaves suite-ran behind, so a case can tell whether the suite ran
+  printf '%s\n' 'touch suite-ran' 'exec bash run-tests.sh "$@"' > "$1/run-tests-marked.sh"
+  git -C "$1" add -A && git -C "$1" commit --quiet --amend --no-edit
+  echo "$1"
+}
+ran() { if [ -f "$2/suite-ran" ]; then echo "PASS  $1"; else echo "FAIL  $1"; failures=$((failures + 1)); fi; }
+not_ran() { if [ -f "$2/suite-ran" ]; then echo "FAIL  $1"; failures=$((failures + 1)); else echo "PASS  $1"; fi; }
+
+# A refactor PR without the label fails a full run, so a pass here can only be the reused result.
+repo=$(marked "$(refactor_pr)")
+label_event "a label event reports an earlier success again" pass "$repo" labeled documentation "$(runs completed:success)" "reports the last tdd-check result on this commit again"
+not_ran "a reused success doesn't run the suite" "$repo"
+
+repo=$(marked "$(feature_pr)")
+label_event "a label event reports an earlier failure again" fail "$repo" unlabeled documentation "$(runs completed:success completed:failure)" "the last tdd-check run on this commit failed"
+not_ran "a reused failure doesn't run the suite" "$repo"
+
+repo=$(marked "$(feature_pr)")
+label_event "a cancelled run isn't a result to report" pass "$repo" labeled documentation "$(runs completed:cancelled)" "no earlier tdd-check result on this commit"
+ran "without an earlier result the suite runs" "$repo"
+
+repo=$(marked "$(feature_pr)")
+label_event "another run still going means a full run" pass "$repo" labeled documentation "$(runs completed:failure in_progress:)" "another tdd-check run on this commit is still going"
+ran "while another run is going the suite runs" "$repo"
+
+repo=$(marked "$(refactor_pr)")
+label_event "the refactor label still runs in full" fail "$repo" labeled refactor "$(runs completed:success)" "no test under tests/ was added or changed"
+ran "the refactor label runs the suite" "$repo"
+
 # 5. The workflow (finding 1 and 3)
 wf() { grep -qE "$2" "$workflow" && echo "PASS  $1" || { echo "FAIL  $1: '$2' not in $workflow"; failures=$((failures + 1)); }; }
 wf "workflow re-runs on label changes" 'types: \[opened, synchronize, reopened, labeled, unlabeled\]'
@@ -176,6 +240,16 @@ wf "workflow takes BASE_SHA from the merge commit's first parent" 'BASE_SHA=\$\(
 wf "workflow passes the PR's labels" 'PR_LABELS: \$\{\{ join\(github\.event\.pull_request\.labels\.\*\.name, '"','"'\) \}\}'
 wf "workflow checks tools/Analyzers (issue #49): SRC_DIR" 'SRC_DIR: tools/Analyzers/Team\.Analyzers/$'
 wf "workflow checks tools/Analyzers (issue #49): TEST_DIR" 'TEST_DIR: tools/Analyzers/Team\.Analyzers\.Tests/$'
+wf "workflow passes the event and its label (issue #136)" 'EVENT_LABEL: \$\{\{ github\.event\.label\.name \}\}'
+wf "workflow can read the earlier check runs (issue #136)" 'checks: read'
+wf "workflow has a concurrency group per PR (issue #136)" 'group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.event\.pull_request\.number \}\}'
+wf "a label run never cancels a run in progress (issue #136)" "cancel-in-progress: \\\$\\{\\{ github\\.event\\.action != 'labeled' && github\\.event\\.action != 'unlabeled' \\}\\}"
+api_workflow="$here/../../.github/workflows/api-tests.yml"
+if grep -qF "cancel-in-progress: \${{ github.event_name == 'pull_request' }}" "$api_workflow"; then
+  echo "PASS  api-tests.yml cancels in-progress runs for pull requests only (issue #136)"
+else
+  echo "FAIL  api-tests.yml cancels in-progress runs for pull requests only (issue #136)"; failures=$((failures + 1))
+fi
 if grep -qF 'pull_request.base.sha' "$workflow"; then
   echo "FAIL  workflow no longer uses pull_request.base.sha"; failures=$((failures + 1))
 else

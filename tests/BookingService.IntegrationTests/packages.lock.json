@@ -463,12 +463,16 @@
       "bookingservice": {
         "type": "Project",
         "dependencies": {
+          "FitLife.Configuration": "[0.1.0, )",
           "FitLife.Correlation": "[0.1.0, )",
           "Microsoft.AspNetCore.OpenApi": "[10.0.15, )",
           "NLog.Targets.Loki": "[2.7.1, )",
           "NLog.Web.AspNetCore": "[6.2.2, )",
           "Scalar.AspNetCore": "[3.1.1, )"
         }
+      },
+      "fitlife.configuration": {
+        "type": "Project"
       },
       "fitlife.correlation": {
         "type": "Project"

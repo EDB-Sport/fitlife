@@ -417,6 +417,49 @@ public sealed class ClassSessionTests
         Assert.That(classSession.DomainEvents[^1], Is.EqualTo(new ReservationCancelled(classSession.Id, waitingMemberId, IsLateCancellation: false)));
     }
 
+    [Test]
+    public void Cancel_RemovesEveryReservationAndWaitlistEntryAndNamesTheirMembers()
+    {
+        // Arrange
+        ClassSession classSession = ClassSessionWithCapacity(1);
+        var memberId = Guid.NewGuid();
+        var waitingMemberId = Guid.NewGuid();
+        classSession.Reserve(memberId, _clock);
+        classSession.JoinWaitlist(waitingMemberId, _clock);
+
+        // Act
+        classSession.Cancel();
+
+        // Assert
+        var classSessionCancelled = (ClassSessionCancelled)classSession.DomainEvents[^1];
+        Assert.Multiple(() =>
+        {
+            Assert.That(classSession.IsCancelled, Is.True);
+            Assert.That(classSession.Reservations, Is.Empty);
+            Assert.That(classSession.Waitlist, Is.Empty);
+            Assert.That(classSessionCancelled.ClassSessionId, Is.EqualTo(classSession.Id));
+            Assert.That(classSessionCancelled.MemberIds, Is.EqualTo(new[] { memberId, waitingMemberId }));
+        });
+    }
+
+    [Test]
+    public void Reserve_OnACancelledClassSession_IsRejected()
+    {
+        // Arrange
+        ClassSession classSession = ClassSessionWithCapacity(1);
+        classSession.Cancel();
+
+        // Act
+        ReservationResult result = classSession.Reserve(Guid.NewGuid(), _clock);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(ReservationResult.ClassSessionCancelled));
+            Assert.That(classSession.Reservations, Is.Empty);
+        });
+    }
+
     [TestCase(0)]
     [TestCase(-1)]
     public void Capacity_LessThanOne_IsRejected(int value)

@@ -1,0 +1,168 @@
+using BookingService.Domain;
+using BookingService.Repositories;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+
+namespace BookingService.Api;
+
+/// <summary>
+/// The class schedule, reservations and waitlist over HTTP (#171). The rules live in <see cref="ClassSession"/>; this class only
+/// loads it, calls it, saves it and turns its answer into a status code.
+/// </summary>
+[ApiController]
+[Route("class-sessions")]
+public sealed class ClassSessionsController : ControllerBase
+{
+    private const string ChangedMeanwhileTitle = "The class session changed at the same time. Try again.";
+
+    private readonly IClassSessionRepository _repository;
+    private readonly TimeProvider _clock;
+
+    /// <summary>Creates the controller.</summary>
+    /// <param name="repository">Where class sessions are stored.</param>
+    /// <param name="clock">Tells the time now.</param>
+    public ClassSessionsController(IClassSessionRepository repository, TimeProvider clock)
+    {
+        _repository = repository;
+        _clock = clock;
+    }
+
+    /// <summary>Lists the class sessions of a centre, or of every centre, with their free seats. No login needed.</summary>
+    /// <param name="centerId">The centre; leave it out for every centre.</param>
+    /// <param name="cancellationToken">Stops the request.</param>
+    [HttpGet]
+    [ProducesResponseType<IReadOnlyList<ClassSessionResponse>>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<ClassSessionResponse>>> GetClassSessions([FromQuery] Guid? centerId, CancellationToken cancellationToken)
+    {
+        IReadOnlyList<ClassSession> classSessions = await _repository.ListAsync(centerId, cancellationToken).ConfigureAwait(false);
+        return Ok(classSessions.Select(classSession => new ClassSessionResponse(
+            classSession.Id,
+            classSession.CenterId,
+            classSession.ClassTypeId,
+            classSession.StartTime,
+            classSession.Capacity.Value,
+            classSession.Capacity.Value - classSession.Reservations.Count)).ToList());
+    }
+
+    /// <summary>Reserves a seat for the member.</summary>
+    /// <param name="id">The class session.</param>
+    /// <param name="request">The member who wants the seat.</param>
+    /// <param name="cancellationToken">Stops the request.</param>
+    /// <response code="409">The class session is full or cancelled, or the member already has a seat.</response>
+    /// <response code="422">The class session starts more than 4 weeks from now.</response>
+    [HttpPost("{id:guid}/reservations")]
+    [Consumes("application/json")]
+    [ProducesResponseType<ReservationResponse>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    public async Task<ActionResult<ReservationResponse>> PostReservation(Guid id, ReservationRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ClassSession? classSession = await _repository.GetAsync(id, cancellationToken).ConfigureAwait(false);
+        if (classSession is null)
+        {
+            return ClassSessionNotFound(id);
+        }
+
+        ReservationResult result = classSession.Reserve(request.MemberId, _clock);
+        switch (result)
+        {
+            case ReservationResult.Made:
+                break;
+            case ReservationResult.TooFarAhead:
+                return Problem(statusCode: StatusCodes.Status422UnprocessableEntity, title: "The class session starts more than 4 weeks from now.");
+            case ReservationResult.ClassSessionFull:
+                return Problem(statusCode: StatusCodes.Status409Conflict, title: "The class session is full. Join its waitlist instead.");
+            case ReservationResult.MemberAlreadyHasReservation:
+                return Problem(statusCode: StatusCodes.Status409Conflict, title: "The member already has a seat on this class session.");
+            default:
+                return Problem(statusCode: StatusCodes.Status409Conflict, title: "The class session is cancelled.");
+        }
+
+        if (!await _repository.SaveAsync(classSession, cancellationToken).ConfigureAwait(false))
+        {
+            return ChangedMeanwhile();
+        }
+
+        return Created(new Uri($"/class-sessions/{id}/reservations/{request.MemberId}", UriKind.Relative), new ReservationResponse(id, request.MemberId));
+    }
+
+    /// <summary>Cancels the member's reservation. When someone is on the waitlist, the first waitlist entry gets the seat.</summary>
+    /// <param name="id">The class session.</param>
+    /// <param name="memberId">The member who gives up the seat.</param>
+    /// <param name="cancellationToken">Stops the request.</param>
+    /// <response code="404">No such class session, or the member has no seat on it.</response>
+    [HttpDelete("{id:guid}/reservations/{memberId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+    public async Task<Results<NoContent, ProblemHttpResult>> DeleteReservation(Guid id, Guid memberId, CancellationToken cancellationToken)
+    {
+        ClassSession? classSession = await _repository.GetAsync(id, cancellationToken).ConfigureAwait(false);
+        if (classSession is null)
+        {
+            return TypedResults.Problem(statusCode: StatusCodes.Status404NotFound, title: "No such class session.", detail: $"There is no class session {id}.");
+        }
+
+        if (classSession.CancelReservation(memberId, _clock) == CancellationResult.NoReservation)
+        {
+            return TypedResults.Problem(statusCode: StatusCodes.Status404NotFound, title: "The member has no seat on this class session.");
+        }
+
+        if (!await _repository.SaveAsync(classSession, cancellationToken).ConfigureAwait(false))
+        {
+            return TypedResults.Problem(statusCode: StatusCodes.Status409Conflict, title: ChangedMeanwhileTitle);
+        }
+
+        return TypedResults.NoContent();
+    }
+
+    /// <summary>Puts the member at the end of the waitlist of a full class session.</summary>
+    /// <param name="id">The class session.</param>
+    /// <param name="request">The member who wants to wait for a seat.</param>
+    /// <param name="cancellationToken">Stops the request.</param>
+    /// <response code="409">A seat is free, or the waitlist has closed (2 hours before start).</response>
+    [HttpPost("{id:guid}/waitlist")]
+    [Consumes("application/json")]
+    [ProducesResponseType<WaitlistEntryResponse>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+    public async Task<ActionResult<WaitlistEntryResponse>> PostWaitlistEntry(Guid id, WaitlistEntryRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ClassSession? classSession = await _repository.GetAsync(id, cancellationToken).ConfigureAwait(false);
+        if (classSession is null)
+        {
+            return ClassSessionNotFound(id);
+        }
+
+        WaitlistResult result = classSession.JoinWaitlist(request.MemberId, _clock);
+        if (result == WaitlistResult.ClassSessionNotFull)
+        {
+            return Problem(statusCode: StatusCodes.Status409Conflict, title: "A seat is free. Reserve it instead.");
+        }
+
+        if (result == WaitlistResult.WaitlistClosed)
+        {
+            return Problem(statusCode: StatusCodes.Status409Conflict, title: "The waitlist closed 2 hours before start.");
+        }
+
+        if (!await _repository.SaveAsync(classSession, cancellationToken).ConfigureAwait(false))
+        {
+            return ChangedMeanwhile();
+        }
+
+        return Created(new Uri($"/class-sessions/{id}/waitlist/{request.MemberId}", UriKind.Relative), new WaitlistEntryResponse(id, request.MemberId));
+    }
+
+    private ObjectResult ClassSessionNotFound(Guid id)
+    {
+        return Problem(statusCode: StatusCodes.Status404NotFound, title: "No such class session.", detail: $"There is no class session {id}.");
+    }
+
+    private ObjectResult ChangedMeanwhile()
+    {
+        return Problem(statusCode: StatusCodes.Status409Conflict, title: ChangedMeanwhileTitle);
+    }
+}

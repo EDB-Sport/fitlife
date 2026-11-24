@@ -18,6 +18,7 @@
     </PackageReference>
     <PackageReference Include="NLog.Web.AspNetCore" />
     <PackageReference Include="NLog.Targets.Loki" />
+    <PackageReference Include="MongoDB.Driver" />
   </ItemGroup>
 
   <ItemGroup>

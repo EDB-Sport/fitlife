@@ -34,6 +34,10 @@ services:
       # The service waits for Vault and the seed job itself (Vault:WaitSeconds), so it needs no depends_on.
       Vault__Address: http://vault:8200 # infrastructure.yml
       Vault__Token: ${VAULT_DEV_ROOT_TOKEN:?set it in deploy/compose/.env}
+      # infrastructure.yml; the user booking-svc reaches only the booking database (mongodb/init). No password in the URL:
+      # MongoDb:Password comes from secret/booking-svc in Vault.
+      MongoDb__ConnectionString: mongodb://booking-svc@mongodb:27017/booking
+      Seed__Enabled: "true" # the demo class schedule, loaded once into an empty database (#171)
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
       interval: 5s

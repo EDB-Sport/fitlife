@@ -440,6 +440,21 @@
           "Microsoft.TestPlatform.ObjectModel": "18.12.0"
         }
       },
+      "NLog": {
+        "type": "Transitive",
+        "resolved": "6.2.2",
+        "contentHash": "Hoxigm/d7wY/+y4y2ILF2ERSojhxgLd8ASBZQbrnm52jB5NHkF4AWW5tZzMxJ/HTOp0bLwClGOokrA31iSXuMA=="
+      },
+      "NLog.Extensions.Logging": {
+        "type": "Transitive",
+        "resolved": "6.2.2",
+        "contentHash": "Z5ctMnl27a2rEJIP6uiOnfVa7PqQ8KFlAG2JRS2B3paDeKFVPiaMPASADBW5JcSjoNlJNWi8iTSF0iXYbT2t/Q==",
+        "dependencies": {
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.0",
+          "Microsoft.Extensions.Logging": "10.0.0",
+          "NLog": "6.2.2"
+        }
+      },
       "System.Diagnostics.EventLog": {
         "type": "Transitive",
         "resolved": "10.0.15",
@@ -448,9 +463,15 @@
       "bookingservice": {
         "type": "Project",
         "dependencies": {
+          "FitLife.Correlation": "[0.1.0, )",
           "Microsoft.AspNetCore.OpenApi": "[10.0.15, )",
+          "NLog.Targets.Loki": "[2.7.1, )",
+          "NLog.Web.AspNetCore": "[6.2.2, )",
           "Scalar.AspNetCore": "[3.1.1, )"
         }
+      },
+      "fitlife.correlation": {
+        "type": "Project"
       },
       "Microsoft.AspNetCore.OpenApi": {
         "type": "CentralTransitive",
@@ -459,6 +480,24 @@
         "contentHash": "pptFDPMWyPDDtt68s/HsvLYeHJ0WQtntjyve6ztp/5MrLOEzdZvafYIyWSeErtexIGaB8XGYCnnUK8T/Vn4MwQ==",
         "dependencies": {
           "Microsoft.OpenApi": "[2.13.0, 3.0.0)"
+        }
+      },
+      "NLog.Targets.Loki": {
+        "type": "CentralTransitive",
+        "requested": "[2.7.1, )",
+        "resolved": "2.7.1",
+        "contentHash": "H9E+UtIyAkGpejRF9+EJxaQSqvEN521uYTZCn0dVMFFc8CyViEucel8m12vaRzgtWnf+NjAj9Hq1ROYRQ/CjEQ==",
+        "dependencies": {
+          "NLog": "6.2.0"
+        }
+      },
+      "NLog.Web.AspNetCore": {
+        "type": "CentralTransitive",
+        "requested": "[6.2.2, )",
+        "resolved": "6.2.2",
+        "contentHash": "37r7FrgeTDdhTq1TA/T+XB+vAqeKZLyXItnw5LV2O8mpkRKATh4m+AhG6A9tFj2K3dsN1WTqIZHySmM8gP5UPw==",
+        "dependencies": {
+          "NLog.Extensions.Logging": "6.2.2"
         }
       },
       "Scalar.AspNetCore": {

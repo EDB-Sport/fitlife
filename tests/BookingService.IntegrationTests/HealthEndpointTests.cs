@@ -11,10 +11,10 @@ public sealed class HealthEndpointTests
     {
         // Arrange
         using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
+        using HttpClient client = factory.CreateClient();
 
         // Act
-        using var response = await client.GetAsync(new Uri("/health", UriKind.Relative)).ConfigureAwait(false);
+        using HttpResponseMessage response = await client.GetAsync(new Uri("/health", UriKind.Relative)).ConfigureAwait(false);
 
         // Assert
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));

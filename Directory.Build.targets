@@ -14,6 +14,9 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- The SDK turns GenerateDocumentationFile into this path before this file is imported, so set the path too -->
     <DocumentationFile>$(IntermediateOutputPath)$(AssemblyName).xml</DocumentationFile>
+    <!-- Microsoft.Common.CurrentVersion.targets computed this from the empty DocumentationFile before this file is imported.
+         Without it the build never copies the .xml to bin/, and dotnet publish fails looking for it there (issue #64). -->
+    <_DocumentationFileProduced>true</_DocumentationFileProduced>
     <Nullable>enable</Nullable>
     <!-- A fixed list: anything a .csproj puts in NoWarn is overwritten. 1701;1702 are the SDK defaults. -->
     <NoWarn>1701;1702</NoWarn>

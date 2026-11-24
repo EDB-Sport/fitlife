@@ -185,6 +185,12 @@ resource containerGroup 'Microsoft.ContainerInstance/containerGroups@2025-09-01'
               name: 'MEMBER_PORTAL_URL'
               value: 'http://127.0.0.1:${uiPort}'
             }
+            {
+              // The template's /grafana/ route (compose: monitoring.yml). Grafana isn't in the group,
+              // so nothing listens on this port and the route answers 502.
+              name: 'GRAFANA_URL'
+              value: 'http://127.0.0.1:3000'
+            }
           ]
           volumeMounts: [
             {

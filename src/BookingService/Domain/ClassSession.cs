@@ -2,7 +2,7 @@ namespace BookingService.Domain;
 
 /// <summary>
 /// Hold: one scheduled run of a class (GLOSSARY.md). The aggregate root of Booking: reservations change only through it,
-/// so the number of reservations never exceeds the capacity, a member has at most one, the waitlist keeps its order, and a freed seat goes to the first waitlist entry (src/BookingService/CONTEXT.md).
+/// so the number of reservations never exceeds the capacity, no one reserves more than 4 weeks ahead, a member has at most one, the waitlist keeps its order, and a freed seat goes to the first waitlist entry (src/BookingService/CONTEXT.md).
 /// </summary>
 public sealed class ClassSession
 {
@@ -10,13 +10,17 @@ public sealed class ClassSession
     private readonly List<WaitlistEntry> _waitlist = [];
     private readonly List<DomainEvent> _domainEvents = [];
 
+    private static readonly TimeSpan HowFarAheadMembersCanReserve = TimeSpan.FromDays(28);
+
     /// <summary>Creates a class session with no reservations.</summary>
     /// <param name="id">The class session's id.</param>
     /// <param name="capacity">How many members can have a reservation.</param>
-    public ClassSession(Guid id, Capacity capacity)
+    /// <param name="startTime">When the class session starts.</param>
+    public ClassSession(Guid id, Capacity capacity, DateTimeOffset startTime)
     {
         Id = id;
         Capacity = capacity;
+        StartTime = startTime;
     }
 
     /// <summary>The class session's id.</summary>
@@ -24,6 +28,9 @@ public sealed class ClassSession
 
     /// <summary>How many members can have a reservation.</summary>
     public Capacity Capacity { get; }
+
+    /// <summary>When the class session starts.</summary>
+    public DateTimeOffset StartTime { get; }
 
     /// <summary>The members' seats, in the order they were reserved.</summary>
     public IReadOnlyList<Reservation> Reservations => _reservations.AsReadOnly();
@@ -34,17 +41,29 @@ public sealed class ClassSession
     /// <summary>What happened to the class session, in order, for the service to publish.</summary>
     public IReadOnlyList<DomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 
-    /// <summary>Reserves a seat for the member, unless the member already has one or every seat is taken.</summary>
+    /// <summary>
+    /// Reserves a seat for the member, unless the member already has one, the class session starts more than 4 weeks from
+    /// now, or every seat is taken.
+    /// </summary>
     /// <param name="memberId">The member who wants a seat.</param>
+    /// <param name="clock">Tells the time now.</param>
     /// <returns>
-    /// <see cref="ReservationResult.MemberAlreadyHasReservation"/> or <see cref="ReservationResult.ClassSessionFull"/> when no
-    /// reservation is made; then nothing changes. A member who has a seat hears that first, also on a full class session.
+    /// <see cref="ReservationResult.MemberAlreadyHasReservation"/>, <see cref="ReservationResult.TooFarAhead"/> or
+    /// <see cref="ReservationResult.ClassSessionFull"/> when no reservation is made; then nothing changes. A member who has a
+    /// seat hears that first, also on a full class session.
     /// </returns>
-    public ReservationResult Reserve(Guid memberId)
+    public ReservationResult Reserve(Guid memberId, TimeProvider clock)
     {
+        ArgumentNullException.ThrowIfNull(clock);
+
         if (_reservations.Exists(reservation => reservation.MemberId == memberId))
         {
             return ReservationResult.MemberAlreadyHasReservation;
+        }
+
+        if (StartTime - clock.GetUtcNow() > HowFarAheadMembersCanReserve)
+        {
+            return ReservationResult.TooFarAhead;
         }
 
         if (_reservations.Count >= Capacity.Value)

@@ -27,8 +27,11 @@ issue → failing test → simplest implementation → refactor (if small) → P
 
 ## Build rules
 
-The build is strict on purpose: warnings are errors, all analyzers are on, and a `.csproj` can't switch the rules off. The rule files in the repo root (`Directory.Build.*`, `Directory.Packages.props`, `.globalconfig`, `SonarLint.xml`, `BannedSymbols.txt`) are code-owned. Background: `docs/CSHARP_SETUP_TODO.md` sections 1–3.
+The build is strict on purpose: warnings are errors, all analyzers are on, and a `.csproj` can't switch the rules off. The rule files in the repo root (`Directory.Build.*`, `Directory.Packages.props`, `.editorconfig`, `.globalconfig`, `SonarLint.xml`, `BannedSymbols.txt`) are code-owned. Background: `docs/CSHARP_SETUP_TODO.md` sections 1–3.
 
 - Build quietly: `dotnet build -v q -clp:NoSummary -tl:off`
+- On an analyzer error, run the fixer before you edit by hand: `dotnet format style --diagnostics <ID>` or `dotnet format analyzers --diagnostics <ID>`. The fixes are deterministic and solution-wide.
+- Check the formatting (CI will run this, see #5): `dotnet format --verify-no-changes --no-restore`
 - Add a package: a `PackageVersion` in `Directory.Packages.props`, and a `PackageReference` without `Version` in the `.csproj`
 - Check that the rules still work after changing a rule file: `tools/ci/check-build-rules.sh`
+- Check that the code style rules still work after changing `.editorconfig` or `.globalconfig`: `tools/ci/check-style-rules.sh`

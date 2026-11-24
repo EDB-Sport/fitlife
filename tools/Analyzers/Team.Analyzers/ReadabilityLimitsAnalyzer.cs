@@ -53,7 +53,7 @@ public sealed class ReadabilityLimitsAnalyzer : DiagnosticAnalyzer
 
     private static void AnalyzeDynamic(SyntaxNodeAnalysisContext context)
     {
-        IdentifierNameSyntax name = (IdentifierNameSyntax)context.Node;
+        var name = (IdentifierNameSyntax)context.Node;
         if (string.Equals(name.Identifier.ValueText, "dynamic", StringComparison.Ordinal)
             && context.SemanticModel.GetTypeInfo(name, context.CancellationToken).Type?.TypeKind == TypeKind.Dynamic)
         {

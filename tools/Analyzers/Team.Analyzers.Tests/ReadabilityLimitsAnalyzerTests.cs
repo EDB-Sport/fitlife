@@ -10,8 +10,10 @@ namespace Team.Analyzers.Tests;
 [TestFixture]
 public sealed class ReadabilityLimitsAnalyzerTests
 {
-    private static Task VerifyAsync(string source, params DiagnosticResult[] expected) =>
-        AnalyzerVerifier.VerifyAsync<ReadabilityLimitsAnalyzer>(source, analyzerConfigFile: null, TestBehaviors.None, expected);
+    private static Task VerifyAsync(string source, params DiagnosticResult[] expected)
+    {
+        return AnalyzerVerifier.VerifyAsync<ReadabilityLimitsAnalyzer>(source, analyzerConfigFile: null, TestBehaviors.None, expected);
+    }
 
     // --- dynamic ---
 

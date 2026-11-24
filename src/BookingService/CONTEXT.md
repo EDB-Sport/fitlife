@@ -1,7 +1,7 @@
 # Booking (`src/BookingService/`)
 
 > From `docs/templates/CONTEXT.md`. Keep it under about 80 lines, and update it in the same PR that changes the model.
-> **Status: invariants 1–2 modelled (#155, #156).** The context map (`docs/domain/CONTEXT-MAP.md`) is decided in ADR 007. The tactical model below is DDD_PLAN step 4; the rules come from the TO-BE-kontekst §8 (Booking). Each further invariant is its own issue.
+> **Status: invariants 1–3 modelled (#155–#157).** The context map (`docs/domain/CONTEXT-MAP.md`) is decided in ADR 007. The tactical model below is DDD_PLAN step 4; the rules come from the TO-BE-kontekst §8 (Booking). Each further invariant is its own issue.
 
 ## Purpose
 
@@ -16,7 +16,7 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | Hold | One scheduled run of a class, with a capacity | `ClassSession` |
 | Kapacitet | How many members can have a reservation on one class session | `Capacity` |
 | Booking | A member's seat on one class session | `Reservation` |
-| Ventelisteplads | A member's place in the queue for a full class session | `WaitlistEntry` (#157) |
+| Ventelisteplads | A member's place in the queue for a full class session | `WaitlistEntry` |
 | Medlem | Booking only knows the member's id | `MemberId` (a `Guid`) |
 
 ## Aggregates
@@ -25,10 +25,10 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 
 | Part | Kind | Notes |
 |---|---|---|
-| `ClassSession` | Aggregate root | Id, `Capacity`, the reservations |
+| `ClassSession` | Aggregate root | Id, `Capacity`, the reservations, the waitlist |
 | `Reservation` | Entity, inside the aggregate | Made only by `ClassSession.Reserve` |
 | `Capacity` | Value object | At least 1 seat |
-| `WaitlistEntry` | Entity, inside the aggregate | #157 |
+| `WaitlistEntry` | Entity, inside the aggregate | Made only by `ClassSession.JoinWaitlist` |
 
 ### Invariants
 
@@ -36,7 +36,7 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 |---|---|---|
 | 1 | The reservations never exceed the capacity | `ClassSessionTests.Reserve_WhenClassSessionIsFull_IsRejected` |
 | 2 | A member can't reserve the same class session twice | `ClassSessionTests.Reserve_WhenTheMemberAlreadyHasAReservation_IsRejected` |
-| 3 | A full class session offers a waitlist entry, first come first served | #157 |
+| 3 | A full class session offers a waitlist entry, first come first served | `ClassSessionTests.JoinWaitlist_WhenClassSessionIsFull_AddsWaitlistEntriesInTheOrderTheyWereMade`, `ClassSessionTests.JoinWaitlist_WithFreeSeats_IsRejected` |
 | 4 | A freed seat goes to the first waitlist entry | #158 |
 | 5 | Class sessions can be reserved at most 4 weeks ahead | #159 |
 | 6 | The waitlist closes 2 hours before start | #160 |
@@ -48,6 +48,7 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | Kind | Name | Notes |
 |---|---|---|
 | Command | `ClassSession.Reserve(memberId)` | Returns `ReservationResult.Made`, `MemberAlreadyHasReservation` or `ClassSessionFull` |
+| Command | `ClassSession.JoinWaitlist(memberId)` | Returns `WaitlistResult.Joined` or `ClassSessionNotFull` |
 
 ## Talks to
 

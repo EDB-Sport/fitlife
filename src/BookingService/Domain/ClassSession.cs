@@ -24,14 +24,14 @@ public sealed class ClassSession
     public Capacity Capacity { get; }
 
     /// <summary>The members' seats, in the order they were reserved.</summary>
-    public IReadOnlyList<Reservation> Reservations => _reservations;
+    public IReadOnlyList<Reservation> Reservations => _reservations.AsReadOnly();
 
     /// <summary>Reserves a seat for the member, unless every seat is taken.</summary>
     /// <param name="memberId">The member who wants a seat.</param>
     /// <returns><see cref="ReservationResult.ClassSessionFull"/> when no seat is free; then nothing changes.</returns>
     public ReservationResult Reserve(Guid memberId)
     {
-        if (_reservations.Count >= Capacity.Seats)
+        if (_reservations.Count >= Capacity.Value)
         {
             return ReservationResult.ClassSessionFull;
         }

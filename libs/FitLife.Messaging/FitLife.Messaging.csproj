@@ -16,6 +16,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The unit tests open the consumer and publisher on a mocked IConnection -->
+    <InternalsVisibleTo Include="FitLife.Messaging.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- The correlation ID goes in the message headers (#19) -->
     <ProjectReference Include="$(RepoRoot)libs/FitLife.Correlation/FitLife.Correlation.csproj" />
   </ItemGroup>

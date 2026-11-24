@@ -53,9 +53,11 @@ services:
       RabbitMq__UserName: ${RABBITMQ_USERNAME:?set it in deploy/compose/.env}
       RabbitMq__Password: ${RABBITMQ_PASSWORD:?set it in deploy/compose/.env}
       MongoDb__Password: ${NOTIFICATION_DB_PASSWORD:?set it in deploy/compose/.env}
-    # No depends_on, so this group still starts on its own: the consumer keeps trying until RabbitMQ answers
+    # No depends_on, so this group still starts on its own: the consumer keeps trying until RabbitMQ answers.
+    # /health is unhealthy until it consumes (#258); start_period covers RabbitMQ's own start-up.
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 60s

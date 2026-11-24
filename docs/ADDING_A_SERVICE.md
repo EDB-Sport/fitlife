@@ -23,6 +23,6 @@ Replace `<Service>` with the service name from the context map, e.g. `Membership
 5. **Packages:** versions only in `Directory.Packages.props`, never `Version=` in a `.csproj` (NU1008).
 6. **Lock files:** restore with the SDK from `global.json` and commit the new `packages.lock.json` files.
 7. **Build and test:** `dotnet build` and `dotnet test -c Release` from the repo root.
-8. **Dockerfile:** copy `src/BookingService/Dockerfile` and replace `BookingService`. Build it from the repo root (`docker build -f src/<Service>/Dockerfile .`), and check it with `tools/ci/check-service-image.sh <Service>`: the image builds and `/health` answers 200.
+8. **Dockerfile:** copy `src/BookingService/Dockerfile` and replace `BookingService`. Build it from the repo root (`docker build -f src/<Service>/Dockerfile .`), and check it with `tools/ci/check-service-image.sh <Service>`: the image builds and `/health` answers 200. A service that consumes events answers 200 only once it consumes (#258), so check it with RabbitMQ reachable, e.g. in the compose stack.
 
 Later issues add to this list as the pattern grows: the OpenAPI contract (#90), and the compose service and Nginx route (#16).

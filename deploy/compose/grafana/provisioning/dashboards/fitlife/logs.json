@@ -130,7 +130,8 @@
           "mode": "multi",
           "sort": "desc"
         }
-      }
+      },
+      "description": "Log lines per minute from each service (the app label), from Loki."
     },
     {
       "id": 2,
@@ -182,7 +183,8 @@
           "mode": "multi",
           "sort": "desc"
         }
-      }
+      },
+      "description": "Log lines per minute by level, across the selected services."
     },
     {
       "id": 3,
@@ -234,7 +236,8 @@
           "mode": "multi",
           "sort": "desc"
         }
-      }
+      },
+      "description": "Error and Fatal log lines per minute from each service. The error-rate alerts fire at more than 5 in 5 minutes."
     },
     {
       "id": 4,

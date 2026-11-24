@@ -78,11 +78,31 @@ jobs:
           name: coverage-report
           path: coverage-report
 
+  # The committed OpenAPI contracts match the code (issue #90, section 8): every API change shows in the PR diff.
+  # Then no contract breaks the one at its service's last <service>/vX.Y.Z tag (issue #91).
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the release tags are needed for the breaking-change check
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore --locked-mode
+      - name: Regenerate the contracts and compare them with the commit
+        run: tools/ci/check-contracts.sh
+      - name: No breaking change since each service's last release (oasdiff)
+        run: tools/ci/oasdiff-breaking.sh
+
   # Runs the tests of the CI scripts themselves, so a change to a script fails its own tests.
   ci-scripts:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4 # mutation.test.sh builds and mutates a throwaway project
+        with:
+          global-json-file: global.json
       - name: Run every tools/ci/*.test.sh
         run: |
           status=0
@@ -126,6 +146,29 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           HEAD_BRANCH: ${{ github.head_ref }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+
+  # Stryker on the C# files the PR changes; fails below the break threshold in stryker-config.json (issue #53).
+  mutation:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the diff needs the base branch
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Mutation testing on the changed C# files
+        run: tools/ci/mutation.sh
+        env:
+          SINCE: origin/${{ github.base_ref }}
+      - name: Upload the mutation report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: StrykerOutput/*/reports/
+          if-no-files-found: ignore
 
   diff-scan:
     if: github.event_name == 'pull_request'

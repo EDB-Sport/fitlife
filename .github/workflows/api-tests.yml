@@ -1,0 +1,36 @@
+# API, integration, end-to-end and mock-server tests with Newman against the compose stack (issue #22).
+# The logic is in tools/ci/api-tests.sh, which runs the same way locally.
+#
+# A workflow of its own until ci.yml (#5, PR #52) is on develop: then this job moves into ci.yml as job 10
+# (docs/CSHARP_SETUP_TODO.md section 10) and this file is deleted.
+# Make "api-tests" a required check on develop and main (repo ruleset, done by hand).
+name: api-tests
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  api-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Newman and the htmlextra reporter (pinned)
+        run: npm install --global newman@6.2.3 newman-reporter-htmlextra@1.23.1
+      - name: api-tests
+        run: tools/ci/api-tests.sh
+      - name: Upload the Newman reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: newman-reports
+          path: newman-reports/
+          if-no-files-found: ignore

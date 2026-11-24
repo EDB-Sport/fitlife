@@ -136,6 +136,45 @@ public sealed class ClassSessionTests
         });
     }
 
+    [Test]
+    public void JoinWaitlist_WhenTheMemberAlreadyHasAReservation_IsRejected()
+    {
+        // Arrange
+        ClassSession classSession = ClassSessionWithCapacity(1);
+        var memberId = Guid.NewGuid();
+        classSession.Reserve(memberId);
+
+        // Act
+        WaitlistResult result = classSession.JoinWaitlist(memberId);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(WaitlistResult.MemberAlreadyHasReservation));
+            Assert.That(classSession.Waitlist, Is.Empty);
+        });
+    }
+
+    [Test]
+    public void JoinWaitlist_WhenTheMemberIsAlreadyOnTheWaitlist_IsRejected()
+    {
+        // Arrange
+        ClassSession classSession = ClassSessionWithCapacity(1);
+        classSession.Reserve(Guid.NewGuid());
+        var memberId = Guid.NewGuid();
+        classSession.JoinWaitlist(memberId);
+
+        // Act
+        WaitlistResult result = classSession.JoinWaitlist(memberId);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(WaitlistResult.MemberAlreadyOnWaitlist));
+            Assert.That(classSession.Waitlist, Has.Count.EqualTo(1));
+        });
+    }
+
     [TestCase(0)]
     [TestCase(-1)]
     public void Capacity_LessThanOne_IsRejected(int value)

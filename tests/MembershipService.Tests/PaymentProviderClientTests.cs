@@ -66,6 +66,55 @@ public sealed class PaymentProviderClientTests
     }
 
     [Test]
+    public async Task Charge_WhenTheProviderTimesOut_IsNotPaid()
+    {
+        // Arrange: HttpClient reports its own timeout as a TaskCanceledException
+        using var provider = new StubProvider(new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout"));
+
+        // Act
+        bool paid = await Charge(provider);
+
+        // Assert
+        Assert.That(paid, Is.False);
+    }
+
+    [Test]
+    public async Task Charge_WhenTheProviderAnswersWithoutJson_IsNotPaid()
+    {
+        // Arrange
+        using var provider = new StubProvider(HttpStatusCode.OK, "<html>maintenance</html>");
+
+        // Act
+        bool paid = await Charge(provider);
+
+        // Assert
+        Assert.That(paid, Is.False);
+    }
+
+    [Test]
+    public async Task Charge_WhenTheCallerCancels_IsCancelled()
+    {
+        // Arrange
+        using var provider = new StubProvider(HttpStatusCode.Created, """{ "outcome": "approved" }""");
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        // Act
+        Exception? thrown = null;
+        try
+        {
+            await Charge(provider, cancelled.Token);
+        }
+        catch (OperationCanceledException exception)
+        {
+            thrown = exception;
+        }
+
+        // Assert
+        Assert.That(thrown, Is.InstanceOf<OperationCanceledException>());
+    }
+
+    [Test]
     public async Task Charge_PostsTheFeeInTheProvidersTermsToItsChargesApi()
     {
         // Arrange
@@ -83,17 +132,17 @@ public sealed class PaymentProviderClientTests
         Assert.That(body.RootElement.GetProperty("currency").GetString(), Is.EqualTo("DKK"));
     }
 
-    private static async Task<bool> Charge(StubProvider provider)
+    private static async Task<bool> Charge(StubProvider provider, CancellationToken cancellationToken = default)
     {
         using var http = new HttpClient(provider, disposeHandler: false) { BaseAddress = new Uri("https://payment-provider.test") };
-        return await new PaymentProviderClient(http).ChargeMembershipFeeAsync(MemberId, 299m, CancellationToken.None).ConfigureAwait(false);
+        return await new PaymentProviderClient(http).ChargeMembershipFeeAsync(MemberId, 299m, cancellationToken).ConfigureAwait(false);
     }
 
     private sealed class StubProvider : HttpMessageHandler
     {
         private readonly HttpStatusCode _status;
         private readonly string _body = string.Empty;
-        private readonly HttpRequestException? _failure;
+        private readonly Exception? _failure;
 
         public StubProvider(HttpStatusCode status, string body)
         {
@@ -101,7 +150,7 @@ public sealed class PaymentProviderClientTests
             _body = body;
         }
 
-        public StubProvider(HttpRequestException failure)
+        public StubProvider(Exception failure)
         {
             _failure = failure;
         }

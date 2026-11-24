@@ -38,4 +38,20 @@ public sealed class ApiDocumentationTests
         // Assert
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
     }
+
+    [TestCase("JoinMembership", "The account in the token joins FitLife and gets an active membership")]
+    [TestCase("GetMemberByAccount", "The member id of an account, and whether its membership is active")]
+    public async Task OpenApi_InDevelopment_DescribesTheMemberOperations(string operationId, string summary)
+    {
+        // Arrange
+        using var app = new MembershipFactory();
+        using WebApplicationFactory<Program> factory = app.WithWebHostBuilder(host => host.UseEnvironment("Development"));
+        using HttpClient client = factory.CreateClient();
+
+        // Act
+        string document = await client.GetStringAsync(new Uri("/openapi/v1.json", UriKind.Relative)).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(document, Does.Contain($"\"operationId\": \"{operationId}\"").And.Contain($"\"summary\": \"{summary}\""));
+    }
 }

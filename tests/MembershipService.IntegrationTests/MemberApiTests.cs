@@ -61,6 +61,50 @@ public sealed class MemberApiTests
     }
 
     [Test]
+    public async Task Join_WithAToken_PointsAtTheLookupForTheAccount()
+    {
+        // Arrange
+        string accountId = TestTokens.NewAccountId();
+        using HttpClient client = ClientFor(TestTokens.For(accountId));
+
+        // Act
+        using HttpResponseMessage response = await Join(client).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(response.Headers.Location?.ToString(), Is.EqualTo($"/members/by-account/{accountId}"));
+    }
+
+    [Test]
+    public async Task Join_WhenAccountIsAlreadyAMember_AnswersWithProblemDetails()
+    {
+        // Arrange
+        using HttpClient client = ClientFor(TestTokens.For(TestTokens.NewAccountId()));
+        using HttpResponseMessage first = await Join(client).ConfigureAwait(false);
+
+        // Act
+        using HttpResponseMessage second = await Join(client).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(second.Content.Headers.ContentType?.MediaType, Is.EqualTo("application/problem+json"));
+        using JsonDocument body = await Body(second).ConfigureAwait(false);
+        Assert.That(body.RootElement.GetProperty("status").GetInt32(), Is.EqualTo(409));
+        Assert.That(body.RootElement.GetProperty("title").GetString(), Is.EqualTo("The account is already a member"));
+    }
+
+    [Test]
+    public async Task Join_WithATokenWithoutAnAccountId_ReturnsUnauthorized()
+    {
+        // Arrange
+        using HttpClient client = ClientFor(TestTokens.WithoutAccountId());
+
+        // Act
+        using HttpResponseMessage response = await Join(client).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+    }
+
+    [Test]
     public async Task Join_WithoutAToken_ReturnsUnauthorized()
     {
         // Arrange

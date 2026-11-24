@@ -18,12 +18,23 @@ public static class TestTokens
     /// <summary>A token for the account, valid for 30 minutes.</summary>
     public static string For(string accountId, string key = SigningKey)
     {
+        return Sign([new Claim(FitLifeJwt.AccountIdClaim, accountId), new Claim(FitLifeJwt.RoleClaim, "Medlem")], key);
+    }
+
+    /// <summary>A valid token with a role but no account id.</summary>
+    public static string WithoutAccountId()
+    {
+        return Sign([new Claim(FitLifeJwt.RoleClaim, "Medlem")], SigningKey);
+    }
+
+    private static string Sign(Claim[] claims, string key)
+    {
         DateTime now = TimeProvider.System.GetUtcNow().UtcDateTime;
         var descriptor = new SecurityTokenDescriptor
         {
             Issuer = FitLifeJwt.Issuer,
             Audience = FitLifeJwt.Audience,
-            Subject = new ClaimsIdentity([new Claim(FitLifeJwt.AccountIdClaim, accountId), new Claim(FitLifeJwt.RoleClaim, "Medlem")]),
+            Subject = new ClaimsIdentity(claims),
             NotBefore = now.AddMinutes(-1),
             IssuedAt = now.AddMinutes(-1),
             Expires = now.AddMinutes(30),

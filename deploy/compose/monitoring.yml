@@ -1,0 +1,49 @@
+# Monitoring group: Loki (log store) and Grafana (dashboards and alerts), section 7.
+# Image versions are pinned, never :latest. The Grafana admin password comes from .env.
+# Grafana is reached only through the gateway: http://localhost:8080/grafana/ (GATEWAY_PORT in .env).
+services:
+  loki:
+    image: grafana/loki:3.6.22
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ./loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
+    ports:
+      # For a service started outside compose (dotnet run), which pushes its logs to http://localhost:3100.
+      # Services inside the stack use http://loki:3100.
+      - "127.0.0.1:${LOKI_HOST_PORT:-3100}:3100"
+    # No healthcheck here: the Loki image is distroless, with no shell or HTTP client to run one.
+    # Grafana's healthcheck below also requires Loki's /ready, so `up --wait` still waits for Loki.
+    # Azure probes Loki's /ready over HTTP directly (section 9a).
+
+  grafana:
+    image: grafana/grafana:13.3.1
+    depends_on:
+      - loki
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:?set it in deploy/compose/.env}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set it in deploy/compose/.env}
+      # Served under /grafana/ behind the gateway (nginx/default.conf.template).
+      GF_SERVER_ROOT_URL: http://localhost:${GATEWAY_PORT:-8080}/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      # Read by grafana/provisioning/datasources/loki.yml. In Azure: http://127.0.0.1:3100 (section 9a).
+      LOKI_URL: http://loki:3100
+    volumes:
+      # Datasource, dashboards and alert rules as code. Azure mounts the same folder from Azure Files.
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    healthcheck:
+      # Healthy only when Grafana is up and Loki is ready to take logs and queries.
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/grafana/api/health && wget -q -O /dev/null http://loki:3100/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+volumes:
+  loki-data:
+  grafana-data:

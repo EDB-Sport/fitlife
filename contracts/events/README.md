@@ -9,3 +9,10 @@ One JSON Schema per RabbitMQ event that crosses a context boundary (`docs/domain
 - **Headers:** the correlation ID travels in the `X-Correlation-ID` message header (#19), not in the body.
 
 Tests: `tests/FitLife.Contracts.Tests` checks each schema against a sample in the test. Producer and consumer tests validate with `EventSchemas.Validate` from `tests/FitLife.Contracts.Testing`.
+
+## On the wire (`libs/FitLife.Messaging`)
+
+- **Exchange:** `fitlife.events` (durable topic). The routing key is the schema's file name, e.g. `reservation-made`.
+- **Queues:** one durable quorum queue per consuming service and event, `<service>.<routing key>`, e.g. `notification.reservation-made`.
+- **Failures:** a subscriber that throws gets the message again, up to 5 deliveries. After that, and straight away for a body that isn't the event, the message goes to `<queue>.dead-letter` (exchange `fitlife.events.dead-letter`). Nothing is dropped silently.
+- **Dead letters:** look at them in the management UI (http://localhost:15672, *Queues and Streams*, `<queue>.dead-letter`, *Get messages*). To replay one, publish its body again to `fitlife.events` with the routing key, once the cause is fixed. The subscriber is idempotent, so a replay is safe.

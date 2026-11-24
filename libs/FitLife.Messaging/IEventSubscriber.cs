@@ -5,7 +5,7 @@ namespace FitLife.Messaging;
 public interface IEventSubscriber<in TEvent>
     where TEvent : IIntegrationEvent
 {
-    /// <summary>Handles one event. The message is acknowledged when this completes, and dropped if it throws.</summary>
+    /// <summary>Handles one event. The message is acknowledged when this completes. If it throws, the message is tried again, and dead-lettered after a few tries (#257), so the handling must be idempotent.</summary>
     /// <param name="integrationEvent">The event.</param>
     /// <param name="cancellationToken">Cancelled when the service stops.</param>
     /// <returns>A task that completes when the event has been handled.</returns>

@@ -79,9 +79,7 @@ public sealed partial class RabbitMqEventConsumer<TEvent> : BackgroundService, I
         }
 
         _channel = await _connection.CreateChannelAsync(cancellationToken).ConfigureAwait(false);
-        await RabbitMqEventPublisher.DeclareExchangeAsync(_channel, cancellationToken).ConfigureAwait(false);
-        await _channel.QueueDeclareAsync(Queue, durable: true, exclusive: false, autoDelete: false, cancellationToken: cancellationToken).ConfigureAwait(false);
-        await _channel.QueueBindAsync(Queue, RabbitMqEventPublisher.Exchange, TEvent.RoutingKey, cancellationToken: cancellationToken).ConfigureAwait(false);
+        await QueueTopology.DeclareAsync(_channel, Queue, TEvent.RoutingKey, cancellationToken).ConfigureAwait(false);
 
         var consumer = new AsyncEventingBasicConsumer(_channel);
         consumer.ReceivedAsync += OnReceivedAsync;
@@ -132,7 +130,7 @@ public sealed partial class RabbitMqEventConsumer<TEvent> : BackgroundService, I
             }
             catch (JsonException exception)
             {
-                // Redelivering a body that can't be read only fails again
+                // Redelivering a body that can't be read only fails again: straight to the dead-letter queue
                 LogUnreadable(exception, Queue);
                 await channel.BasicRejectAsync(delivery.DeliveryTag, requeue: false, CancellationToken.None).ConfigureAwait(false);
                 return;
@@ -154,8 +152,10 @@ public sealed partial class RabbitMqEventConsumer<TEvent> : BackgroundService, I
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
+            // Requeued: RabbitMQ tries it again, and dead-letters it after the delivery limit. Reject, not nack:
+            // since RabbitMQ 4.3 a nack requeue doesn't count towards the limit (rabbitmq.com/docs/nack)
             LogHandlerFailed(exception, Queue);
-            await channel.BasicNackAsync(deliveryTag, multiple: false, requeue: false, CancellationToken.None).ConfigureAwait(false);
+            await channel.BasicRejectAsync(deliveryTag, requeue: true, CancellationToken.None).ConfigureAwait(false);
             return;
         }
 
@@ -168,9 +168,9 @@ public sealed partial class RabbitMqEventConsumer<TEvent> : BackgroundService, I
     [LoggerMessage(Level = LogLevel.Warning, Message = "RabbitMQ is not reachable for {Queue}; trying again in {RetryDelay}")]
     private partial void LogNotReachable(Exception exception, string queue, TimeSpan retryDelay);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Dropped a message on {Queue} that is not the event")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "A message on {Queue} is not the event; it goes to the dead-letter queue")]
     private partial void LogUnreadable(Exception exception, string queue);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "The handler failed on {Queue}; the message is dropped")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "The subscriber failed on {Queue}; the message is tried again, and dead-lettered after the delivery limit")]
     private partial void LogHandlerFailed(Exception exception, string queue);
 }

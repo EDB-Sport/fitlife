@@ -3,14 +3,14 @@ namespace BookingService.Domain;
 /// <summary>Kapacitet: how many members can have a reservation on one class session (GLOSSARY.md).</summary>
 public readonly record struct Capacity
 {
-    /// <summary>Creates a capacity of at least one seat.</summary>
-    /// <param name="seats">The number of seats, 1 or more.</param>
-    public Capacity(int seats)
+    /// <summary>Creates a capacity of at least one.</summary>
+    /// <param name="value">How many members can have a reservation, 1 or more.</param>
+    public Capacity(int value)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(seats, 1);
-        Seats = seats;
+        ArgumentOutOfRangeException.ThrowIfLessThan(value, 1);
+        Value = value;
     }
 
-    /// <summary>The number of seats.</summary>
-    public int Seats { get; }
+    /// <summary>How many members can have a reservation.</summary>
+    public int Value { get; }
 }

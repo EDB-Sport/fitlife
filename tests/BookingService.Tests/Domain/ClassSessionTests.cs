@@ -5,26 +5,26 @@ namespace BookingService.Tests.Domain;
 /// <summary>A class session never has more reservations than its capacity (issue #155).</summary>
 public sealed class ClassSessionTests
 {
-    private static ClassSession SessionWithSeats(int seats)
+    private static ClassSession ClassSessionWithCapacity(int capacity)
     {
-        return new ClassSession(Guid.NewGuid(), new Capacity(seats));
+        return new ClassSession(Guid.NewGuid(), new Capacity(capacity));
     }
 
     [Test]
     public void Reserve_WhenClassSessionIsFull_IsRejected()
     {
         // Arrange
-        ClassSession session = SessionWithSeats(1);
-        session.Reserve(Guid.NewGuid());
+        ClassSession classSession = ClassSessionWithCapacity(1);
+        classSession.Reserve(Guid.NewGuid());
 
         // Act
-        ReservationResult result = session.Reserve(Guid.NewGuid());
+        ReservationResult result = classSession.Reserve(Guid.NewGuid());
 
         // Assert
         Assert.Multiple(() =>
         {
             Assert.That(result, Is.EqualTo(ReservationResult.ClassSessionFull));
-            Assert.That(session.Reservations, Has.Count.EqualTo(1));
+            Assert.That(classSession.Reservations, Has.Count.EqualTo(1));
         });
     }
 
@@ -32,17 +32,17 @@ public sealed class ClassSessionTests
     public void Reserve_WithFreeSeats_AddsTheMembersReservation()
     {
         // Arrange
-        ClassSession session = SessionWithSeats(2);
+        ClassSession classSession = ClassSessionWithCapacity(2);
         var memberId = Guid.NewGuid();
 
         // Act
-        ReservationResult result = session.Reserve(memberId);
+        ReservationResult result = classSession.Reserve(memberId);
 
         // Assert
         Assert.Multiple(() =>
         {
             Assert.That(result, Is.EqualTo(ReservationResult.Made));
-            Assert.That(session.Reservations.Select(reservation => reservation.MemberId), Is.EqualTo(new[] { memberId }));
+            Assert.That(classSession.Reservations.Select(reservation => reservation.MemberId), Is.EqualTo(new[] { memberId }));
         });
     }
 
@@ -50,25 +50,25 @@ public sealed class ClassSessionTests
     public void Reserve_TheLastFreeSeat_IsReserved()
     {
         // Arrange
-        ClassSession session = SessionWithSeats(2);
-        session.Reserve(Guid.NewGuid());
+        ClassSession classSession = ClassSessionWithCapacity(2);
+        classSession.Reserve(Guid.NewGuid());
 
         // Act
-        ReservationResult result = session.Reserve(Guid.NewGuid());
+        ReservationResult result = classSession.Reserve(Guid.NewGuid());
 
         // Assert
         Assert.Multiple(() =>
         {
             Assert.That(result, Is.EqualTo(ReservationResult.Made));
-            Assert.That(session.Reservations, Has.Count.EqualTo(2));
+            Assert.That(classSession.Reservations, Has.Count.EqualTo(2));
         });
     }
 
     [TestCase(0)]
     [TestCase(-1)]
-    public void Capacity_LessThanOne_IsRejected(int seats)
+    public void Capacity_LessThanOne_IsRejected(int value)
     {
         // Act & Assert
-        Assert.That(() => new Capacity(seats), Throws.TypeOf<ArgumentOutOfRangeException>());
+        Assert.That(() => new Capacity(value), Throws.TypeOf<ArgumentOutOfRangeException>());
     }
 }

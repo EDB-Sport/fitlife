@@ -32,6 +32,31 @@ if [ -z "${OPEN_PRS+x}" ]; then
   }
 fi
 
+# sibling_source <number> <tip>: succeeds, printing "#<m> (<branch>)", when the candidate is a sibling,
+# not a parent (issue #116). A candidate is a parent when all its own unmerged commits are in this PR.
+# When some aren't, it is a sibling if every unmerged commit it shares with this PR (each merge base
+# not on develop) is also on another open PR's branch that isn't built on the candidate: the shared
+# commits come from that PR, so setting the base to the candidate would be the wrong advice.
+# A parent that moved on after this PR branched has no such other PR, so it keeps its base advice.
+sibling_source() {
+  local candidate=$1 tip=$2 number branch other base covered
+  [ -n "$(git rev-list -n 1 "$tip" "^$develop_ref" "^$HEAD_SHA")" ] || return 1
+  while read -r number branch; do
+    [ -n "${number:-}" ] && [ -n "${branch:-}" ] || continue
+    [ "$number" = "$candidate" ] || [ "$branch" = "${HEAD_BRANCH:-}" ] && continue
+    other=$(git rev-parse --verify --quiet "${prefix}${branch}^{commit}") || continue
+    git merge-base --is-ancestor "$tip" "$other" && continue # built on the candidate
+    covered=1
+    while read -r base; do
+      [ -n "$base" ] || continue
+      git merge-base --is-ancestor "$base" "$develop_ref" && continue
+      git merge-base --is-ancestor "$base" "$other" || covered=0
+    done < <(git merge-base --all "$tip" "$HEAD_SHA")
+    [ "$covered" -eq 1 ] && { echo "#$number ($branch)"; return 0; }
+  done <<<"${OPEN_PRS:-}"
+  return 1
+}
+
 failed=0
 while read -r number branch; do
   [ -n "${number:-}" ] && [ -n "${branch:-}" ] || continue
@@ -45,9 +70,14 @@ while read -r number branch; do
     git merge-base --is-ancestor "$base" "$develop_ref" || shared_unmerged=1
   done < <(git merge-base --all "$tip" "$HEAD_SHA")
   [ "$shared_unmerged" -eq 1 ] || continue # only develop in common (or nothing)
+  failed=1
+  if sibling_of=$(sibling_source "$number" "$tip"); then
+    echo "::error::This PR targets develop and shares unmerged commits with #$number ($branch), but #$number is not its parent: those commits also belong to ${sibling_of}."
+    echo "Don't retarget this PR to $branch: follow the advice for the PR those commits come from."
+    continue
+  fi
   echo "::error::This PR targets develop but contains the commits of #$number ($branch), which aren't on develop."
   echo "Either merge #$number first, or set the base to $branch (retarget to develop after #$number merges). After you change the base, re-run this check: a base change does not start it."
-  failed=1
 done <<<"${OPEN_PRS:-}"
 
 [ "$failed" -eq 0 ] && echo "No open PR's commits found beneath this PR."

@@ -1,0 +1,25 @@
+# Releases (issue #94, docs/CSHARP_SETUP_TODO.md sections 9 and 10, METHODOLOGY section 2.1).
+# release-gate: on every PR into main (release/x.y.z or hotfix/<service>-x.y.z), each service that changed since
+# its last <service>/vX.Y.Z tag has a higher version, a breaking API change is a new MAJOR, and a hotfix
+# raises only one service's PATCH. Logic and rules: tools/ci/release-gate.sh. Make "release-gate" a required check on main.
+# Tagging, Docker Hub and Trivy on merge to main come with #95.
+name: release # deploy.yml (#42) runs after this workflow by name
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  release-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the service tags are needed
+      - name: Every changed service has a higher version
+        run: tools/ci/release-gate.sh
+        env:
+          HEAD_REF: ${{ github.head_ref }}

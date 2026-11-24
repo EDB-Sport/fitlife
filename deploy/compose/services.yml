@@ -11,6 +11,7 @@ services:
       MEMBERSHIP_URL: http://membership-svc:8080
       IDENTITY_URL: http://identity-svc:8080
       MEMBER_PORTAL_URL: http://member-portal:8080 # the Blazor UI (#8), on every path that isn't /api/ or /health
+      GRAFANA_URL: http://grafana:3000 # monitoring.yml
     volumes:
       - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
     ports:

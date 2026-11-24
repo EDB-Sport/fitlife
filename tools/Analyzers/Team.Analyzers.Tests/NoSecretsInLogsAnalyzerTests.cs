@@ -68,7 +68,7 @@ public sealed class NoSecretsInLogsAnalyzerTests
     [TestCase("@Password")]
     public Task Placeholder_WithSecretName_ReportsTeam003(string placeholder)
     {
-        var source = $$"""
+        string source = $$"""
             using Microsoft.Extensions.Logging;
 
             class LoginService
@@ -186,7 +186,7 @@ public sealed class NoSecretsInLogsAnalyzerTests
                 }
             }
             """;
-        var expected = new DiagnosticResult(NoSecretsInLogsAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
+        DiagnosticResult expected = new DiagnosticResult(NoSecretsInLogsAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
             .WithSpan(7, 52, 7, 55)
             .WithMessage("Found 'cpr' in a log call. Do log an id or a masked value instead of the secret or personal data, in LoginService.M.");
         return VerifyAsync(source, expected);

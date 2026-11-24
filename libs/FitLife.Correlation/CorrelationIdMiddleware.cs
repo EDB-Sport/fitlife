@@ -17,7 +17,7 @@ public sealed class CorrelationIdMiddleware(RequestDelegate next, ILogger<Correl
     {
         ArgumentNullException.ThrowIfNull(context);
         string? header = context.Request.Headers[CorrelationContext.HeaderName];
-        var id = string.IsNullOrWhiteSpace(header) ? Guid.NewGuid().ToString() : header;
+        string id = string.IsNullOrWhiteSpace(header) ? Guid.NewGuid().ToString() : header;
 
         using (CorrelationContext.Begin(logger, id))
         {

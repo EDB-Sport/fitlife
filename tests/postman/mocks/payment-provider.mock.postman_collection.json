@@ -1,0 +1,158 @@
+{
+  "info": {
+    "_postman_id": "df5e2909-cf15-5b31-8416-09cddda6ae42",
+    "name": "FitLife payment provider (mock)",
+    "description": "Saved examples that back the Postman Mock Server for the external payment provider (#174). Membership charges the membership fee here, through its anticorruption layer (src/MembershipService/PaymentProvider/). The field names are the provider's, not ours. Pick an example with the x-mock-response-name header. Made-up data only. See tests/postman/README.md.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create charge",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{url}}/v1/charges",
+          "host": [
+            "{{url}}"
+          ],
+          "path": [
+            "v1",
+            "charges"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customer_reference\": \"7d0f6c1a-2b3c-4d5e-8f90-a1b2c3d4e5f6\",\n  \"amount_minor\": 29900,\n  \"currency\": \"DKK\",\n  \"description\": \"FitLife membership fee\"\n}"
+        }
+      },
+      "response": [
+        {
+          "name": "charge-approved",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-mock-response-name",
+                "value": "charge-approved"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/v1/charges",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "v1",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_reference\": \"7d0f6c1a-2b3c-4d5e-8f90-a1b2c3d4e5f6\",\n  \"amount_minor\": 29900,\n  \"currency\": \"DKK\",\n  \"description\": \"FitLife membership fee\"\n}"
+            }
+          },
+          "status": "Created",
+          "code": 201,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"charge_id\": \"ch_1001\",\n  \"outcome\": \"approved\",\n  \"amount_minor\": 29900,\n  \"currency\": \"DKK\",\n  \"created\": \"2026-11-24T09:00:00Z\"\n}"
+        },
+        {
+          "name": "charge-declined",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-mock-response-name",
+                "value": "charge-declined"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/v1/charges",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "v1",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_reference\": \"7d0f6c1a-2b3c-4d5e-8f90-a1b2c3d4e5f6\",\n  \"amount_minor\": 29900,\n  \"currency\": \"DKK\",\n  \"description\": \"FitLife membership fee\"\n}"
+            }
+          },
+          "status": "Payment Required",
+          "code": 402,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"charge_id\": \"ch_1002\",\n  \"outcome\": \"declined\",\n  \"decline_code\": \"insufficient_funds\",\n  \"amount_minor\": 29900,\n  \"currency\": \"DKK\",\n  \"created\": \"2026-11-24T09:00:00Z\"\n}"
+        },
+        {
+          "name": "provider-error",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-mock-response-name",
+                "value": "provider-error"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/v1/charges",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "v1",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_reference\": \"7d0f6c1a-2b3c-4d5e-8f90-a1b2c3d4e5f6\",\n  \"amount_minor\": 29900,\n  \"currency\": \"DKK\",\n  \"description\": \"FitLife membership fee\"\n}"
+            }
+          },
+          "status": "Service Unavailable",
+          "code": 503,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": \"service_unavailable\",\n  \"message\": \"The provider is down for maintenance. Try again later.\"\n}"
+        }
+      ]
+    }
+  ]
+}

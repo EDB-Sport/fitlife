@@ -1,5 +1,6 @@
 using MembershipService.Application;
 using MembershipService.Domain;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 
 namespace MembershipService.Tests;
@@ -10,11 +11,12 @@ public sealed class JoinMembershipHandlerTests
 {
     private readonly InMemoryMembers _members = new();
     private readonly InMemoryMemberships _memberships = new();
+    private readonly StubPaymentProvider _payments = new();
     private readonly FakeTimeProvider _clock = new(new DateTimeOffset(2026, 11, 24, 9, 0, 0, TimeSpan.Zero));
 
     private JoinMembershipHandler Handler()
     {
-        return new JoinMembershipHandler(_members, _memberships, _clock);
+        return new JoinMembershipHandler(_members, _memberships, _payments, Options.Create(new MembershipFeeSettings { MonthlyFeeDkk = 299m }), _clock);
     }
 
     [Test]
@@ -77,6 +79,61 @@ public sealed class JoinMembershipHandlerTests
         Assert.That(_memberships.Stored, Is.Empty);
     }
 
+    [Test]
+    public async Task Join_WhenTheFirstFeeIsDeclined_TheMembershipHasPaymentMissing()
+    {
+        // Arrange
+        _payments.Paid = false;
+        JoinMembershipHandler handler = Handler();
+
+        // Act
+        JoinResult result = await handler.HandleAsync(new JoinMembershipCommand("account-1"), CancellationToken.None);
+
+        // Assert
+        Assert.That(result.Membership?.Status, Is.EqualTo(MembershipStatus.PaymentMissing));
+        Assert.That(_memberships.Stored.Single().Status, Is.EqualTo(MembershipStatus.PaymentMissing));
+    }
+
+    [Test]
+    public async Task Join_NewAccount_ChargesTheMonthlyFeeForTheNewMember()
+    {
+        // Arrange
+        JoinMembershipHandler handler = Handler();
+
+        // Act
+        JoinResult result = await handler.HandleAsync(new JoinMembershipCommand("account-1"), CancellationToken.None);
+
+        // Assert
+        Assert.That(_payments.Charges, Is.EqualTo(new[] { (result.Member?.Id ?? Guid.Empty, 299m) }));
+    }
+
+    [Test]
+    public async Task Join_WhenAccountIsAlreadyAMember_ChargesNothing()
+    {
+        // Arrange
+        JoinMembershipHandler handler = Handler();
+        await handler.HandleAsync(new JoinMembershipCommand("account-1"), CancellationToken.None);
+
+        // Act
+        await handler.HandleAsync(new JoinMembershipCommand("account-1"), CancellationToken.None);
+
+        // Assert
+        Assert.That(_payments.Charges, Has.Count.EqualTo(1));
+    }
+
+    private sealed class StubPaymentProvider : IPaymentProvider
+    {
+        public bool Paid { get; set; } = true;
+
+        public List<(Guid MemberId, decimal AmountDkk)> Charges { get; } = [];
+
+        public Task<bool> ChargeMembershipFeeAsync(Guid memberId, decimal amountDkk, CancellationToken cancellationToken)
+        {
+            Charges.Add((memberId, amountDkk));
+            return Task.FromResult(Paid);
+        }
+    }
+
     private sealed class InMemoryMembers : IMemberRepository
     {
         public List<Member> Stored { get; } = [];
@@ -101,6 +158,61 @@ public sealed class JoinMembershipHandlerTests
         }
     }
 
+    [Test]
+    public async Task Join_WhenTheFirstFeeIsDeclined_TheMembershipHasPaymentMissing()
+    {
+        // Arrange
+        _payments.Paid = false;
+        JoinMembershipHandler handler = Handler();
+
+        // Act
+        JoinResult result = await handler.HandleAsync(new JoinMembershipCommand("account-1"), CancellationToken.None);
+
+        // Assert
+        Assert.That(result.Membership?.Status, Is.EqualTo(MembershipStatus.PaymentMissing));
+        Assert.That(_memberships.Stored.Single().Status, Is.EqualTo(MembershipStatus.PaymentMissing));
+    }
+
+    [Test]
+    public async Task Join_NewAccount_ChargesTheMonthlyFeeForTheNewMember()
+    {
+        // Arrange
+        JoinMembershipHandler handler = Handler();
+
+        // Act
+        JoinResult result = await handler.HandleAsync(new JoinMembershipCommand("account-1"), CancellationToken.None);
+
+        // Assert
+        Assert.That(_payments.Charges, Is.EqualTo(new[] { (result.Member?.Id ?? Guid.Empty, 299m) }));
+    }
+
+    [Test]
+    public async Task Join_WhenAccountIsAlreadyAMember_ChargesNothing()
+    {
+        // Arrange
+        JoinMembershipHandler handler = Handler();
+        await handler.HandleAsync(new JoinMembershipCommand("account-1"), CancellationToken.None);
+
+        // Act
+        await handler.HandleAsync(new JoinMembershipCommand("account-1"), CancellationToken.None);
+
+        // Assert
+        Assert.That(_payments.Charges, Has.Count.EqualTo(1));
+    }
+
+    private sealed class StubPaymentProvider : IPaymentProvider
+    {
+        public bool Paid { get; set; } = true;
+
+        public List<(Guid MemberId, decimal AmountDkk)> Charges { get; } = [];
+
+        public Task<bool> ChargeMembershipFeeAsync(Guid memberId, decimal amountDkk, CancellationToken cancellationToken)
+        {
+            Charges.Add((memberId, amountDkk));
+            return Task.FromResult(Paid);
+        }
+    }
+
     private sealed class InMemoryMemberships : IMembershipRepository
     {
         public List<Membership> Stored { get; } = [];
@@ -114,6 +226,13 @@ public sealed class JoinMembershipHandlerTests
         public Task RemoveAsync(Guid membershipId, CancellationToken cancellationToken)
         {
             Stored.RemoveAll(membership => membership.Id == membershipId);
+            return Task.CompletedTask;
+        }
+
+        public Task SaveAsync(Membership membership, CancellationToken cancellationToken)
+        {
+            Stored.RemoveAll(stored => stored.Id == membership.Id);
+            Stored.Add(membership);
             return Task.CompletedTask;
         }
 

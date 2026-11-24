@@ -105,6 +105,28 @@ jobs:
       - name: Check that every build rule still fails the build
         run: tools/ci/check-build-rules.sh
 
+  # Fails a PR into develop that is built on another open PR's branch (issue #110, #106).
+  # Needs: pull-requests read to list the open PRs. On a draft PR it runs like on any other PR.
+  # On a PR from a fork it still checks the commits, but a fork's branch is never a parent.
+  stack-check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the history of every branch, to see what is beneath this PR
+      - name: Look for commits of another open PR
+        run: tools/ci/stack-check.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_BRANCH: ${{ github.head_ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+
   diff-scan:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest

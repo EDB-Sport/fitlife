@@ -8,4 +8,7 @@ public enum WaitlistResult
 
     /// <summary>A seat is free, so the member can reserve it instead; no waitlist entry was made.</summary>
     ClassSessionNotFull,
+
+    /// <summary>The class session starts in less than 2 hours, so the waitlist is closed; no waitlist entry was made.</summary>
+    WaitlistClosed,
 }

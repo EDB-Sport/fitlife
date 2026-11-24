@@ -2,7 +2,7 @@ namespace BookingService.Domain;
 
 /// <summary>
 /// Hold: one scheduled run of a class (GLOSSARY.md). The aggregate root of Booking: reservations change only through it,
-/// so the number of reservations never exceeds the capacity, no one reserves more than 4 weeks ahead, a member has at most one, the waitlist keeps its order, and a freed seat goes to the first waitlist entry (src/BookingService/CONTEXT.md).
+/// so the number of reservations never exceeds the capacity, no one reserves more than 4 weeks ahead, a member has at most one, the waitlist keeps its order and closes 2 hours before start, and a freed seat goes to the first waitlist entry (src/BookingService/CONTEXT.md).
 /// </summary>
 public sealed class ClassSession
 {
@@ -11,6 +11,7 @@ public sealed class ClassSession
     private readonly List<DomainEvent> _domainEvents = [];
 
     private static readonly TimeSpan HowFarAheadMembersCanReserve = TimeSpan.FromDays(28);
+    private static readonly TimeSpan WhenTheWaitlistClosesBeforeStart = TimeSpan.FromHours(2);
 
     /// <summary>Creates a class session with no reservations.</summary>
     /// <param name="id">The class session's id.</param>
@@ -75,14 +76,25 @@ public sealed class ClassSession
         return ReservationResult.Made;
     }
 
-    /// <summary>Puts the member at the end of the waitlist, if every seat is taken.</summary>
+    /// <summary>Puts the member at the end of the waitlist, if every seat is taken and the waitlist is still open.</summary>
     /// <param name="memberId">The member who wants a seat.</param>
-    /// <returns><see cref="WaitlistResult.ClassSessionNotFull"/> when a seat is free; then nothing changes.</returns>
-    public WaitlistResult JoinWaitlist(Guid memberId)
+    /// <param name="clock">Tells the time now.</param>
+    /// <returns>
+    /// <see cref="WaitlistResult.ClassSessionNotFull"/> when a seat is free, or <see cref="WaitlistResult.WaitlistClosed"/>
+    /// less than 2 hours before start; then nothing changes.
+    /// </returns>
+    public WaitlistResult JoinWaitlist(Guid memberId, TimeProvider clock)
     {
+        ArgumentNullException.ThrowIfNull(clock);
+
         if (_reservations.Count < Capacity.Value)
         {
             return WaitlistResult.ClassSessionNotFull;
+        }
+
+        if (StartTime - clock.GetUtcNow() < WhenTheWaitlistClosesBeforeStart)
+        {
+            return WaitlistResult.WaitlistClosed;
         }
 
         _waitlist.Add(new WaitlistEntry(memberId));
@@ -112,5 +124,29 @@ public sealed class ClassSession
         }
 
         return CancellationResult.Cancelled;
+    }
+
+    /// <summary>
+    /// Closes the waitlist 2 hours before start: every remaining waitlist entry is removed without a seat, and each member gets a
+    /// <see cref="WaitlistEntryExpired"/> event.
+    /// </summary>
+    /// <param name="clock">Tells the time now.</param>
+    /// <returns><see cref="WaitlistClosingResult.TooEarly"/> more than 2 hours before start; then nothing changes.</returns>
+    public WaitlistClosingResult CloseWaitlist(TimeProvider clock)
+    {
+        ArgumentNullException.ThrowIfNull(clock);
+
+        if (StartTime - clock.GetUtcNow() > WhenTheWaitlistClosesBeforeStart)
+        {
+            return WaitlistClosingResult.TooEarly;
+        }
+
+        foreach (WaitlistEntry waitlistEntry in _waitlist)
+        {
+            _domainEvents.Add(new WaitlistEntryExpired(Id, waitlistEntry.MemberId));
+        }
+
+        _waitlist.Clear();
+        return WaitlistClosingResult.Closed;
     }
 }

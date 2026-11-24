@@ -42,6 +42,7 @@ People and agents use these words, and only these words, in code, tests, issues,
 | Notifikation | One message to one member about something that happened, with its delivery log | `Notification` | – | Notification | Aggregate root | Message, Alert, Push |
 | Booking oprettet | A member got a seat on a class session, directly or from the waitlist | `ReservationMade` | – | Booking | Domain event | BookingCreated, ReservationAdded |
 | Booking afmeldt | A member gave up their seat | `ReservationCancelled` | – | Booking | Domain event | BookingDeleted, ReservationRemoved |
+| Ventelisteplads udløbet | The waitlist closed 2 hours before start, and a member's waitlist entry was removed without a seat | `WaitlistEntryExpired` | – | Booking | Domain event | WaitlistEntryRemoved, WaitlistEntryDeleted, QueueExpired |
 | Hold aflyst | A class session will not take place | `ClassSessionCancelled` | – | Booking | Domain event | ClassDeleted, SessionRemoved |
 | Hold ændret | A class session got a new time or place | `ClassSessionChanged` | – | Booking | Domain event | ClassUpdated, SessionEdited |
 | Medlemskab pauset | A membership is on pause for a period | `MembershipPaused` | – | Membership | Domain event | MembershipFrozen, Suspended |

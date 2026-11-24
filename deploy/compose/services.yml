@@ -30,6 +30,11 @@ services:
     image: fitlife/bookingservice:local
     environment:
       Loki__Url: http://loki:3100 # monitoring.yml; Loki:App is booking-svc in appsettings.json
+      # infrastructure.yml; the user booking-svc reaches only the booking database (mongodb/init). No password in the URL.
+      MongoDb__ConnectionString: mongodb://booking-svc@mongodb:27017/booking
+      # Until #164 merges and the service reads MongoDb:Password from Vault, it comes from .env.
+      MongoDb__Password: ${BOOKING_DB_PASSWORD:?set it in deploy/compose/.env}
+      Seed__Enabled: "true" # the demo class schedule, loaded once into an empty database (#171)
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
       interval: 5s

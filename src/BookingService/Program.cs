@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Reflection;
+using BookingService.Repositories;
+using BookingService.Seed;
 using FitLife.Correlation;
 using NLog;
 using NLog.Web;
@@ -15,6 +17,14 @@ try
 
     builder.Services.AddOpenApi();
     builder.Services.AddHealthChecks();
+    builder.Services.AddControllers();
+    builder.Services.AddProblemDetails();
+    builder.Services.AddSingleton(TimeProvider.System);
+    builder.Services.AddRepositories();
+    if (builder.Configuration.GetValue<bool>("Seed:Enabled"))
+    {
+        builder.Services.AddHostedService<ClassSessionSeeder>();
+    }
 
     WebApplication app = builder.Build();
 
@@ -28,7 +38,9 @@ try
         app.MapScalarApiReference();
     }
 
+    app.UseExceptionHandler(); // an unexpected error is a problem-details 500, without the exception's text
     app.MapHealthChecks("/health");
+    app.MapControllers();
 
     // The startup line: which service and which release is running (the version is also a Loki label)
     if (app.Logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information))

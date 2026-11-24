@@ -26,6 +26,8 @@
     <!-- NLog → Loki (course rule #8, docs/CSHARP_SETUP_TODO.md section 7) -->
     <PackageVersion Include="NLog.Web.AspNetCore" Version="6.2.2" />
     <PackageVersion Include="NLog.Targets.Loki" Version="2.7.1" />
+    <!-- Used only in *.Repositories namespaces (TEAM001) -->
+    <PackageVersion Include="MongoDB.Driver" Version="3.13.0" />
   </ItemGroup>
 
   <!-- Added to every test project automatically by tests/Directory.Build.props. -->

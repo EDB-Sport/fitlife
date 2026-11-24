@@ -47,6 +47,8 @@ jobs:
         run: dotnet build -c Release --no-restore -v q -clp:NoSummary -tl:off
 
   format:
+    # After build, so one compile error fails build only and is shown once (issue #134)
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -58,6 +60,8 @@ jobs:
         run: dotnet format --verify-no-changes --no-restore
 
   test:
+    # After build, so one compile error fails build only and is shown once (issue #134)
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <!-- Shared code: correlation ID middleware and handler (docs/CSHARP_SETUP_TODO.md section 7) -->
+    <ProjectReference Include="$(RepoRoot)libs/FitLife.Configuration/FitLife.Configuration.csproj" />
     <ProjectReference Include="$(RepoRoot)libs/FitLife.Correlation/FitLife.Correlation.csproj" />
   </ItemGroup>
 

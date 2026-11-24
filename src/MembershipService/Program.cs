@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Reflection;
 using System.Text.Json.Serialization;
 using FitLife.Authentication;
+using FitLife.Configuration;
 using FitLife.Correlation;
 using MembershipService.Api;
 using MembershipService.Application;
@@ -14,6 +15,10 @@ using Scalar.AspNetCore;
 try
 {
     WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+    // Course rule #9: the secret/membership-svc secret from Vault (Vault:Address, Vault:Token), read through IConfiguration:
+    // MongoDb:Password and Jwt:SigningKey
+    await builder.Configuration.AddVaultAsync().ConfigureAwait(false);
 
     // Course rule #8: NLog → Loki, with the shared libs/nlog.config
     builder.Logging.ClearProviders();

@@ -2,6 +2,7 @@
 # Pushes to other branches get CI through their PR, so a PR head has one run, not a push run
 # plus a PR run with diff-scan skipped (GitHub reports a skipped job as passing).
 # Every job here is meant to be a required check on develop and main, by its job name (section 9).
+# build, format and test write a short failure summary to the run summary page (tools/ci/summarize.sh, #132).
 # tdd-check and pr-description have their own workflows; security, deploy-check and api-tests
 # come through their own issues (#20, #21, #22).
 name: CI
@@ -44,7 +45,7 @@ jobs:
           global-json-file: global.json
       - run: dotnet restore --locked-mode
       - name: Build (compiler, analyzers, TEAM rules)
-        run: dotnet build -c Release --no-restore -v q -clp:NoSummary -tl:off
+        run: tools/ci/summarize.sh build "Fix the first compiler or analyzer error, the others often follow from it. Run dotnet build -c Release locally." -- dotnet build -c Release --no-restore -v q -clp:NoSummary -tl:off
 
   format:
     runs-on: ubuntu-latest
@@ -55,7 +56,7 @@ jobs:
           global-json-file: global.json
       - run: dotnet restore --locked-mode
       - name: Check formatting
-        run: dotnet format --verify-no-changes --no-restore
+        run: tools/ci/summarize.sh format "Run dotnet format locally and commit what it changes." -- dotnet format --verify-no-changes --no-restore
 
   test:
     runs-on: ubuntu-latest
@@ -67,7 +68,7 @@ jobs:
       - run: dotnet restore --locked-mode
       - run: dotnet build -c Release --no-restore -v q -clp:NoSummary -tl:off
       - name: Test with coverage
-        run: dotnet test -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
+        run: tools/ci/summarize.sh test "Run the named test with dotnet test -c Release --filter, and read its Error Message." -- dotnet test -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
       - name: Coverage report
         uses: danielpalme/ReportGenerator-GitHub-Action@5
         with:

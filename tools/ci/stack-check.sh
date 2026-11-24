@@ -5,7 +5,9 @@
 # parent has moved on since: shared commits, not the parent's current tip, are what a reviewer
 # sees twice. The lower-number rule keeps the bottom of a stack passing while its child is open.
 # If the lower-numbered PR is itself built on this one (numbers reversed), this PR is the bottom
-# and passes; the other PR is the one that is stacked, but it is not caught.
+# and passes, also after develop was merged into it: all of its own commits that aren't on develop
+# (merge commits aside) are in the other PR. The other PR is the one that is stacked, but it is
+# not caught.
 # Inputs (environment):
 #   BASE_REF     the PR's base branch; only a PR whose base is develop is checked
 #   HEAD_SHA     the PR's head commit
@@ -66,7 +68,9 @@ while read -r number branch; do
   [ "$branch" = "${HEAD_BRANCH:-}" ] && continue
   tip=$(git rev-parse --verify --quiet "${prefix}${branch}^{commit}") || continue
   [ "$number" -lt "${PR_NUMBER:?}" ] || continue # only a lower-numbered PR is a parent
-  git merge-base --is-ancestor "$HEAD_SHA" "$tip" && continue # this PR is beneath that one
+  # This PR is beneath that one (numbers reversed) when its own commits are all in the other tip. Merge
+  # commits don't count: develop merged into this PR is a merge commit the other PR can't have (issue #140).
+  [ -z "$(git rev-list -n 1 --no-merges "$HEAD_SHA" "^$develop_ref" "^$tip")" ] && continue
   shared_unmerged=0
   while read -r base; do
     [ -n "$base" ] || continue

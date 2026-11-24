@@ -110,7 +110,7 @@ public sealed class ControllerActionContractAnalyzerTests
     [TestCase("void")]
     public Task ActionWithUntypedResult_ReportsTeam009(string returnType)
     {
-        var source = $$"""
+        string source = $$"""
             public class ClassSessionsController : ControllerBase
             {
                 [HttpGet]
@@ -173,7 +173,7 @@ public sealed class ControllerActionContractAnalyzerTests
     [TestCase("Task<Results<Ok<ClassSession>, NotFound>>")]
     public Task ActionWithVerbAndTypedResult_ReportsNothing(string returnType)
     {
-        var source = $$"""
+        string source = $$"""
             public class ClassSessionsController : ControllerBase
             {
                 [HttpGet("{id}")]

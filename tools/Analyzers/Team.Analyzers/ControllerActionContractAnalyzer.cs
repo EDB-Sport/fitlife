@@ -47,7 +47,7 @@ public sealed class ControllerActionContractAnalyzer : DiagnosticAnalyzer
 
     private static void AnalyzeMethod(SymbolAnalysisContext context, KnownTypes known)
     {
-        IMethodSymbol method = (IMethodSymbol)context.Symbol;
+        var method = (IMethodSymbol)context.Symbol;
         if (!IsAction(method, known))
         {
             return;

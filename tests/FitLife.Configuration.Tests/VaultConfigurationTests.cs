@@ -1,10 +1,11 @@
 using System.Net;
 using System.Text;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Time.Testing;
 
 namespace FitLife.Configuration.Tests;
 
-/// <summary>AddVault loads a service's secret from Vault's KV v2 engine into IConfiguration (#17, course rule #9).</summary>
+/// <summary>AddVaultAsync loads a service's secret from Vault's KV v2 engine into IConfiguration (#17, course rule #9).</summary>
 public sealed class VaultConfigurationTests
 {
     private const string SecretJson = """
@@ -32,30 +33,47 @@ public sealed class VaultConfigurationTests
         return Settings(("Vault:Address", "http://vault:8200"), ("Vault:Token", "root-token"), ("Vault:Path", "booking-svc"));
     }
 
+    private static HttpResponseMessage Answer(HttpStatusCode status, string json = "{}")
+    {
+        return new HttpResponseMessage(status) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
+    }
+
+    // Moves the fake clock on, a second at a time, until the load has finished: no test waits in real time
+    private static async Task RunWithClockAsync(Task load, FakeTimeProvider time)
+    {
+        for (int second = 0; second < 600 && !load.IsCompleted; second++)
+        {
+            await Task.Yield();
+            time.Advance(TimeSpan.FromSeconds(1));
+        }
+
+        await load.ConfigureAwait(false);
+    }
+
     [Test]
-    public void AddVault_WithoutAnAddress_LoadsNothingAndSendsNoRequest()
+    public async Task AddVaultAsync_WithoutAnAddress_LoadsNothingAndSendsNoRequest()
     {
         // Arrange
-        using var vault = new FakeVault(HttpStatusCode.OK, SecretJson);
+        using var vault = new FakeVault(_ => Answer(HttpStatusCode.OK, SecretJson));
         using ConfigurationManager configuration = Settings(("Vault:Path", "booking-svc"));
 
         // Act
-        configuration.AddVault(vault);
+        await configuration.AddVaultAsync(vault).ConfigureAwait(false);
 
         // Assert
-        Assert.That(vault.Request, Is.Null);
+        Assert.That(vault.Requests, Is.Empty);
         Assert.That(configuration["MongoDb:Password"], Is.Null);
     }
 
     [Test]
-    public void AddVault_WithAnAddress_ReadsTheSecretAsConfigurationKeys()
+    public async Task AddVaultAsync_WithAnAddress_ReadsTheSecretAsConfigurationKeys()
     {
         // Arrange
-        using var vault = new FakeVault(HttpStatusCode.OK, SecretJson);
+        using var vault = new FakeVault(_ => Answer(HttpStatusCode.OK, SecretJson));
         using ConfigurationManager configuration = VaultSettings();
 
         // Act
-        configuration.AddVault(vault);
+        await configuration.AddVaultAsync(vault).ConfigureAwait(false);
 
         // Assert
         Assert.That(configuration["MongoDb:Password"], Is.EqualTo("db-secret"));
@@ -65,84 +83,161 @@ public sealed class VaultConfigurationTests
     }
 
     [Test]
-    public void AddVault_WithAnAddress_GetsTheSecretWithTheToken()
+    public async Task AddVaultAsync_WithAnAddress_GetsTheSecretWithTheToken()
     {
         // Arrange
-        using var vault = new FakeVault(HttpStatusCode.OK, SecretJson);
-
+        using var vault = new FakeVault(_ => Answer(HttpStatusCode.OK, SecretJson));
         using ConfigurationManager configuration = VaultSettings();
 
         // Act
-        configuration.AddVault(vault);
+        await configuration.AddVaultAsync(vault).ConfigureAwait(false);
 
         // Assert
-        Assert.That(vault.Request?.Method, Is.EqualTo(HttpMethod.Get));
-        Assert.That(vault.Request?.RequestUri, Is.EqualTo(new Uri("http://vault:8200/v1/secret/data/booking-svc")));
-        Assert.That(vault.Request?.Headers.GetValues("X-Vault-Token").Single(), Is.EqualTo("root-token"));
+        Assert.That(vault.Requests, Has.Count.EqualTo(1));
+        Assert.That(vault.Requests[0].Method, Is.EqualTo(HttpMethod.Get));
+        Assert.That(vault.Requests[0].Uri, Is.EqualTo(new Uri("http://vault:8200/v1/secret/data/booking-svc")));
+        Assert.That(vault.Requests[0].Token, Is.EqualTo("root-token"));
     }
 
     [TestCase("http://vault:8200/", "secret", "http://vault:8200/v1/secret/data/booking-svc")]
     [TestCase("http://vault:8200/proxy", "kv", "http://vault:8200/proxy/v1/kv/data/booking-svc")]
-    public void AddVault_WithAMountOrAPathInTheAddress_BuildsTheSecretUrl(string address, string mount, string expected)
+    public async Task AddVaultAsync_WithAMountOrAPathInTheAddress_BuildsTheSecretUrl(string address, string mount, string expected)
     {
         // Arrange
-        using var vault = new FakeVault(HttpStatusCode.OK, SecretJson);
+        using var vault = new FakeVault(_ => Answer(HttpStatusCode.OK, SecretJson));
         using ConfigurationManager configuration = Settings(
             ("Vault:Address", address), ("Vault:Token", "root-token"), ("Vault:Mount", mount), ("Vault:Path", "booking-svc"));
 
         // Act
-        configuration.AddVault(vault);
+        await configuration.AddVaultAsync(vault).ConfigureAwait(false);
 
         // Assert
-        Assert.That(vault.Request?.RequestUri, Is.EqualTo(new Uri(expected)));
+        Assert.That(vault.Requests[0].Uri, Is.EqualTo(new Uri(expected)));
     }
 
     [Test]
-    public void AddVault_WhenVaultRefuses_ThrowsWithTheStatusAndPathButNotTheToken()
+    public void AddVaultAsync_WhenVaultRefusesTheToken_ThrowsAtOnceWithTheStatusAndPathButNotTheToken()
     {
         // Arrange
-        using var vault = new FakeVault(HttpStatusCode.Forbidden, """{ "errors": ["permission denied"] }""");
+        using var vault = new FakeVault(_ => Answer(HttpStatusCode.Forbidden, """{ "errors": ["permission denied"] }"""));
         using ConfigurationManager configuration = VaultSettings();
+        var time = new FakeTimeProvider();
 
         // Act
-        InvalidOperationException? exception = Assert.Throws<InvalidOperationException>(() => configuration.AddVault(vault));
+        InvalidOperationException? exception = Assert.ThrowsAsync<InvalidOperationException>(() => configuration.AddVaultAsync(vault, time));
 
         // Assert
         Assert.That(exception?.Message, Does.Contain("403").And.Contain("secret/booking-svc"));
         Assert.That(exception?.Message, Does.Not.Contain("root-token"));
+        Assert.That(vault.Requests, Has.Count.EqualTo(1));
     }
 
     [TestCase("Vault:Token")]
     [TestCase("Vault:Path")]
-    public void AddVault_WithAnAddressButAMissingSetting_ThrowsAndNamesTheSetting(string missing)
+    public void AddVaultAsync_WithAnAddressButAMissingSetting_ThrowsAndNamesTheSetting(string missing)
     {
         // Arrange
-        using var vault = new FakeVault(HttpStatusCode.OK, SecretJson);
+        using var vault = new FakeVault(_ => Answer(HttpStatusCode.OK, SecretJson));
         using ConfigurationManager configuration = VaultSettings();
         configuration[missing] = string.Empty;
 
         // Act
-        InvalidOperationException? exception = Assert.Throws<InvalidOperationException>(() => configuration.AddVault(vault));
+        InvalidOperationException? exception = Assert.ThrowsAsync<InvalidOperationException>(() => configuration.AddVaultAsync(vault));
 
         // Assert
         Assert.That(exception?.Message, Does.Contain(missing));
-        Assert.That(vault.Request, Is.Null);
+        Assert.That(vault.Requests, Is.Empty);
     }
 
-    // Answers every request with one canned response, and keeps the request
-    private sealed class FakeVault(HttpStatusCode status, string json) : HttpMessageHandler
+    // Compose and Azure start Vault and the service together, and Vault is seeded a few seconds later
+    [TestCase(HttpStatusCode.NotFound)]
+    [TestCase(HttpStatusCode.ServiceUnavailable)]
+    public async Task AddVaultAsync_WhileTheSecretIsNotThereYet_TriesAgainUntilItIs(HttpStatusCode notYet)
     {
-        public HttpRequestMessage? Request { get; private set; }
-
-        protected override HttpResponseMessage Send(HttpRequestMessage request, CancellationToken cancellationToken)
+        // Arrange
+        int attempts = 0;
+        using var vault = new FakeVault(_ =>
         {
-            Request = request;
-            return new HttpResponseMessage(status) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
-        }
+            attempts++;
+            if (attempts < 4)
+            {
+                return Answer(notYet);
+            }
+
+            return Answer(HttpStatusCode.OK, SecretJson);
+        });
+        using ConfigurationManager configuration = VaultSettings();
+        var time = new FakeTimeProvider();
+
+        // Act
+        await RunWithClockAsync(configuration.AddVaultAsync(vault, time), time).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(configuration["MongoDb:Password"], Is.EqualTo("db-secret"));
+        Assert.That(vault.Requests, Has.Count.EqualTo(4));
+    }
+
+    [Test]
+    public async Task AddVaultAsync_WhileVaultDoesNotAnswer_TriesAgainUntilItDoes()
+    {
+        // Arrange
+        int attempts = 0;
+        using var vault = new FakeVault(_ =>
+        {
+            attempts++;
+            if (attempts < 3)
+            {
+                throw new HttpRequestException("Connection refused (vault:8200)");
+            }
+
+            return Answer(HttpStatusCode.OK, SecretJson);
+        });
+        using ConfigurationManager configuration = VaultSettings();
+        var time = new FakeTimeProvider();
+
+        // Act
+        await RunWithClockAsync(configuration.AddVaultAsync(vault, time), time).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(configuration["MongoDb:Password"], Is.EqualTo("db-secret"));
+    }
+
+    [Test]
+    public void AddVaultAsync_WhenTheSecretNeverComes_GivesUpAfterVaultWaitSeconds()
+    {
+        // Arrange
+        using var vault = new FakeVault(_ => Answer(HttpStatusCode.NotFound));
+        using ConfigurationManager configuration = VaultSettings();
+        configuration["Vault:WaitSeconds"] = "10";
+        var time = new FakeTimeProvider();
+        DateTimeOffset start = time.GetUtcNow();
+
+        // Act
+        InvalidOperationException? exception = Assert.ThrowsAsync<InvalidOperationException>(
+            () => RunWithClockAsync(configuration.AddVaultAsync(vault, time), time));
+
+        // Assert
+        Assert.That(exception?.Message, Does.Contain("404").And.Contain("10 s"));
+        Assert.That(time.GetUtcNow() - start, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(10)).And.LessThan(TimeSpan.FromSeconds(13)));
+    }
+
+    private sealed record SentRequest(HttpMethod Method, Uri? Uri, string? Token);
+
+    // Answers each request with the response the test gives, and keeps what was sent
+    private sealed class FakeVault(Func<int, HttpResponseMessage> answer) : HttpMessageHandler
+    {
+        public List<SentRequest> Requests { get; } = [];
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            return Task.FromResult(Send(request, cancellationToken));
+            string? token = null;
+            if (request.Headers.TryGetValues("X-Vault-Token", out IEnumerable<string>? values))
+            {
+                token = values.Single();
+            }
+
+            Requests.Add(new SentRequest(request.Method, request.RequestUri, token));
+            return Task.FromResult(answer(Requests.Count));
         }
     }
 }

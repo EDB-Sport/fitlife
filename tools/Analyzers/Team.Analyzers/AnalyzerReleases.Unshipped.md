@@ -7,4 +7,5 @@ Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
 TEAM004 | Maintainability | Error | JustifiedSuppressionAnalyzer: suppressions must name an issue
 TEAM002 | Design | Error | NlogOnlyInProgramAnalyzer: NLog API only in Program.cs
+TEAM007 | Reliability | Error | NoWaitInTestsAnalyzer: no Thread.Sleep or Task.Delay in test projects
 TEAM012 | Style | Error | ConditionalExpressionAnalyzer: no conditional expression in place of if/return

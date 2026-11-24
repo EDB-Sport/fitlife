@@ -56,5 +56,3 @@ public partial class Program
     /// <summary>Only the top-level statements create the app.</summary>
     protected Program() { }
 }
-
-this line is a deliberate compile error for the #134 evidence run

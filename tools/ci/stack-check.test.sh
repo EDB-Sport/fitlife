@@ -163,6 +163,26 @@ expect "sibling stack: the sibling is named" fail "shares unmerged commits with 
 expect_without "sibling stack: no base advice for the sibling" "set the base to feature/a" -- \
   "$repo" develop feature/b 11 "$sibling_prs"
 
+# 14. The same siblings after the parent moved on (PR #120 review, reason 1). The graph alone can't
+#     tell #9 from #10, so the lower number is the source, as for parents: #9 keeps its base advice.
+git -C "$repo" checkout --quiet feature/c && commit "$repo" c2
+expect "sibling stack, parent moved: the parent still gets base advice" fail "set the base to feature/c" -- \
+  "$repo" develop feature/b 11 "$sibling_prs"
+expect "sibling stack, parent moved: the sibling is named" fail "shares unmerged commits with #10" -- \
+  "$repo" develop feature/b 11 "$sibling_prs"
+expect_without "sibling stack, parent moved: no base advice for the sibling" "set the base to feature/a" -- \
+  "$repo" develop feature/b 11 "$sibling_prs"
+
+# 15. A PR stacked on the checked one doesn't make its moved parent a sibling (PR #120 review, reason 2):
+#     #12 is built on #11, which is built on #9, and #9 moved on.
+repo=$(fixture)
+git -C "$repo" checkout --quiet -b feature/c develop && commit "$repo" c
+git -C "$repo" checkout --quiet -b feature/b feature/c && commit "$repo" b
+git -C "$repo" checkout --quiet -b feature/d feature/b && commit "$repo" d
+git -C "$repo" checkout --quiet feature/c && commit "$repo" c2
+expect "child of this PR open, parent moved: the parent still gets base advice" fail "set the base to feature/c" -- \
+  "$repo" develop feature/b 11 $'9 feature/c\n11 feature/b\n12 feature/d'
+
 echo
 if [ "$failures" -eq 0 ]; then
   echo "stack-check behaves as specified."

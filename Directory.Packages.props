@@ -51,6 +51,11 @@
     <PackageVersion Include="Testcontainers.RabbitMq" Version="4.17.0" />
   </ItemGroup>
 
+  <!-- Event contracts: tests validate events against contracts/events/*.schema.json (#92) -->
+  <ItemGroup Label="Contract tests">
+    <PackageVersion Include="JsonSchema.Net" Version="9.6.0" />
+  </ItemGroup>
+
   <!--
     The project's own analyzers in tools/Analyzers (docs/CSHARP_SETUP_TODO.md section 4).
     Microsoft.CodeAnalysis.CSharp stays at 5.0.0, the Roslyn in SDK 10.0.100 (global.json):

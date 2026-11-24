@@ -16,6 +16,13 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="NLog.Web.AspNetCore" />
+    <PackageReference Include="NLog.Targets.Loki" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The shared NLog config (docs/CSHARP_SETUP_TODO.md section 7) -->
+    <Content Include="$(RepoRoot)libs/nlog.config" Link="nlog.config" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

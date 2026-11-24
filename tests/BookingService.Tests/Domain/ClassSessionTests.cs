@@ -33,7 +33,7 @@ public sealed class ClassSessionTests
     {
         // Arrange
         ClassSession session = SessionWithSeats(2);
-        Guid memberId = Guid.NewGuid();
+        var memberId = Guid.NewGuid();
 
         // Act
         ReservationResult result = session.Reserve(memberId);
@@ -41,7 +41,7 @@ public sealed class ClassSessionTests
         // Assert
         Assert.Multiple(() =>
         {
-            Assert.That(result, Is.EqualTo(ReservationResult.Reserved));
+            Assert.That(result, Is.EqualTo(ReservationResult.Made));
             Assert.That(session.Reservations.Select(reservation => reservation.MemberId), Is.EqualTo(new[] { memberId }));
         });
     }
@@ -59,7 +59,7 @@ public sealed class ClassSessionTests
         // Assert
         Assert.Multiple(() =>
         {
-            Assert.That(result, Is.EqualTo(ReservationResult.Reserved));
+            Assert.That(result, Is.EqualTo(ReservationResult.Made));
             Assert.That(session.Reservations, Has.Count.EqualTo(2));
         });
     }

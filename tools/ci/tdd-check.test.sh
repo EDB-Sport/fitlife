@@ -189,7 +189,7 @@ compile_error_runner "$repo"
 git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
 run_check "$repo"
 annotation "expected compile errors of the base run are not annotations" bash -c '! grep -qE "$1" <<<"$2"' _ "$csc_line" "$out"
-annotation "the base run's output is still in the log" grep -qF "error CS0103: The name 'Subtract' does not exist" <<<"$out"
+annotation "the base run's output is still in the log" grep -qF "| Calc.cs(1,1): error CS0103: The name" <<<"$out"
 
 repo=$(feature_pr)
 compile_error_runner "$repo"

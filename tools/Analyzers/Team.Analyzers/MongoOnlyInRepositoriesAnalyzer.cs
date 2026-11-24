@@ -45,7 +45,7 @@ public sealed class MongoOnlyInRepositoriesAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        INamespaceSymbol? where = context.ContainingSymbol as INamespaceSymbol ?? context.ContainingSymbol?.ContainingNamespace;
+        INamespaceSymbol? where = WhereUsed(context, name);
         // The repositories may use the driver, and so may the driver's own code
         if (where is null || IsRepositoriesNamespace(where) || IsDriverNamespace(where))
         {
@@ -59,6 +59,19 @@ public sealed class MongoOnlyInRepositoriesAnalyzer : DiagnosticAnalyzer
         }
 
         context.ReportDiagnostic(Diagnostic.Create(Rule, name.GetLocation(), type.Name, whereText));
+    }
+
+    // A using directive at file level belongs to the namespace the file declares (with a file-scoped
+    // namespace the usings sit outside it), not to the global namespace. Anything else: where it is written.
+    private static INamespaceSymbol? WhereUsed(SyntaxNodeAnalysisContext context, SimpleNameSyntax name)
+    {
+        if (name.FirstAncestorOrSelf<UsingDirectiveSyntax>()?.Parent is CompilationUnitSyntax file
+            && file.Members.OfType<BaseNamespaceDeclarationSyntax>().FirstOrDefault() is { } declaration)
+        {
+            return context.SemanticModel.GetDeclaredSymbol(declaration, context.CancellationToken) as INamespaceSymbol;
+        }
+
+        return context.ContainingSymbol as INamespaceSymbol ?? context.ContainingSymbol?.ContainingNamespace;
     }
 
     // MongoDB.Driver and its sub-namespaces (MongoDB.Driver.Linq, ...), not MongoDB.Bson

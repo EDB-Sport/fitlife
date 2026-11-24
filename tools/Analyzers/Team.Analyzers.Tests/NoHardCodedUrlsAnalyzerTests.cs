@@ -34,7 +34,7 @@ public sealed class NoHardCodedUrlsAnalyzerTests
     [TestCase("see http://member-service for details")]
     public Task UrlInStringLiteral_ReportsTeam010(string address)
     {
-        var source = $$"""
+        string source = $$"""
             class MemberClient
             {
                 private const string Address = {|TEAM010:"{{address}}"|};
@@ -121,7 +121,7 @@ public sealed class NoHardCodedUrlsAnalyzerTests
     [TestCase("ftp://files.example.com")]
     public Task StringWithoutAnAddress_ReportsNothing(string text)
     {
-        var source = $$"""
+        string source = $$"""
             class MemberClient
             {
                 private const string Value = "{{text}}";

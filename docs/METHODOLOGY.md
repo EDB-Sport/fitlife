@@ -61,8 +61,8 @@ Every issue is a card on the group's GitHub Projects board. The board shows who 
 | Column | Means | A card moves here when |
 |---|---|---|
 | To Do | Agreed work that nobody has started | It is added to the project (automatic) |
-| In Progress | Someone is working on it: the assignee | The assignee starts work, by hand. A PR linked to the issue also moves it here |
-| Review | A PR for it is ready for review | The PR leaves draft and asks for review, by hand. It moves back to In Progress by hand when a review requests changes |
+| In Progress | Someone is working on it: the assignee | The assignee starts work, by hand. It moves back here by hand when a review requests changes |
+| Review | A PR for it is open | A PR that says `Closes #<issue>` opens, draft or not (automatic). For a `Refs #<issue>` PR, by hand |
 | Done | The issue is closed | Its PR is merged with `Closes #<issue>`, or the issue is closed (automatic) |
 
 **Starting a card.** Take only an unassigned card. Assign yourself, move it to In Progress, and write a short **Started** comment on the issue saying who (or whose agent) does it and what the first PR will be. An assignee or a Started comment means the card is taken. Ask on the issue before taking it over.
@@ -71,16 +71,16 @@ Every issue is a card on the group's GitHub Projects board. The board shows who 
 
 | Automation | What it does | Sets Status to |
 |---|---|---|
-| Auto-add to project | Adds new issues and PRs from this repo to the board | – (*Item added to project* sets the status) |
+| Auto-add to project | Adds new issues from this repo to the board (not PRs) | – (*Item added to project* sets the status) |
 | Auto-add sub-issues | Adds a sub-issue of a card that is already on the board | – (*Item added to project* sets the status) |
 | Item added to project | Runs on every new card | To Do |
-| Pull request linked to issue | Runs when a PR says `Closes #<issue>` or `Refs #<issue>` | In Progress |
+| Pull request linked to issue | Runs when a PR is linked to the issue: only by a closing keyword (`Closes`, `Fixes`, `Resolves #<issue>`) or the Development sidebar, not by `Refs #<issue>`. Also for a draft PR | Review |
 | Pull request merged | Runs when the PR is merged | Done |
 | Item closed | Runs when the issue is closed, also by hand | Done |
 
-The statuses are the ones GitHub sets by default. If a card lands somewhere else, the board's Workflows page has been changed: correct this table in a PR.
+If a card lands somewhere else, the board's Workflows page has changed: correct this table in a PR.
 
-**Moved by hand:** To Do → In Progress when you start before there is a PR, In Progress → Review when the PR is ready, and Review → In Progress after a request for changes. A PR that says `Refs #<issue>` doesn't close the issue, so the card stays in Review or In Progress until the last PR for it is merged.
+**Moved by hand:** To Do → In Progress when you start before there is a PR, and Review → In Progress after a request for changes. A `Closes` PR moves the card to Review when it opens. A `Refs #<issue>` PR doesn't link the issue, so every move for it is by hand (In Progress, Review), and the card stays in Review or In Progress until the last PR for it is merged.
 
 **Milestone and assignee.**
 - **Milestone:** the person who creates the issue sets it to the release the issue is meant for (section 2). An issue without a milestone isn't planned yet. The group moves an issue to another milestone when the plan changes.

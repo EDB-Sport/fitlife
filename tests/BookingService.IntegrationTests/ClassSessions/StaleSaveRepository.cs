@@ -1,5 +1,5 @@
+using BookingService.Application;
 using BookingService.Domain;
-using BookingService.Repositories;
 
 namespace BookingService.IntegrationTests.ClassSessions;
 
@@ -11,9 +11,9 @@ internal sealed class StaleSaveRepository(IClassSessionRepository inner) : IClas
         return inner.ListAsync(centerId, cancellationToken);
     }
 
-    public Task<ClassSession?> GetAsync(Guid id, CancellationToken cancellationToken)
+    public Task<ClassSession?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
-        return inner.GetAsync(id, cancellationToken);
+        return inner.GetByIdAsync(id, cancellationToken);
     }
 
     public Task AddAsync(ClassSession classSession, CancellationToken cancellationToken)

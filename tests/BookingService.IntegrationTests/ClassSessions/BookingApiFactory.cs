@@ -18,12 +18,21 @@ internal sealed class BookingApiFactory : WebApplicationFactory<Program>
     private readonly string _connectionString;
     private readonly string _database;
     private readonly bool _seed;
+    private readonly bool _everySaveIsStale;
 
-    public BookingApiFactory(string connectionString, string database, FakeTimeProvider clock, bool seed = false)
+    /// <param name="connectionString">The MongoDB server.</param>
+    /// <param name="database">The database this service uses.</param>
+    /// <param name="clock">The fake clock the service tells the time with.</param>
+    /// <param name="seed">Loads the demo class schedule at start-up.</param>
+    /// <param name="everySaveIsStale">
+    /// Every save reports that another request saved the class session first, as two requests at the same moment would.
+    /// </param>
+    public BookingApiFactory(string connectionString, string database, FakeTimeProvider clock, bool seed = false, bool everySaveIsStale = false)
     {
         _connectionString = connectionString;
         _database = database;
         _seed = seed;
+        _everySaveIsStale = everySaveIsStale;
         Clock = clock;
     }
 
@@ -42,6 +51,14 @@ internal sealed class BookingApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("MongoDb:ConnectionString", _connectionString);
         builder.UseSetting("MongoDb:Database", _database);
         builder.UseSetting("Seed:Enabled", _seed.ToString());
-        builder.ConfigureTestServices(services => services.Replace(ServiceDescriptor.Singleton<TimeProvider>(Clock)));
+        builder.ConfigureTestServices(services =>
+        {
+            services.Replace(ServiceDescriptor.Singleton<TimeProvider>(Clock));
+            if (_everySaveIsStale)
+            {
+                services.Replace(ServiceDescriptor.Scoped<IClassSessionRepository>(provider =>
+                    new StaleSaveRepository(ActivatorUtilities.CreateInstance<ClassSessionRepository>(provider))));
+            }
+        });
     }
 }

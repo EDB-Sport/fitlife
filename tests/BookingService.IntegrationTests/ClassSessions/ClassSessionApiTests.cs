@@ -303,6 +303,74 @@ public sealed class ClassSessionApiTests
     }
 
     [Test]
+    public async Task PostReservation_OnACancelledClassSession_Returns409ProblemDetails()
+    {
+        // Arrange
+        using BookingApiFactory factory = Factory();
+        ClassSession classSession = ClassSessionAt(Guid.NewGuid(), capacity: 1, Now.AddDays(1));
+        classSession.Cancel();
+        await factory.AddAsync(classSession).ConfigureAwait(false);
+        using HttpClient client = factory.CreateClient();
+
+        // Act
+        using HttpResponseMessage response = await client.PostAsJsonAsync(ReservationsOf(classSession), new ReservationRequest(Guid.NewGuid())).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(await ProblemOfAsync(response).ConfigureAwait(false), Is.EqualTo((HttpStatusCode.Conflict, "application/problem+json", (int?)409)));
+    }
+
+    [Test]
+    public async Task PostReservation_WhenAnotherRequestSavedFirst_Returns409ProblemDetails()
+    {
+        // Arrange
+        using BookingApiFactory factory = Factory(everySaveIsStale: true);
+        ClassSession classSession = ClassSessionAt(Guid.NewGuid(), capacity: 1, Now.AddDays(1));
+        await factory.AddAsync(classSession).ConfigureAwait(false);
+        using HttpClient client = factory.CreateClient();
+
+        // Act
+        using HttpResponseMessage response = await client.PostAsJsonAsync(ReservationsOf(classSession), new ReservationRequest(Guid.NewGuid())).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(await ProblemOfAsync(response).ConfigureAwait(false), Is.EqualTo((HttpStatusCode.Conflict, "application/problem+json", (int?)409)));
+    }
+
+    [Test]
+    public async Task DeleteReservation_WhenAnotherRequestSavedFirst_Returns409ProblemDetails()
+    {
+        // Arrange
+        using BookingApiFactory factory = Factory(everySaveIsStale: true);
+        ClassSession classSession = ClassSessionAt(Guid.NewGuid(), capacity: 1, Now.AddDays(1));
+        var memberId = Guid.NewGuid();
+        classSession.Reserve(memberId, factory.Clock);
+        await factory.AddAsync(classSession).ConfigureAwait(false);
+        using HttpClient client = factory.CreateClient();
+
+        // Act
+        using HttpResponseMessage response = await client.DeleteAsync(new Uri($"/class-sessions/{classSession.Id}/reservations/{memberId}", UriKind.Relative)).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(await ProblemOfAsync(response).ConfigureAwait(false), Is.EqualTo((HttpStatusCode.Conflict, "application/problem+json", (int?)409)));
+    }
+
+    [Test]
+    public async Task PostWaitlist_WhenAnotherRequestSavedFirst_Returns409ProblemDetails()
+    {
+        // Arrange
+        using BookingApiFactory factory = Factory(everySaveIsStale: true);
+        ClassSession classSession = ClassSessionAt(Guid.NewGuid(), capacity: 1, Now.AddDays(1));
+        classSession.Reserve(Guid.NewGuid(), factory.Clock);
+        await factory.AddAsync(classSession).ConfigureAwait(false);
+        using HttpClient client = factory.CreateClient();
+
+        // Act
+        using HttpResponseMessage response = await client.PostAsJsonAsync(WaitlistOf(classSession), new WaitlistEntryRequest(Guid.NewGuid())).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(await ProblemOfAsync(response).ConfigureAwait(false), Is.EqualTo((HttpStatusCode.Conflict, "application/problem+json", (int?)409)));
+    }
+
+    [Test]
     public async Task Start_WithSeedEnabled_LoadsTheDemoClassSessions()
     {
         // Arrange
@@ -338,8 +406,8 @@ public sealed class ClassSessionApiTests
         return (response.StatusCode, response.Content.Headers.ContentType?.MediaType, problem?.Status);
     }
 
-    private BookingApiFactory Factory(bool seed = false)
+    private BookingApiFactory Factory(bool seed = false, bool everySaveIsStale = false)
     {
-        return new BookingApiFactory(MongoDbContainerSetUp.ConnectionString, _database, new FakeTimeProvider(Now), seed);
+        return new BookingApiFactory(MongoDbContainerSetUp.ConnectionString, _database, new FakeTimeProvider(Now), seed, everySaveIsStale);
     }
 }

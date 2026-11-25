@@ -24,13 +24,13 @@ Words from other contexts that we do **not** use here: *user* or *login* (that i
 | Root | Holds | Invariants |
 |---|---|---|
 | `Member` | The member id and the account id | An account id belongs to at most one member (the handler checks, and a unique index on `members.AccountId` catches a race) |
-| `Membership` | Member id (by id only), type, status, start date | A new membership is `Active` from the day the member joins. A fee that isn't paid makes it `PaymentMissing` (`MarkPaymentMissing`), which gives no access and no right to book |
+| `Membership` | Member id (by id only), type, status, start date | A new membership starts the day the member joins with `PaymentMissing`, which gives no access and no right to book, and becomes `Active` when the first fee is paid (`MarkPaid`). Stored before the charge and made active only after it, so an interrupted join never leaves an active, unpaid membership |
 
 ## Commands, queries and events
 
 | Kind | Name | Notes |
 |---|---|---|
-| Command | `JoinMembershipCommand` | `POST /members`. The account id comes from the token (`sub`), never from the body. 409 when the account is already a member. Then the first fee (`Membership:MonthlyFeeDkk`) is charged; not paid → `PaymentMissing` |
+| Command | `JoinMembershipCommand` | `POST /members`. The account id comes from the token (`sub`), never from the body. 409 when the account is already a member. Then the first fee (`Membership:MonthlyFeeDkk`) is charged; paid → `Active`, otherwise it stays `PaymentMissing` |
 | Query | by account id | `GET /members/by-account/{accountId}`: the `MemberId` and whether the membership is active, 404 for an unknown account. Only for the account in the token: another account answers 404 too, so a member can't look up other members. Booking asks this before a reservation (#173) |
 
 No events yet. `MembershipPaused` and `MembershipCancelled` come with pause (UC6) and cancellation (UC8).

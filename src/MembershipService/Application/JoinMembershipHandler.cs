@@ -4,8 +4,8 @@ using Microsoft.Extensions.Options;
 namespace MembershipService.Application;
 
 /// <summary>
-/// Joins an account to FitLife: one member per account, with an active membership, and the first fee charged.
-/// A fee that isn't paid gives the membership Betaling mangler.
+/// Joins an account to FitLife: one member per account, and a membership that becomes active once the first fee is paid.
+/// A fee that isn't paid leaves the membership with Betaling mangler.
 /// </summary>
 /// <param name="members">The members.</param>
 /// <param name="memberships">The memberships.</param>
@@ -43,11 +43,12 @@ public sealed class JoinMembershipHandler(
             return JoinResult.AlreadyAMember();
         }
 
-        // Charged once the membership is stored, so a paid fee always has a membership
+        // Charged once the membership is stored, so a paid fee always has a membership. It is stored with Betaling mangler and
+        // made active only after the charge is approved: a join stopped before or during the charge leaves no free access.
         bool paid = await payments.ChargeMembershipFeeAsync(member.Id, fee.Value.MonthlyFeeDkk, cancellationToken).ConfigureAwait(false);
-        if (!paid)
+        if (paid)
         {
-            membership.MarkPaymentMissing();
+            membership.MarkPaid();
             await memberships.SaveAsync(membership, cancellationToken).ConfigureAwait(false);
         }
 

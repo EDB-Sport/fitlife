@@ -44,6 +44,34 @@ public sealed class MemberRepositoryTests
     }
 
     [Test]
+    public async Task TryAdd_AfterTheUniqueIndexCouldNotBeCreatedOnce_CreatesItOnTheNextJoin()
+    {
+        // Arrange: a MongoDB of its own, where two stored members with the same account id make the unique index fail once,
+        // as MongoDB not answering on the first join would
+        var mongo = new MongoDbFixture();
+        await mongo.StartAsync().ConfigureAwait(false);
+        var factory = new MembershipFactory(mongo);
+        try
+        {
+            await mongo.RunScriptAsync("db.getSiblingDB('membership').members.insertMany([{ AccountId: 'twice' }, { AccountId: 'twice' }])").ConfigureAwait(false);
+            IMemberRepository members = factory.Services.GetRequiredService<IMemberRepository>();
+            await Assert.ThatAsync(() => members.TryAddAsync(Member.Join(TestTokens.NewAccountId()), CancellationToken.None), Throws.Exception).ConfigureAwait(false);
+            await mongo.RunScriptAsync("db.getSiblingDB('membership').members.deleteOne({ AccountId: 'twice' })").ConfigureAwait(false);
+
+            // Act
+            bool added = await members.TryAddAsync(Member.Join(TestTokens.NewAccountId()), CancellationToken.None).ConfigureAwait(false);
+
+            // Assert
+            Assert.That(added, Is.True);
+        }
+        finally
+        {
+            await factory.DisposeAsync().ConfigureAwait(false);
+            await mongo.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
+    [Test]
     public async Task Add_AMembership_IsFoundAgainByItsMember()
     {
         // Arrange

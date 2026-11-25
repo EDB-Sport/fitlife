@@ -31,7 +31,7 @@ Words from other contexts that we do **not** use here: *user* or *login* (that i
 | Kind | Name | Notes |
 |---|---|---|
 | Command | `JoinMembershipCommand` | `POST /members`. The account id comes from the token (`sub`), never from the body. 409 when the account is already a member. Then the first fee (`Membership:MonthlyFeeDkk`) is charged; not paid → `PaymentMissing` |
-| Query | by account id | `GET /members/by-account/{accountId}`: the `MemberId` and whether the membership is active, 404 for an unknown account. Booking asks this before a reservation (#173) |
+| Query | by account id | `GET /members/by-account/{accountId}`: the `MemberId` and whether the membership is active, 404 for an unknown account. Only for the account in the token: another account answers 404 too, so a member can't look up other members. Booking asks this before a reservation (#173) |
 
 No events yet. `MembershipPaused` and `MembershipCancelled` come with pause (UC6) and cancellation (UC8).
 

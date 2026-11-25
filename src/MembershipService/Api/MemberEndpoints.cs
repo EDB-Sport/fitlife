@@ -45,8 +45,15 @@ public static class MemberEndpoints
     }
 
     private static async Task<Results<Ok<MemberResponse>, NotFound>> GetByAccount(
-        string accountId, IMemberRepository members, IMembershipRepository memberships, CancellationToken cancellationToken)
+        string accountId, ClaimsPrincipal user, IMemberRepository members, IMembershipRepository memberships, CancellationToken cancellationToken)
     {
+        // A member looks up only their own account. Another account answers as if it were unknown, so the lookup doesn't tell
+        // which accounts are members (review on #199).
+        if (!string.Equals(user.FindFirstValue(FitLifeJwt.AccountIdClaim), accountId, StringComparison.Ordinal))
+        {
+            return TypedResults.NotFound();
+        }
+
         Member? member = await members.FindByAccountIdAsync(accountId, cancellationToken).ConfigureAwait(false);
         if (member is null)
         {

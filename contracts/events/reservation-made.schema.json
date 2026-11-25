@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReservationMade",
+  "description": "Booking oprettet: a member got a seat on a class session, directly or from the waitlist. Published by Booking, consumed by Notification (docs/domain/CONTEXT-MAP.md section 5). The message carries the correlation ID in its X-Correlation-ID header, not in the body.",
+  "type": "object",
+  "properties": {
+    "reservationId": {
+      "description": "The reservation's id in Booking. Consumers use it to handle the same event only once.",
+      "type": "string",
+      "minLength": 1
+    },
+    "classSessionId": {
+      "description": "The id of the class session the seat is on.",
+      "type": "string",
+      "minLength": 1
+    },
+    "memberId": {
+      "description": "The member who got the seat (MemberId, from Membership).",
+      "type": "string",
+      "minLength": 1
+    },
+    "startTime": {
+      "description": "When the class session starts, ISO 8601 with an offset.",
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": ["reservationId", "classSessionId", "memberId", "startTime"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "reservationId": "6741f0c2a9e1b3d4c5f60718",
+      "classSessionId": "6741f0c2a9e1b3d4c5f60719",
+      "memberId": "6741f0c2a9e1b3d4c5f6071a",
+      "startTime": "2026-12-01T17:00:00+00:00"
+    }
+  ]
+}

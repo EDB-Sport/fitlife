@@ -1,6 +1,8 @@
 # Deploys production to Azure Container Instances with Bicep (docs/CSHARP_SETUP_TODO.md section 9a, issue #10).
 #
-# Runs after a successful release.yml on main, with the image versions that release tagged.
+# release.yml calls it (workflow_call) as its last job, after the tags job, with the image versions that
+# release tagged. It runs in release.yml's push context on main: a workflow_run trigger would run it on the
+# default branch (develop), which the production environment rejects (#319).
 # It can also be started by hand with explicit versions: that is the rollback, too
 # (run it again with the previous release's versions).
 #
@@ -8,10 +10,7 @@
 name: deploy
 
 on:
-  workflow_run:
-    workflows: [release]
-    types: [completed]
-    branches: [main]
+  workflow_call:
   workflow_dispatch:
     inputs:
       service_tag:
@@ -26,11 +25,6 @@ on:
 permissions:
   contents: read
 
-# One deploy at a time. A second one waits instead of cancelling a deploy halfway.
-concurrency:
-  group: deploy-production
-  cancel-in-progress: false
-
 env:
   RESOURCE_GROUP: rg-fitlife-prod
   # Git tag prefixes of the released images (section 9: <prefix>/vX.Y.Z), the same names as the
@@ -40,9 +34,13 @@ env:
 
 jobs:
   deploy:
-    # A failed release deploys nothing.
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    # A failed release deploys nothing: release.yml calls this only after its tags job succeeded.
     runs-on: ubuntu-latest
+    # One deploy at a time. A second one waits instead of cancelling a deploy halfway. On the job, not the
+    # workflow, so it holds the same way when release.yml calls it.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     timeout-minutes: 20
     environment:
       name: production # required reviewers: the job waits here for one group member's approval
@@ -53,8 +51,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # The released commit, not whatever main points at by the time the approval comes.
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          # The released commit (release.yml's merge commit), not whatever main points at by the time
+          # the approval comes.
+          ref: ${{ github.sha }}
           fetch-depth: 0 # the release tags are needed below
 
       - name: Choose image versions

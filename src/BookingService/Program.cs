@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using BookingService.Clients;
 using FitLife.Configuration;
 using FitLife.Correlation;
 using NLog;
@@ -19,6 +20,9 @@ try
 
     builder.Services.AddOpenApi();
     builder.Services.AddHealthChecks();
+
+    // Who the member behind an account is, from Membership (#256). The reservation endpoints use it (#260)
+    builder.Services.AddMembershipClient();
 
     WebApplication app = builder.Build();
 

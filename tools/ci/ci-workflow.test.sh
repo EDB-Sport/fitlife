@@ -75,6 +75,8 @@ jobs_without_timeout() {
     in_jobs && /^[^ #]/ { in_jobs = 0 }
     in_jobs && /^  [A-Za-z0-9_-]+:/ { if (job != "" && !has) print job; job = $1; sub(/:$/, "", job); has = 0; next }
     in_jobs && /^    timeout-minutes: [0-9]+$/ { has = 1 }
+    # A job that calls a reusable workflow (uses:) cannot set timeout-minutes; the called job sets it (#319)
+    in_jobs && /^    uses: \.\/\.github\/workflows\/[A-Za-z0-9_-]+\.ya?ml$/ { has = 1 }
     END { if (job != "" && !has) print job }
   ' "$1"
 }
@@ -83,6 +85,10 @@ for workflow in "$root"/.github/workflows/*.yml; do
   missing=$(jobs_without_timeout "$workflow" | tr '\n' ' ')
   expect "every job in $name sets timeout-minutes${missing:+ (missing: $missing)}" test -z "$missing"
 done
+
+# Service PRs with Testcontainers integration tests run mutation for 8-20 min (max 20.2 min), so a 10-minute limit cancels them (issue #335).
+mutation_timeout=$(sed -n 's/^    timeout-minutes: \([0-9][0-9]*\)$/\1/p' <<<"$(job_block mutation)")
+expect "mutation sets timeout-minutes of at least 30 (issue #335)" test "${mutation_timeout:-0}" -ge 30
 
 # A hanging test is killed after 5 minutes and named, without a dump file (issue #276).
 hang_flags='--blame-hang-timeout 5m --blame-hang-dump-type none'

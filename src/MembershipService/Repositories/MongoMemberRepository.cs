@@ -9,7 +9,8 @@ namespace MembershipService.Repositories;
 public sealed class MongoMemberRepository : IMemberRepository
 {
     private readonly IMongoCollection<MemberDocument> _members;
-    private readonly Lazy<Task> _index;
+    private readonly Lock _indexLock = new();
+    private Task? _index;
 
     /// <summary>Uses the collection <c>members</c> in the service's database.</summary>
     /// <param name="database">The service's database.</param>
@@ -17,9 +18,6 @@ public sealed class MongoMemberRepository : IMemberRepository
     {
         ArgumentNullException.ThrowIfNull(database);
         _members = database.GetCollection<MemberDocument>("members");
-        _index = new Lazy<Task>(() => _members.Indexes.CreateOneAsync(new CreateIndexModel<MemberDocument>(
-            Builders<MemberDocument>.IndexKeys.Ascending(member => member.AccountId),
-            new CreateIndexOptions { Unique = true })));
     }
 
     /// <inheritdoc />
@@ -34,7 +32,7 @@ public sealed class MongoMemberRepository : IMemberRepository
     public async Task<bool> TryAddAsync(Member member, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(member);
-        await _index.Value.ConfigureAwait(false);
+        await UniqueAccountIdIndexAsync().ConfigureAwait(false);
         try
         {
             await _members.InsertOneAsync(MemberDocument.From(member), options: null, cancellationToken).ConfigureAwait(false);
@@ -43,6 +41,25 @@ public sealed class MongoMemberRepository : IMemberRepository
         catch (MongoWriteException exception) when (exception.WriteError.Category == ServerErrorCategory.DuplicateKey)
         {
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Creates the unique index on the account id once. A creation that failed (MongoDB not answering yet) is tried again on
+    /// the next join, instead of failing every join until the service restarts.
+    /// </summary>
+    private Task UniqueAccountIdIndexAsync()
+    {
+        lock (_indexLock)
+        {
+            if (_index is null || _index.IsFaulted || _index.IsCanceled)
+            {
+                _index = _members.Indexes.CreateOneAsync(new CreateIndexModel<MemberDocument>(
+                    Builders<MemberDocument>.IndexKeys.Ascending(member => member.AccountId),
+                    new CreateIndexOptions { Unique = true }));
+            }
+
+            return _index;
         }
     }
 

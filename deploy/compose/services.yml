@@ -79,9 +79,10 @@ services:
       # The service waits for Vault and the seed job itself (Vault:WaitSeconds), so it needs no depends_on.
       Vault__Address: http://vault:8200 # infrastructure.yml
       Vault__Token: ${VAULT_DEV_ROOT_TOKEN:?set it in deploy/compose/.env}
-      # infrastructure.yml; the user booking-svc reaches only the booking database (mongodb/init). No password in the URL:
-      # MongoDb:Password comes from secret/booking-svc in Vault.
-      MongoDb__ConnectionString: mongodb://booking-svc@mongodb:27017/booking
+      # MongoDB (infrastructure.yml): the booking database and the booking-svc user (mongodb/init) are in appsettings.json,
+      # the password (MongoDb:Password) in secret/booking-svc. Nothing connects until the first request, so no depends_on.
+      MongoDb__Host: mongodb
+      MongoDb__Port: "27017"
       Seed__Enabled: "true" # the demo class schedule, loaded once into an empty database (#171)
       WaitlistClosing__Enabled: "true" # closes each waitlist 2 hours before start, once a minute (#314)
       Membership__BaseUrl: http://membership-svc:8080 # who the member behind an account is (#256)

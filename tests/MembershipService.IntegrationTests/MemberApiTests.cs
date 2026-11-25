@@ -164,6 +164,25 @@ public sealed class MemberApiTests
     }
 
     [Test]
+    public async Task GetByAccount_ForAnotherMembersAccount_ReturnsNotFound()
+    {
+        // Arrange
+        string otherAccountId = TestTokens.NewAccountId();
+        using (HttpClient otherMember = ClientFor(TestTokens.For(otherAccountId)))
+        {
+            using HttpResponseMessage joined = await Join(otherMember).ConfigureAwait(false);
+        }
+
+        using HttpClient client = ClientFor(TestTokens.For(TestTokens.NewAccountId()));
+
+        // Act
+        using HttpResponseMessage response = await client.GetAsync(new Uri($"/members/by-account/{otherAccountId}", UriKind.Relative)).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+    }
+
+    [Test]
     public async Task GetByAccount_WithoutAToken_ReturnsUnauthorized()
     {
         // Arrange

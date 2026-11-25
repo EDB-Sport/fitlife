@@ -104,6 +104,7 @@ var servicePorts = {
   booking: 5001
   membership: 5002
   identity: 5003
+  mcp: 5005
 }
 var uiPort = 5101
 var mongoPort = 27017
@@ -241,6 +242,10 @@ var containerDefinitions = [
         {
           name: 'IDENTITY_URL'
           value: 'http://127.0.0.1:${servicePorts.identity}'
+        }
+        {
+          name: 'MCP_SERVER_URL'
+          value: 'http://127.0.0.1:${servicePorts.mcp}'
         }
         {
           name: 'MEMBER_PORTAL_URL'

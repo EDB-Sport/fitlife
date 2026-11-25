@@ -1,6 +1,6 @@
 using System.Diagnostics;
+using BookingService.Application;
 using BookingService.Domain;
-using BookingService.Repositories;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
@@ -62,7 +62,7 @@ public sealed class ClassSessionsController : ControllerBase
     public async Task<ActionResult<ReservationResponse>> PostReservation(Guid id, ReservationRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        ClassSession? classSession = await _repository.GetAsync(id, cancellationToken).ConfigureAwait(false);
+        ClassSession? classSession = await _repository.GetByIdAsync(id, cancellationToken).ConfigureAwait(false);
         if (classSession is null)
         {
             return ClassSessionNotFound(id);
@@ -104,7 +104,7 @@ public sealed class ClassSessionsController : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
     public async Task<Results<NoContent, ProblemHttpResult>> DeleteReservation(Guid id, Guid memberId, CancellationToken cancellationToken)
     {
-        ClassSession? classSession = await _repository.GetAsync(id, cancellationToken).ConfigureAwait(false);
+        ClassSession? classSession = await _repository.GetByIdAsync(id, cancellationToken).ConfigureAwait(false);
         if (classSession is null)
         {
             return TypedResults.Problem(statusCode: StatusCodes.Status404NotFound, title: "No such class session.", detail: $"There is no class session {id}.");
@@ -136,7 +136,7 @@ public sealed class ClassSessionsController : ControllerBase
     public async Task<ActionResult<WaitlistEntryResponse>> PostWaitlistEntry(Guid id, WaitlistEntryRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        ClassSession? classSession = await _repository.GetAsync(id, cancellationToken).ConfigureAwait(false);
+        ClassSession? classSession = await _repository.GetByIdAsync(id, cancellationToken).ConfigureAwait(false);
         if (classSession is null)
         {
             return ClassSessionNotFound(id);

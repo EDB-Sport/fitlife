@@ -1,3 +1,5 @@
+using System.Globalization;
+using BookingService.Application;
 using BookingService.Domain;
 using BookingService.Repositories;
 using Microsoft.AspNetCore.Hosting;
@@ -20,7 +22,7 @@ internal sealed class BookingApiFactory : WebApplicationFactory<Program>
     private readonly bool _seed;
     private readonly bool _everySaveIsStale;
 
-    /// <param name="connectionString">The MongoDB server.</param>
+    /// <param name="connectionString">The MongoDB server, with the login in it. The factory gives the service its parts as MongoDb:* settings.</param>
     /// <param name="database">The database this service uses.</param>
     /// <param name="clock">The fake clock the service tells the time with.</param>
     /// <param name="seed">Loads the demo class schedule at start-up.</param>
@@ -48,7 +50,14 @@ internal sealed class BookingApiFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseSetting("MongoDb:ConnectionString", _connectionString);
+        // The container's login lives in admin, so AuthSource says so; compose's booking-svc login lives in booking (the default)
+        var server = new Uri(_connectionString);
+        string[] login = server.UserInfo.Split(':');
+        builder.UseSetting("MongoDb:Host", server.Host);
+        builder.UseSetting("MongoDb:Port", server.Port.ToString(CultureInfo.InvariantCulture));
+        builder.UseSetting("MongoDb:Username", Uri.UnescapeDataString(login[0]));
+        builder.UseSetting("MongoDb:Password", Uri.UnescapeDataString(login[1]));
+        builder.UseSetting("MongoDb:AuthSource", "admin");
         builder.UseSetting("MongoDb:Database", _database);
         builder.UseSetting("Seed:Enabled", _seed.ToString());
         builder.ConfigureTestServices(services =>

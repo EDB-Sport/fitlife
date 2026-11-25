@@ -107,9 +107,20 @@ public sealed class ClassSessionRepository : IClassSessionRepository
             new ClassSessionDetails(document.CenterId, document.ClassTypeId, new Instructor(instructorName), duration));
         classSession.Restore(
             document.IsCancelled,
-            document.Reservations.Select(reservation => new Reservation(reservation.MemberId, reservation.IsFromWaitlist)),
+            document.Reservations.Select(ReadReservation),
             document.Waitlist.Select(memberId => new WaitlistEntry(memberId)));
         return classSession;
+    }
+
+    private static Reservation ReadReservation(ReservationDocument document)
+    {
+        var reservation = new Reservation(document.MemberId, document.IsFromWaitlist);
+        if (document.IsFromBeforeAChangedStart)
+        {
+            return reservation.FromBeforeAChangedStart();
+        }
+
+        return reservation;
     }
 
     private static ClassSessionDocument Write(ClassSession classSession, int version)
@@ -125,7 +136,12 @@ public sealed class ClassSessionRepository : IClassSessionRepository
             StartTime = classSession.StartTime.UtcDateTime,
             IsCancelled = classSession.IsCancelled,
             Reservations = classSession.Reservations
-                .Select(reservation => new ReservationDocument { MemberId = reservation.MemberId, IsFromWaitlist = reservation.IsFromWaitlist })
+                .Select(reservation => new ReservationDocument
+                {
+                    MemberId = reservation.MemberId,
+                    IsFromWaitlist = reservation.IsFromWaitlist,
+                    IsFromBeforeAChangedStart = reservation.IsFromBeforeAChangedStart,
+                })
                 .ToList(),
             Waitlist = classSession.Waitlist.Select(waitlistEntry => waitlistEntry.MemberId).ToList(),
             Version = version,

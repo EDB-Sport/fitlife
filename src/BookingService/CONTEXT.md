@@ -36,7 +36,7 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | Part | Kind | Notes |
 |---|---|---|
 | `ClassSession` | Aggregate root | Id, `Capacity`, start time, `ClassSessionDetails` (centre id, class type id, instructor, duration), whether it is cancelled, the reservations, the waitlist |
-| `Reservation` | Entity, inside the aggregate | Made by `ClassSession.Reserve`, or from the waitlist (`IsFromWaitlist`). `IsFromBeforeAChangedStart` marks a seat reserved before `ChangeStart` (not stored yet: #241) |
+| `Reservation` | Entity, inside the aggregate | Made by `ClassSession.Reserve`, or from the waitlist (`IsFromWaitlist`). `IsFromBeforeAChangedStart` marks a seat reserved before `ChangeStart`; it is stored with the reservation (#241) |
 | `Capacity` | Value object | At least 1 seat |
 | `ClassSessionDetails` | Value object | Centre id, class type id, `Instructor` and a duration of more than zero. No start time: that is `ClassSession.StartTime` |
 | `Instructor` | Value object | A name that isn't empty or white space |

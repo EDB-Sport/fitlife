@@ -10,6 +10,11 @@
 #                               A test that no longer compiles on base counts as red. A run that stops before
 #                               any test is built (no project found, restore error: SETUP_ERRORS) does not.
 #
+# Comment-only changes (#361): a production file whose every added or removed line is blank or a comment
+# (a line that starts with //, ///, /* or *) is not production code for checks 1 and 4: a comment can't make
+# a test go red. Any other line counts, so #if and #pragma lines, and code with a trailing // comment, still do.
+# This is a line-based rule: a line inside a /* */ block that doesn't start with * is read as code.
+#
 # A refactoring PR (label "refactor" in PR_LABELS, METHODOLOGY section 8) changes structure, not behaviour:
 #   R1. No file under TEST_DIR changes (added, modified, deleted or moved).
 #   R2. The tests pass.
@@ -80,6 +85,18 @@ fi
 # Files added or modified by the PR under a directory, filtered by a regex. Renames count as delete + add.
 changed_files() { git diff --name-only --no-renames --diff-filter=AM "$BASE_SHA...$HEAD_SHA" -- "$1" | grep -E "$2" || true; }
 
+# Production files with at least one added or removed line that is neither blank nor a comment (#361).
+code_changed_files() {
+  local file
+  while IFS= read -r file; do
+    [[ -n $file ]] || continue
+    if git diff -U0 --no-renames "$BASE_SHA...$HEAD_SHA" -- "$file" | grep -E '^[+-]' | grep -Ev '^(\+\+\+|---)' \
+       | grep -Evq '^[+-][[:space:]]*(//.*|/\*.*|\*($|[[:space:]/].*))?$'; then
+      echo "$file"
+    fi
+  done <<< "$1"
+}
+
 # Number of test attributes in the test files of a commit. Comment lines (// ...) don't count.
 count_tests() {
   git ls-tree -r --name-only "$1" -- "$TEST_DIR" | grep -E "$TEST_FILE_REGEX" | while read -r file; do
@@ -102,7 +119,7 @@ if [[ ",$PR_LABELS," == *",refactor,"* ]]; then
   exit "$failed"
 fi
 
-src_changes=$(changed_files "$SRC_DIR" "$SRC_FILE_REGEX")
+src_changes=$(code_changed_files "$(changed_files "$SRC_DIR" "$SRC_FILE_REGEX")")
 test_changes=$(changed_files "$TEST_DIR" "$TEST_FILE_REGEX")
 
 echo "Production files changed:"; echo "${src_changes:-  (none)}"

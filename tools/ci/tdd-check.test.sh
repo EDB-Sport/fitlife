@@ -264,6 +264,31 @@ repo=$(marked "$(refactor_pr)")
 label_event "the refactor label still runs in full" fail "$repo" labeled refactor "$(runs completed:success)" "no test under tests/ was added or changed"
 ran "the refactor label runs the suite" "$repo"
 
+# 4a. Comment-only changes under src/ (issue #361): checks 1 and 4 skip them, a code change still gets them.
+comment_pr() { # comment_pr <lines to add above the code line in src/Calculator.cs> [replacement for the code line]
+  local repo; repo=$(fixture)
+  { printf '%b\n' "$1"; echo "${2:-public static class Calculator { public static int Add(int a, int b) => a + b; }}"; } > "$repo/src/Calculator.cs"
+  commit "$repo" "comment"
+  echo "$repo"
+}
+removed_comment_pr() {
+  local repo; repo=$(fixture)
+  echo '// old note' > "$repo/src/Note.cs"; commit "$repo" "note"
+  echo '' > "$repo/src/Note.cs"; commit "$repo" "drop the note"
+  echo "$repo"
+}
+changed_code='public static class Calculator { public static int Add(int a, int b) => b + a; }'
+expect "a // comment added under src/ passes without a test" pass "$(comment_pr '// Stryker disable once Boolean')"
+expect "///, /* */ and blank lines added under src/ pass" pass "$(comment_pr '/// <summary>x</summary>\n\n/* note\n * more\n */')"
+expect "a removed comment line passes" pass "$(removed_comment_pr)"
+expect "a comment next to a code change still needs a test" fail "$(comment_pr '// Stryker disable once Boolean' "$changed_code")" "no test under tests/ was added or changed"
+repo=$(comment_pr '// Stryker disable once Boolean' "$changed_code")
+echo '// a note' >> "$repo/tests/CalculatorTests.cs"
+git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+expect "a comment next to a code change still needs red on base" fail "$repo" "also pass without the production change"
+expect "a #pragma line is not a comment" fail "$(comment_pr '#pragma warning disable CS1591')" "no test under tests/ was added or changed"
+expect "a trailing // comment after code is a code change" fail "$(comment_pr '' 'public static class Calculator { public static int Add(int a, int b) => a + b; } // x')" "no test under tests/ was added or changed"
+
 # 5. The workflow (finding 1 and 3)
 wf() { grep -qE "$2" "$workflow" && echo "PASS  $1" || { echo "FAIL  $1: '$2' not in $workflow"; failures=$((failures + 1)); }; }
 wf "workflow re-runs on label changes" 'types: \[opened, synchronize, reopened, labeled, unlabeled\]'

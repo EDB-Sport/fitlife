@@ -60,7 +60,7 @@
 
   <!--
     The project's own analyzers in tools/Analyzers (docs/CSHARP_SETUP_TODO.md section 4).
-    Microsoft.CodeAnalysis.CSharp stays at 5.0.0, the Roslyn in SDK 10.0.100 (global.json):
+    Microsoft.CodeAnalysis.CSharp stays at 5.0.0, which is not newer than the Roslyn of the SDK in global.json (10.0.203):
     an analyzer built against a newer Roslyn than the compiler that loads it is not loaded (CS8032).
   -->
   <ItemGroup Label="Roslyn analyzers">

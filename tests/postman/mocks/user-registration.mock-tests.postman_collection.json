@@ -1,0 +1,250 @@
+{
+  "info": {
+    "_postman_id": "cb5cf188-89da-56af-b322-c5cad25280c3",
+    "name": "FitLife user registration (mock tests)",
+    "description": "API tests against the user registration Postman Mock Server: the happy path and the error cases. Needs userRegistrationMockUrl from an environment in tests/postman/environments/.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create user: 201 Created",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 201\", function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "pm.test(\"Body is a user without a password\", function () {",
+              "    const user = pm.response.json();",
+              "    pm.expect(user.id).to.match(/^[0-9a-f-]{36}$/);",
+              "    pm.expect(user.email).to.eql(\"anna.jensen@example.com\");",
+              "    pm.expect(user).to.have.property(\"firstName\");",
+              "    pm.expect(user).to.have.property(\"lastName\");",
+              "    pm.expect(user).to.not.have.property(\"password\");",
+              "});",
+              "",
+              "pm.test(\"Location points at the new user\", function () {",
+              "    pm.expect(pm.response.headers.get(\"Location\")).to.eql(\"/users/\" + pm.response.json().id);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "x-mock-response-name",
+            "value": "user-created"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{userRegistrationMockUrl}}/users",
+          "host": [
+            "{{userRegistrationMockUrl}}"
+          ],
+          "path": [
+            "users"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"anna.jensen@example.com\",\n  \"password\": \"Example-Passw0rd\",\n  \"firstName\": \"Anna\",\n  \"lastName\": \"Jensen\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Create user: 400 on invalid input",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 400\", function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "pm.test(\"Body is a ProblemDetails with status 400\", function () {",
+              "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.status).to.eql(400);",
+              "    pm.expect(body.title).to.be.a(\"string\").and.not.empty;",
+              "});",
+              "",
+              "pm.test(\"Names the invalid fields\", function () {",
+              "    const errors = pm.response.json().errors;",
+              "    pm.expect(errors).to.have.property(\"email\");",
+              "    pm.expect(errors).to.have.property(\"password\");",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "x-mock-response-name",
+            "value": "user-invalid"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{userRegistrationMockUrl}}/users",
+          "host": [
+            "{{userRegistrationMockUrl}}"
+          ],
+          "path": [
+            "users"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"short\",\n  \"firstName\": \"Anna\",\n  \"lastName\": \"Jensen\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Create user: 409 when email is taken",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 409\", function () {",
+              "    pm.response.to.have.status(409);",
+              "});",
+              "pm.test(\"Body is a ProblemDetails with status 409\", function () {",
+              "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.status).to.eql(409);",
+              "    pm.expect(body.title).to.be.a(\"string\").and.not.empty;",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "x-mock-response-name",
+            "value": "user-email-taken"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{userRegistrationMockUrl}}/users",
+          "host": [
+            "{{userRegistrationMockUrl}}"
+          ],
+          "path": [
+            "users"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"anna.jensen@example.com\",\n  \"password\": \"Example-Passw0rd\",\n  \"firstName\": \"Anna\",\n  \"lastName\": \"Jensen\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Get user: 200 OK",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"Body is a user without a password\", function () {",
+              "    const user = pm.response.json();",
+              "    pm.expect(user.id).to.match(/^[0-9a-f-]{36}$/);",
+              "    pm.expect(user.email).to.eql(\"anna.jensen@example.com\");",
+              "    pm.expect(user).to.have.property(\"firstName\");",
+              "    pm.expect(user).to.have.property(\"lastName\");",
+              "    pm.expect(user).to.not.have.property(\"password\");",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-mock-response-name",
+            "value": "user-found"
+          }
+        ],
+        "url": {
+          "raw": "{{userRegistrationMockUrl}}/users/3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c",
+          "host": [
+            "{{userRegistrationMockUrl}}"
+          ],
+          "path": [
+            "users",
+            "3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get user: 404 when unknown",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 404\", function () {",
+              "    pm.response.to.have.status(404);",
+              "});",
+              "pm.test(\"Body is a ProblemDetails with status 404\", function () {",
+              "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.status).to.eql(404);",
+              "    pm.expect(body.title).to.be.a(\"string\").and.not.empty;",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-mock-response-name",
+            "value": "user-not-found"
+          }
+        ],
+        "url": {
+          "raw": "{{userRegistrationMockUrl}}/users/00000000-0000-0000-0000-000000000000",
+          "host": [
+            "{{userRegistrationMockUrl}}"
+          ],
+          "path": [
+            "users",
+            "00000000-0000-0000-0000-000000000000"
+          ]
+        }
+      }
+    }
+  ]
+}

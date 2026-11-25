@@ -1,0 +1,66 @@
+# Checks that a PR's tests depend on its change, or, for a PR labelled refactor, that the tests are
+# unchanged and green. Logic, rules and limits: tools/ci/tdd-check.sh.
+# Make "tdd-check" a required check on develop and main (docs/CSHARP_SETUP_TODO.md section 6, issue #5).
+name: tdd-check
+
+on:
+  pull_request:
+    branches: [develop, main]
+    types: [opened, synchronize, reopened, labeled, unlabeled] # adding or removing "refactor" re-runs the check;
+    # any other label reports the last result again (tools/ci/tdd-check.sh, issue #136)
+
+permissions:
+  contents: read
+  checks: read # a label event other than refactor reports the last tdd-check result again (issue #136)
+
+# A new push to a PR cancels its run in progress. A label run never cancels one: it may be the run that decides
+# the result its own run reports (issue #136).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: ${{ github.event.action != 'labeled' && github.event.action != 'unlabeled' }}
+
+jobs:
+  tdd-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0 # the base commit is needed for the diff and the red-on-base run
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: global.json
+
+      - name: tdd-check
+        # The checked-out merge commit's first parent is the exact base it was built from;
+        # the base sha in the pull_request event can lag behind it.
+        run: BASE_SHA=$(git rev-parse HEAD^1) tools/ci/tdd-check.sh
+        env:
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          EVENT_ACTION: ${{ github.event.action }}
+          EVENT_LABEL: ${{ github.event.label.name }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ github.token }}
+          TEST_CMD: dotnet test -c Release
+          SRC_DIR: src/
+          TEST_DIR: tests/
+          SRC_FILE_REGEX: '\.cs$'
+          TEST_FILE_REGEX: '\.cs$'
+          SKIP_MARKERS: '[[,][[:space:]]*(Ignore|Explicit)\b|\bIgnoreReason\b|Assert\.(Ignore|Inconclusive)|\bAssume\.'
+
+      - name: tdd-check (tools/Analyzers)
+        # The TEAM analyzers and their tests (issue #49). Same rules, with the analyzer project as the production code.
+        if: ${{ !cancelled() }}
+        run: BASE_SHA=$(git rev-parse HEAD^1) tools/ci/tdd-check.sh
+        env:
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          EVENT_ACTION: ${{ github.event.action }}
+          EVENT_LABEL: ${{ github.event.label.name }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ github.token }}
+          TEST_CMD: dotnet test -c Release
+          SRC_DIR: tools/Analyzers/Team.Analyzers/
+          TEST_DIR: tools/Analyzers/Team.Analyzers.Tests/
+          SRC_FILE_REGEX: '\.cs$'
+          TEST_FILE_REGEX: '\.cs$'
+          SKIP_MARKERS: '[[,][[:space:]]*(Ignore|Explicit)\b|\bIgnoreReason\b|Assert\.(Ignore|Inconclusive)|\bAssume\.'

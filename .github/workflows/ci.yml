@@ -1,0 +1,204 @@
+# CI on every PR and on every push to develop and main (issue #5, docs/CSHARP_SETUP_TODO.md section 10).
+# Pushes to other branches get CI through their PR, so a PR head has one run, not a push run
+# plus a PR run with diff-scan skipped (GitHub reports a skipped job as passing).
+# Every job here is meant to be a required check on develop and main, by its job name (section 9).
+# build, format and test write a short failure summary to the run summary page (tools/ci/summarize.sh, #132).
+# tdd-check and pr-description have their own workflows; security, deploy-check and api-tests
+# come through their own issues (#20, #21, #22).
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# A new push to a PR cancels the run in progress. Push runs on develop and main always run to the end,
+# so every merge gets a verdict (issue #131), as in security.yml.
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: global.json
+      - name: Restore from the lock files
+        run: dotnet restore --locked-mode
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: global.json
+      - run: dotnet restore --locked-mode
+      - name: Build (compiler, analyzers, TEAM rules)
+        run: tools/ci/summarize.sh build "Fix the first compiler or analyzer error, the others often follow from it. Run dotnet build -c Release locally." -- dotnet build -c Release --no-restore -v q -clp:NoSummary -tl:off
+
+  format:
+    # After build, so one compile error fails build only and is shown once (issue #134)
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: global.json
+      - run: dotnet restore --locked-mode
+      - name: Check formatting
+        run: tools/ci/summarize.sh format "Run dotnet format locally and commit what it changes." -- dotnet format --verify-no-changes --no-restore
+
+  test:
+    # After build, so one compile error fails build only and is shown once (issue #134)
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: global.json
+      - run: dotnet restore --locked-mode
+      - run: dotnet build -c Release --no-restore -v q -clp:NoSummary -tl:off
+      - name: Test with coverage
+        run: tools/ci/summarize.sh test "Run the named test with dotnet test -c Release --filter, and read its Error Message." -- dotnet test -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
+      - name: Coverage report
+        uses: danielpalme/ReportGenerator-GitHub-Action@70c37c4d588cff5bf9cf190830c6f01dfcfb884b # v5.6.1
+        with:
+          reports: TestResults/**/coverage.cobertura.xml
+          targetdir: coverage-report
+          reporttypes: Html
+      - name: Upload the coverage report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-report
+          path: coverage-report
+
+  # The committed OpenAPI contracts match the code (issue #90, section 8): every API change shows in the PR diff.
+  # Then no contract breaks the one at its service's last <service>/vX.Y.Z tag (issue #91).
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0 # the release tags are needed for the breaking-change check
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: global.json
+      - run: dotnet restore --locked-mode
+      - name: Regenerate the contracts and compare them with the commit
+        run: tools/ci/check-contracts.sh
+      - name: No breaking change since each service's last release (oasdiff)
+        run: tools/ci/oasdiff-breaking.sh
+
+  # Runs the tests of the CI scripts themselves, so a change to a script fails its own tests.
+  ci-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1, because mutation.test.sh builds and mutates a throwaway project
+        with:
+          global-json-file: global.json
+      - name: Run every tools/ci/*.test.sh
+        run: |
+          status=0
+          for test in tools/ci/*.test.sh; do
+            echo "::group::$test"
+            "$test" || status=1
+            echo "::endgroup::"
+          done
+          exit "$status"
+
+  # The executable acceptance check for the build rules (#3): builds throwaway projects and
+  # checks that each rule in Directory.Build.* still fails the build (issue #54).
+  build-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: global.json
+      - name: Check that every build rule still fails the build
+        run: tools/ci/check-build-rules.sh
+
+  # Fails a PR into develop that is built on another open PR's branch (issue #110, #106).
+  # Needs: pull-requests read to list the open PRs. On a draft PR it runs like on any other PR.
+  # On a PR from a fork it still checks the commits, but a fork's branch is never a parent.
+  stack-check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0 # the history of every branch, to see what is beneath this PR
+      - name: Look for commits of another open PR
+        run: tools/ci/stack-check.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_BRANCH: ${{ github.head_ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+
+  # Stryker on the C# files the PR changes; fails below the break threshold in stryker-config.json (issue #53).
+  mutation:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0 # the diff needs the base branch
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: global.json
+      - name: Mutation testing on the changed C# files
+        run: tools/ci/mutation.sh
+        env:
+          SINCE: origin/${{ github.base_ref }}
+      - name: Upload the mutation report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mutation-report
+          path: StrykerOutput/*/reports/
+          if-no-files-found: ignore
+
+  diff-scan:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0 # the diff needs the base commit
+      - name: Scan the lines this PR adds
+        id: scan
+        run: tools/ci/diff-scan.sh
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      - name: Add the review labels
+        # Labels are added even when the scan fails, so reviewers see them either way
+        if: ${{ !cancelled() && steps.scan.outputs.labels != '' }}
+        run: gh pr edit "$PR" -R "$GITHUB_REPOSITORY" --add-label "$LABELS"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          LABELS: ${{ steps.scan.outputs.labels }}

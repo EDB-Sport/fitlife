@@ -1,0 +1,248 @@
+{
+  "info": {
+    "_postman_id": "55b82a4e-b0ab-5f91-9f70-5a1be394b2d2",
+    "name": "FitLife user registration (mock)",
+    "description": "Saved examples that back the Postman Mock Server for user creation, which is not built yet. Pick an example with the x-mock-response-name header. Made-up data only. See tests/postman/README.md.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create user",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"anna.jensen@example.com\",\n  \"password\": \"Example-Passw0rd\",\n  \"firstName\": \"Anna\",\n  \"lastName\": \"Jensen\"\n}"
+        },
+        "url": {
+          "raw": "{{url}}/users",
+          "host": [
+            "{{url}}"
+          ],
+          "path": [
+            "users"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "user-created",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-mock-response-name",
+                "value": "user-created"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/users",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"anna.jensen@example.com\",\n  \"password\": \"Example-Passw0rd\",\n  \"firstName\": \"Anna\",\n  \"lastName\": \"Jensen\"\n}"
+            }
+          },
+          "status": "Created",
+          "code": 201,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Location",
+              "value": "/users/3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c"
+            }
+          ],
+          "body": "{\n  \"id\": \"3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c\",\n  \"email\": \"anna.jensen@example.com\",\n  \"firstName\": \"Anna\",\n  \"lastName\": \"Jensen\",\n  \"createdAt\": \"2026-11-23T10:00:00Z\"\n}"
+        },
+        {
+          "name": "user-invalid",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-mock-response-name",
+                "value": "user-invalid"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/users",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"short\",\n  \"firstName\": \"Anna\",\n  \"lastName\": \"Jensen\"\n}"
+            }
+          },
+          "status": "Bad Request",
+          "code": 400,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "body": "{\n  \"type\": \"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\n  \"title\": \"One or more validation errors occurred.\",\n  \"status\": 400,\n  \"detail\": \"The request body is not valid.\",\n  \"errors\": {\n    \"email\": [\n      \"'email' is not a valid email address.\"\n    ],\n    \"password\": [\n      \"'password' must be at least 12 characters.\"\n    ]\n  }\n}"
+        },
+        {
+          "name": "user-email-taken",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-mock-response-name",
+                "value": "user-email-taken"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/users",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"anna.jensen@example.com\",\n  \"password\": \"Example-Passw0rd\",\n  \"firstName\": \"Anna\",\n  \"lastName\": \"Jensen\"\n}"
+            }
+          },
+          "status": "Conflict",
+          "code": 409,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "body": "{\n  \"type\": \"https://tools.ietf.org/html/rfc9110#section-15.5.10\",\n  \"title\": \"Email already registered\",\n  \"status\": 409,\n  \"detail\": \"A user with the email 'anna.jensen@example.com' already exists.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Get user",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{url}}/users/3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c",
+          "host": [
+            "{{url}}"
+          ],
+          "path": [
+            "users",
+            "3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "user-found",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-mock-response-name",
+                "value": "user-found"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/users/3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "users",
+                "3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"id\": \"3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c\",\n  \"email\": \"anna.jensen@example.com\",\n  \"firstName\": \"Anna\",\n  \"lastName\": \"Jensen\",\n  \"createdAt\": \"2026-11-23T10:00:00Z\"\n}"
+        },
+        {
+          "name": "user-not-found",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-mock-response-name",
+                "value": "user-not-found"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/users/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "users",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            }
+          },
+          "status": "Not Found",
+          "code": 404,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "body": "{\n  \"type\": \"https://tools.ietf.org/html/rfc9110#section-15.5.5\",\n  \"title\": \"User not found\",\n  \"status\": 404,\n  \"detail\": \"No user with id '00000000-0000-0000-0000-000000000000'.\"\n}"
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "url",
+      "value": "https://688e6cb8-8645-488f-922d-b533f91aec84.mock.pstmn.io",
+      "type": "string"
+    }
+  ]
+}

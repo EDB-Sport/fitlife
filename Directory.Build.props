@@ -1,0 +1,34 @@
+<!--
+  Restore settings and defaults for every project (docs/CSHARP_SETUP_TODO.md section 1).
+  The strictness settings are in Directory.Build.targets, so a .csproj can't switch them off.
+  Code-owned: changes need a review from the maintainers.
+-->
+<Project>
+  <PropertyGroup>
+    <RepoRoot>$(MSBuildThisFileDirectory)</RepoRoot>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Same dependencies everywhere: lock files are committed, CI restores with locked mode -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <!-- Known-vulnerable packages, direct or transitive, fail the build -->
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <!-- GitHub Actions sets CI=true -->
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Read by Microsoft.CodeAnalysis.BannedApiAnalyzers -->
+    <AdditionalFiles Include="$(RepoRoot)BannedSymbols.txt" />
+    <!-- Read by SonarAnalyzer.CSharp for the rule limits -->
+    <AdditionalFiles Include="$(RepoRoot)SonarLint.xml" />
+  </ItemGroup>
+
+  <!-- The team's own Roslyn analyzers (TEAM rules, tools/Analyzers/README.md) run on every project except themselves -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'Team.Analyzers' And '$(MSBuildProjectName)' != 'Team.Analyzers.Tests'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)tools/Analyzers/Team.Analyzers/Team.Analyzers.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <!-- Read by TEAM008: public *.Models types must be in the In code column (issue #76) -->
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)GLOSSARY.md" />
+  </ItemGroup>
+</Project>

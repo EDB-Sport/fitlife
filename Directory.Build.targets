@@ -1,0 +1,56 @@
+<!--
+  Strictness settings (docs/CSHARP_SETUP_TODO.md section 2).
+  This file is imported after each .csproj, so these values always win.
+  Code-owned: changes need a review from the maintainers.
+-->
+<Project>
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningLevel>9999</WarningLevel>
+    <Features>strict</Features>
+    <AnalysisLevel>latest-all</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- Course rule #4: XML comments on all public code -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- The SDK turns GenerateDocumentationFile into this path before this file is imported, so set the path too -->
+    <DocumentationFile>$(IntermediateOutputPath)$(AssemblyName).xml</DocumentationFile>
+    <!-- Microsoft.Common.CurrentVersion.targets computed this from the empty DocumentationFile before this file is imported.
+         Without it the build never copies the .xml to bin/, and dotnet publish fails looking for it there (issue #64). -->
+    <_DocumentationFileProduced>true</_DocumentationFileProduced>
+    <Nullable>enable</Nullable>
+    <!-- A fixed list: anything a .csproj puts in NoWarn is overwritten. 1701;1702 are the SDK defaults. -->
+    <NoWarn>1701;1702</NoWarn>
+  </PropertyGroup>
+
+  <!-- Test projects: names like Reserve_ClassSessionFull_ReturnsConflict document themselves -->
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests')) Or $(MSBuildProjectName.EndsWith('.IntegrationTests'))">
+    <NoWarn>$(NoWarn);CS1591;CA1707</NoWarn>
+  </PropertyGroup>
+
+  <!--
+    No references between services (docs/CSHARP_SETUP_TODO.md section 1).
+    A project under src/<A>/ may not reference a project under src/<B>/. Services talk over HTTP and events only.
+  -->
+  <PropertyGroup>
+    <_FitLifeSrcRoot>$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'src'))</_FitLifeSrcRoot>
+    <_FitLifeRelativeDir>$([MSBuild]::MakeRelative('$(_FitLifeSrcRoot)', '$(MSBuildProjectDirectory)').Replace('\', '/'))</_FitLifeRelativeDir>
+    <_FitLifeService Condition="!$(_FitLifeRelativeDir.StartsWith('..'))">$(_FitLifeRelativeDir.Split('/')[0])</_FitLifeService>
+  </PropertyGroup>
+
+  <Target Name="FitLifeCheckNoCrossServiceReferences" BeforeTargets="ResolveProjectReferences" Condition="'$(_FitLifeService)' != ''">
+    <ItemGroup>
+      <_FitLifeReference Include="@(ProjectReference->'%(FullPath)')" />
+      <_FitLifeReference>
+        <RelativePath>$([MSBuild]::MakeRelative('$(_FitLifeSrcRoot)', '%(Identity)').Replace('\', '/'))</RelativePath>
+      </_FitLifeReference>
+      <_FitLifeReference>
+        <Service>$([System.String]::Copy('%(RelativePath)').Split('/')[0])</Service>
+      </_FitLifeReference>
+      <_FitLifeCrossServiceReference Include="@(_FitLifeReference)"
+                                     Condition="!$([System.String]::Copy('%(RelativePath)').StartsWith('..')) And '%(Service)' != '$(_FitLifeService)'" />
+    </ItemGroup>
+    <Error Condition="'@(_FitLifeCrossServiceReference)' != ''"
+           Code="FITLIFE001"
+           Text="Found a ProjectReference from src/$(_FitLifeService) to src/%(_FitLifeCrossServiceReference.Service). Remove it: services and UIs talk to each other over HTTP or RabbitMQ events only (docs/CSHARP_SETUP_TODO.md section 1)." />
+  </Target>
+</Project>

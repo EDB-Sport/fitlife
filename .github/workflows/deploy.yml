@@ -1,0 +1,192 @@
+# Deploys production to Azure Container Instances with Bicep (docs/CSHARP_SETUP_TODO.md section 9a, issue #10).
+#
+# Runs after a successful release.yml on main, with the image versions that release tagged.
+# It can also be started by hand with explicit versions: that is the rollback, too
+# (run it again with the previous release's versions).
+#
+# Every run waits for one approval on the GitHub environment `production`.
+name: deploy
+
+on:
+  workflow_run:
+    workflows: [release]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      service_tag:
+        description: Version of the thin-slice service image (X.Y.Z)
+        required: true
+        type: string
+      ui_tag:
+        description: Version of the member portal image (X.Y.Z). Empty means the newest memberportal/v* release, or no portal while it has none
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+# One deploy at a time. A second one waits instead of cancelling a deploy halfway.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  RESOURCE_GROUP: rg-fitlife-prod
+  # Git tag prefixes of the released images (section 9: <prefix>/vX.Y.Z), the same names as the
+  # Docker Hub repositories in deploy/azure/main.bicepparam.
+  SERVICE_TAG_PREFIX: bookingservice
+  UI_TAG_PREFIX: memberportal
+
+jobs:
+  deploy:
+    # A failed release deploys nothing.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: production # required reviewers: the job waits here for one group member's approval
+      url: ${{ steps.deploy.outputs.public_url }}
+    permissions:
+      contents: read
+      id-token: write # lets azure/login get an OpenID Connect token; no client secret is stored
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # The released commit, not whatever main points at by the time the approval comes.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0 # the release tags are needed below
+
+      - name: Choose image versions
+        id: versions
+        env:
+          INPUT_SERVICE_TAG: ${{ inputs.service_tag }}
+          INPUT_UI_TAG: ${{ inputs.ui_tag }}
+        run: |
+          set -euo pipefail
+          # The newest <prefix>/vX.Y.Z tag on the released commit's history, without the prefix.
+          # Empty if there is none: the service then fails the check below, the member portal is left out (#198).
+          released_version() {
+            { git describe --tags --abbrev=0 --match "$1/v*" HEAD 2>/dev/null || true; } | sed "s|^$1/v||"
+          }
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            service_tag="$INPUT_SERVICE_TAG"
+            # Empty means the released member portal, so redeploying a service by hand keeps a live portal.
+            ui_tag="${INPUT_UI_TAG:-$(released_version "$UI_TAG_PREFIX")}"
+          else
+            service_tag="$(released_version "$SERVICE_TAG_PREFIX")"
+            ui_tag="$(released_version "$UI_TAG_PREFIX")"
+          fi
+          # Released versions only: this also rules out latest, develop and typos.
+          is_version() { [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; }
+          if ! is_version "$service_tag"; then
+            echo "::error::'$service_tag' is not a released version of $SERVICE_TAG_PREFIX (X.Y.Z)"
+            exit 1
+          fi
+          if [ -n "$ui_tag" ] && ! is_version "$ui_tag"; then
+            echo "::error::'$ui_tag' is not a released version of $UI_TAG_PREFIX (X.Y.Z)"
+            exit 1
+          fi
+          # main.bicepparam reads the versions from the environment. Without UI_IMAGE_TAG it leaves the
+          # member portal out, so the variable is set only when there is a version: a step's env: would set
+          # it to an empty string instead.
+          echo "SERVICE_IMAGE_TAG=$service_tag" >> "$GITHUB_ENV"
+          if [ -n "$ui_tag" ]; then
+            echo "Deploying $SERVICE_TAG_PREFIX $service_tag and $UI_TAG_PREFIX $ui_tag"
+            echo "UI_IMAGE_TAG=$ui_tag" >> "$GITHUB_ENV"
+          else
+            echo "Deploying $SERVICE_TAG_PREFIX $service_tag without $UI_TAG_PREFIX, which has no release yet"
+          fi
+          echo "service_tag=$service_tag" >> "$GITHUB_OUTPUT"
+          echo "ui_tag=$ui_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Azure (OpenID Connect)
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Pin the Bicep CLI
+        run: az bicep install --version v0.49.2
+
+      # main.bicepparam reads these with readEnvironmentVariable(), and the image versions from the step
+      # above. No secret appears on a command line.
+      - name: What-if
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PULL_TOKEN: ${{ secrets.DOCKERHUB_PULL_TOKEN }}
+          MONGO_ROOT_PASSWORD: ${{ secrets.MONGO_ROOT_PASSWORD }}
+          BOOKING_DB_PASSWORD: ${{ secrets.BOOKING_DB_PASSWORD }}
+          MEMBERSHIP_DB_PASSWORD: ${{ secrets.MEMBERSHIP_DB_PASSWORD }}
+          IDENTITY_DB_PASSWORD: ${{ secrets.IDENTITY_DB_PASSWORD }}
+          NOTIFICATION_DB_PASSWORD: ${{ secrets.NOTIFICATION_DB_PASSWORD }}
+          RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
+          VAULT_DEV_ROOT_TOKEN: ${{ secrets.VAULT_DEV_ROOT_TOKEN }}
+          JWT_SIGNING_KEY: ${{ secrets.JWT_SIGNING_KEY }}
+        run: |
+          az deployment group what-if \
+            --resource-group "$RESOURCE_GROUP" \
+            --parameters deploy/azure/main.bicepparam
+
+      - name: Deploy
+        id: deploy
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PULL_TOKEN: ${{ secrets.DOCKERHUB_PULL_TOKEN }}
+          MONGO_ROOT_PASSWORD: ${{ secrets.MONGO_ROOT_PASSWORD }}
+          BOOKING_DB_PASSWORD: ${{ secrets.BOOKING_DB_PASSWORD }}
+          MEMBERSHIP_DB_PASSWORD: ${{ secrets.MEMBERSHIP_DB_PASSWORD }}
+          IDENTITY_DB_PASSWORD: ${{ secrets.IDENTITY_DB_PASSWORD }}
+          NOTIFICATION_DB_PASSWORD: ${{ secrets.NOTIFICATION_DB_PASSWORD }}
+          RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
+          VAULT_DEV_ROOT_TOKEN: ${{ secrets.VAULT_DEV_ROOT_TOKEN }}
+          JWT_SIGNING_KEY: ${{ secrets.JWT_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          outputs="$(az deployment group create \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "fitlife-$GITHUB_RUN_NUMBER" \
+            --parameters deploy/azure/main.bicepparam \
+            --query properties.outputs \
+            --output json)"
+          echo "public_url=$(jq -r .publicUrl.value <<< "$outputs")" >> "$GITHUB_OUTPUT"
+          echo "service_base_path=$(jq -r .serviceBasePath.value <<< "$outputs")" >> "$GITHUB_OUTPUT"
+
+      # Caddy asks Let's Encrypt for a certificate on the first start, which takes a moment.
+      - name: Wait for HTTPS
+        env:
+          PUBLIC_URL: ${{ steps.deploy.outputs.public_url }}
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error --max-time 10 "$PUBLIC_URL/health"; then
+              exit 0
+            fi
+            echo "Attempt $attempt: not ready yet"
+            sleep 10
+          done
+          echo "::error::$PUBLIC_URL/health did not answer over HTTPS within 5 minutes"
+          exit 1
+
+      # A failure fails the deploy. The fix is to run this workflow by hand with the previous versions.
+      # The per-service collections and e2e/booking-flow join this step as they are written (section 9a).
+      - name: Smoke test (Newman)
+        env:
+          PUBLIC_URL: ${{ steps.deploy.outputs.public_url }}
+          SERVICE_BASE_PATH: ${{ steps.deploy.outputs.service_base_path }}
+          MEMBER_PORTAL: ${{ steps.versions.outputs.ui_tag != '' }}
+        run: |
+          npx --yes newman@6.2.3 run tests/postman/smoke/thin-slice.postman_collection.json \
+            --environment tests/postman/environments/azure.postman_environment.json \
+            --env-var "baseUrl=$PUBLIC_URL" \
+            --env-var "serviceBasePath=$SERVICE_BASE_PATH" \
+            --env-var "memberPortal=$MEMBER_PORTAL" \
+            --reporters cli,junit \
+            --reporter-junit-export newman/thin-slice.xml
+
+      - name: Upload the smoke test report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: newman-smoke
+          path: newman/
+          if-no-files-found: ignore

@@ -64,6 +64,7 @@ public sealed class ClassSessionApiTests
         ClassSession classSession = ClassSessionAt(centerId, capacity: 1, Now.AddDays(1));
         var memberId = Guid.NewGuid();
         HttpStatusCode status;
+        Uri? location;
         using (BookingApiFactory factory = Factory())
         {
             await factory.AddAsync(classSession).ConfigureAwait(false);
@@ -72,6 +73,7 @@ public sealed class ClassSessionApiTests
             // Act
             using HttpResponseMessage response = await client.PostAsJsonAsync(ReservationsOf(classSession), new ReservationRequest(memberId)).ConfigureAwait(false);
             status = response.StatusCode;
+            location = response.Headers.Location;
         }
 
         // Assert
@@ -81,6 +83,7 @@ public sealed class ClassSessionApiTests
         Assert.Multiple(() =>
         {
             Assert.That(status, Is.EqualTo(HttpStatusCode.Created));
+            Assert.That(location, Is.Null, "no GET exists for a single reservation, so there is nothing to point at");
             Assert.That(classSessions?.Single().FreeSeats, Is.Zero);
         });
     }
@@ -212,6 +215,7 @@ public sealed class ClassSessionApiTests
         {
             Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
             Assert.That(waitlistEntry, Is.EqualTo(new WaitlistEntryResponse(classSession.Id, memberId)));
+            Assert.That(response.Headers.Location, Is.Null, "no GET exists for a single waitlist entry, so there is nothing to point at");
         });
     }
 

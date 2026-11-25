@@ -234,7 +234,7 @@ public sealed class VaultConfigurationTests
         // Arrange
         using var vault = new FakeVault(_ => Answer(HttpStatusCode.OK, SecretJson), hang: true);
         using ConfigurationManager configuration = VaultSettings();
-        configuration["Vault:WaitSeconds"] = "10";
+        configuration["Vault:WaitSeconds"] = "7";
         var time = new FakeTimeProvider();
         DateTimeOffset start = time.GetUtcNow();
 
@@ -243,8 +243,9 @@ public sealed class VaultConfigurationTests
             async () => await RunWithClockAsync(configuration.AddVaultAsync(vault, time), time, vault).ConfigureAwait(false));
 
         // Assert
-        Assert.That(exception?.Message, Does.Contain("no answer").And.Contain("10 s"));
-        Assert.That(time.GetUtcNow() - start, Is.LessThan(TimeSpan.FromSeconds(12)));
+        Assert.That(exception?.Message, Does.Contain("no answer").And.Contain("7 s"));
+        // Without the cap on the time left, attempt 2 would run 6-11 s. The fake clock moves in 1 s steps, hence 8.
+        Assert.That(time.GetUtcNow() - start, Is.LessThanOrEqualTo(TimeSpan.FromSeconds(8)));
         Assert.That(vault.Requests, Has.Count.GreaterThan(1));
     }
 

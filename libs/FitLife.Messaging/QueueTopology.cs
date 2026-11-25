@@ -11,7 +11,7 @@ internal static class QueueTopology
     /// <summary>Where a message goes when it can't be handled (#257).</summary>
     public const string DeadLetterExchange = "fitlife.events.dead-letter";
 
-    /// <summary>How many times a message is delivered before it is dead-lettered (#257).</summary>
+    /// <summary>How many times a message is redelivered after its first delivery before it is dead-lettered (#257).</summary>
     public const int DeliveryLimit = 5;
 
     /// <summary>Declares the events exchange, the consumer's queue bound to it, and the queue's dead-letter queue.</summary>
@@ -30,7 +30,7 @@ internal static class QueueTopology
         await channel.QueueDeclareAsync(deadLetterQueue, durable: true, exclusive: false, autoDelete: false, Quorum(), cancellationToken: cancellationToken).ConfigureAwait(false);
         await channel.QueueBindAsync(deadLetterQueue, DeadLetterExchange, queue, cancellationToken: cancellationToken).ConfigureAwait(false);
 
-        // A quorum queue counts deliveries: a requeued message is tried DeliveryLimit times, then dead-lettered
+        // A quorum queue counts deliveries: a requeued message is tried once plus DeliveryLimit times, then dead-lettered
         Dictionary<string, object?> arguments = Quorum();
         arguments["x-delivery-limit"] = DeliveryLimit;
         arguments["x-dead-letter-exchange"] = DeadLetterExchange;

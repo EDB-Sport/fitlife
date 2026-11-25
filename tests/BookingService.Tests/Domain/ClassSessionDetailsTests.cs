@@ -14,7 +14,7 @@ public sealed class ClassSessionDetailsTests
     public void ClassSessionDetails_WithADurationOfZeroOrLess_IsRejected(int minutes)
     {
         // Arrange
-        TimeSpan duration = TimeSpan.FromMinutes(minutes);
+        var duration = TimeSpan.FromMinutes(minutes);
 
         // Act
         Action create = () => _ = new ClassSessionDetails(CenterId, ClassTypeId, Instructor, duration);
@@ -27,7 +27,7 @@ public sealed class ClassSessionDetailsTests
     public void ClassSessionDetails_WithAPositiveDuration_IsCreated()
     {
         // Arrange
-        TimeSpan duration = TimeSpan.FromMinutes(1);
+        var duration = TimeSpan.FromMinutes(1);
 
         // Act
         var details = new ClassSessionDetails(CenterId, ClassTypeId, Instructor, duration);

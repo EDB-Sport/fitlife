@@ -29,6 +29,7 @@ jobs:
   release-gate:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -41,6 +42,7 @@ jobs:
   plan:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       services: ${{ steps.plan.outputs.services }}
       tags: ${{ steps.plan.outputs.tags }}
@@ -62,6 +64,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.services != '[]'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: true
       matrix:
@@ -70,7 +73,7 @@ jobs:
       IMAGE: ${{ vars.DOCKERHUB_NAMESPACE }}/${{ matrix.service.prefix }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Image tags X.Y.Z, X.Y, X and latest
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
@@ -97,24 +100,20 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
-      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Push
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          file: src/${{ matrix.service.name }}/Dockerfile
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          push: true
+      # Pushes the loaded, scanned image under every tag: no second build, so what Trivy scanned is what ships
+      - name: Push the scanned image
+        run: docker push --all-tags "$IMAGE"
 
   # Tagged last, so a failed build, scan or push leaves no tag and a re-run releases the same versions
   tags:
     needs: [plan, images]
     if: needs.plan.outputs.tags != ''
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: write # pushes the tags
     steps:

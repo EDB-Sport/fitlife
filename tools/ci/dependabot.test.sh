@@ -56,9 +56,14 @@ compose = (by_ecosystem.get("docker-compose") or [{}])[0]
 check("/src/*" in (docker.get("directories") or []), "docker covers /src/* (the Dockerfiles)")
 check("/deploy/compose" == compose.get("directory"), "docker-compose covers /deploy/compose")
 
-ignored = [i.get("dependency-name") for i in (docker.get("ignore") or [])]
-check("mcr.microsoft.com/dotnet/sdk" in ignored,
-      "docker ignores the .NET SDK image (ADR 004: global.json moves with it)")
+# Dependabot names an MCR image without the registry host ("dotnet/sdk", PR #287), so the ignore must too (#295).
+ignores = {i.get("dependency-name"): i for i in (docker.get("ignore") or [])}
+sdk = ignores.get("dotnet/sdk")
+check(sdk is not None and "update-types" not in sdk and "versions" not in sdk,
+      "docker ignores every update of the .NET SDK image, named dotnet/sdk (ADR 004: global.json moves with it)")
+aspnet = ignores.get("dotnet/aspnet") or {}
+check(aspnet.get("update-types") == ["version-update:semver-major"],
+      "docker ignores major updates of dotnet/aspnet, so the runtime stays on the app's .NET major (#295)")
 
 with open(path, encoding="utf-8") as f:
     text = f.read()

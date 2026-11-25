@@ -151,18 +151,14 @@ public sealed class RabbitMqEventConsumerTests
         // Arrange
         var failingTryEnds = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var rabbitMq = new FakeRabbitMq { Failures = 1, FailingTryEnds = failingTryEnds.Task };
-        var time = new FakeTimeProvider();
+        var time = new TimerSignallingTimeProvider();
         using RabbitMqEventConsumer<ReservationMade> consumer = Create(rabbitMq, new RecordingSubscriber(), time);
         await consumer.StartAsync(CancellationToken.None).ConfigureAwait(false);
-
-        // Act: ExecuteAsync runs on the thread pool, so keep the clock moving until the second try has bound the queue
-        for (int step = 0; step < 1000 && !consumer.Consuming.IsCompleted; step++)
-        {
-            time.Advance(TimeSpan.FromSeconds(5));
-            await Task.Yield();
-        }
-
         failingTryEnds.SetResult();
+
+        // Act: ExecuteAsync runs on the thread pool, so wait until it waits for the delay, however slow the runner, then let the delay pass
+        await time.TimerCreated.WaitAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false);
+        time.Advance(TimeSpan.FromSeconds(5));
 
         // Assert
         await consumer.Consuming.WaitAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false);

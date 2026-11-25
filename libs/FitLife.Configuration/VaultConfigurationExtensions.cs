@@ -44,12 +44,10 @@ public static class VaultConfigurationExtensions
         if (handler is null)
         {
             using var sockets = new SocketsHttpHandler();
-            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             secret = await new VaultClient(settings, sockets, time ?? TimeProvider.System).ReadSecretAsync(cancellationToken).ConfigureAwait(false);
         }
         else
         {
-            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             secret = await new VaultClient(settings, handler, time ?? TimeProvider.System).ReadSecretAsync(cancellationToken).ConfigureAwait(false);
         }
 

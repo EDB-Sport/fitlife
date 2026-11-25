@@ -36,7 +36,6 @@ public sealed class ClassSessionsController : ControllerBase
     [ProducesResponseType<IReadOnlyList<ClassSessionResponse>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<ClassSessionResponse>>> GetClassSessions([FromQuery] Guid? centerId, CancellationToken cancellationToken)
     {
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         IReadOnlyList<ClassSession> classSessions = await _repository.ListAsync(centerId, cancellationToken).ConfigureAwait(false);
         return Ok(classSessions.Select(classSession => new ClassSessionResponse(
             classSession.Id,
@@ -63,7 +62,6 @@ public sealed class ClassSessionsController : ControllerBase
     public async Task<ActionResult<ReservationResponse>> PostReservation(Guid id, ReservationRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         ClassSession? classSession = await _repository.GetAsync(id, cancellationToken).ConfigureAwait(false);
         if (classSession is null)
         {
@@ -87,7 +85,6 @@ public sealed class ClassSessionsController : ControllerBase
                 throw new UnreachableException($"ReservationResult.{result} has no status code.");
         }
 
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         if (!await _repository.SaveAsync(classSession, cancellationToken).ConfigureAwait(false))
         {
             return ChangedMeanwhile();
@@ -107,7 +104,6 @@ public sealed class ClassSessionsController : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
     public async Task<Results<NoContent, ProblemHttpResult>> DeleteReservation(Guid id, Guid memberId, CancellationToken cancellationToken)
     {
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         ClassSession? classSession = await _repository.GetAsync(id, cancellationToken).ConfigureAwait(false);
         if (classSession is null)
         {
@@ -119,7 +115,6 @@ public sealed class ClassSessionsController : ControllerBase
             return TypedResults.Problem(statusCode: StatusCodes.Status404NotFound, title: "The member has no seat on this class session.");
         }
 
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         if (!await _repository.SaveAsync(classSession, cancellationToken).ConfigureAwait(false))
         {
             return TypedResults.Problem(statusCode: StatusCodes.Status409Conflict, title: ChangedMeanwhileTitle);
@@ -141,7 +136,6 @@ public sealed class ClassSessionsController : ControllerBase
     public async Task<ActionResult<WaitlistEntryResponse>> PostWaitlistEntry(Guid id, WaitlistEntryRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         ClassSession? classSession = await _repository.GetAsync(id, cancellationToken).ConfigureAwait(false);
         if (classSession is null)
         {
@@ -167,7 +161,6 @@ public sealed class ClassSessionsController : ControllerBase
                 throw new UnreachableException($"WaitlistResult.{result} has no status code.");
         }
 
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         if (!await _repository.SaveAsync(classSession, cancellationToken).ConfigureAwait(false))
         {
             return ChangedMeanwhile();

@@ -28,7 +28,6 @@ public sealed class CreateAccountHandler
     public async Task<CreateAccountOutcome> HandleAsync(CreateAccountCommand command, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(command);
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         if (await _repository.FindByEmailAsync(command.Email, cancellationToken).ConfigureAwait(false) is not null)
         {
             return new CreateAccountOutcome(CreateAccountResult.EmailAlreadyTaken, null);
@@ -37,7 +36,6 @@ public sealed class CreateAccountHandler
         // ! PasswordHasher<TUser> doesn't read the user, and the account can't exist before its hash does.
         string passwordHash = _hasher.HashPassword(null!, command.Password);
         var account = Account.Create(command.Email, passwordHash);
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         if (!await _repository.AddAsync(account, cancellationToken).ConfigureAwait(false))
         {
             return new CreateAccountOutcome(CreateAccountResult.EmailAlreadyTaken, null);

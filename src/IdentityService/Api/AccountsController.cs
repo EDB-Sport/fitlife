@@ -33,7 +33,6 @@ public sealed class AccountsController : ControllerBase
     public async Task<ActionResult<AccountResponse>> PostAccount(CreateAccountRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         CreateAccountOutcome outcome = await _handler.HandleAsync(new CreateAccountCommand(request.Email, request.Password), cancellationToken).ConfigureAwait(false);
         switch (outcome.Result)
         {

@@ -58,7 +58,6 @@ public sealed partial class RabbitMqEventConsumer<TEvent> : BackgroundService, I
         {
             try
             {
-                // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
                 await ConsumeAsync(stoppingToken).ConfigureAwait(false);
                 _consuming.TrySetResult();
                 return;
@@ -67,7 +66,6 @@ public sealed partial class RabbitMqEventConsumer<TEvent> : BackgroundService, I
             {
                 // Once connected, RabbitMQ.Client recovers the connection, queue and consumer by itself
                 LogNotReachable(exception, Queue, RetryDelay);
-                // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
                 await Task.Delay(RetryDelay, _time, stoppingToken).ConfigureAwait(false);
             }
         }
@@ -77,18 +75,14 @@ public sealed partial class RabbitMqEventConsumer<TEvent> : BackgroundService, I
     {
         if (_channel is not null)
         {
-            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             await _channel.DisposeAsync().ConfigureAwait(false);
         }
 
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         _channel = await _connection.CreateChannelAsync(cancellationToken).ConfigureAwait(false);
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         await QueueTopology.DeclareAsync(_channel, Queue, TEvent.RoutingKey, cancellationToken).ConfigureAwait(false);
 
         var consumer = new AsyncEventingBasicConsumer(_channel);
         consumer.ReceivedAsync += OnReceivedAsync;
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         await _channel.BasicConsumeAsync(Queue, autoAck: false, consumer, cancellationToken).ConfigureAwait(false);
         LogConsuming(Queue);
     }
@@ -96,7 +90,6 @@ public sealed partial class RabbitMqEventConsumer<TEvent> : BackgroundService, I
     /// <inheritdoc />
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         await base.StopAsync(cancellationToken).ConfigureAwait(false);
         if (_channel is not { IsOpen: true })
         {
@@ -105,7 +98,6 @@ public sealed partial class RabbitMqEventConsumer<TEvent> : BackgroundService, I
 
         try
         {
-            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             await _channel.CloseAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (ObjectDisposedException)
@@ -119,7 +111,6 @@ public sealed partial class RabbitMqEventConsumer<TEvent> : BackgroundService, I
     {
         if (_channel is not null)
         {
-            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             await _channel.DisposeAsync().ConfigureAwait(false);
         }
 
@@ -141,12 +132,10 @@ public sealed partial class RabbitMqEventConsumer<TEvent> : BackgroundService, I
             {
                 // Redelivering a body that can't be read only fails again: straight to the dead-letter queue
                 LogUnreadable(exception, Queue);
-                // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
                 await channel.BasicRejectAsync(delivery.DeliveryTag, requeue: false, CancellationToken.None).ConfigureAwait(false);
                 return;
             }
 
-            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             await HandleAsync(channel, delivery.DeliveryTag, integrationEvent).ConfigureAwait(false);
         }
     }
@@ -156,10 +145,8 @@ public sealed partial class RabbitMqEventConsumer<TEvent> : BackgroundService, I
         try
         {
             AsyncServiceScope scope = _scopes.CreateAsyncScope();
-            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             await using (scope.ConfigureAwait(false))
             {
-                // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
                 await scope.ServiceProvider.GetRequiredService<IEventSubscriber<TEvent>>().HandleAsync(integrationEvent, _stopping).ConfigureAwait(false);
             }
         }
@@ -168,12 +155,10 @@ public sealed partial class RabbitMqEventConsumer<TEvent> : BackgroundService, I
             // Requeued: RabbitMQ tries it again, and dead-letters it after the delivery limit. Reject, not nack:
             // since RabbitMQ 4.3 a nack requeue doesn't count towards the limit (rabbitmq.com/docs/nack)
             LogHandlerFailed(exception, Queue);
-            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             await channel.BasicRejectAsync(deliveryTag, requeue: true, CancellationToken.None).ConfigureAwait(false);
             return;
         }
 
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         await channel.BasicAckAsync(deliveryTag, multiple: false, CancellationToken.None).ConfigureAwait(false);
     }
 

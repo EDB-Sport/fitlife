@@ -22,16 +22,12 @@ internal static class QueueTopology
     /// <returns>A task that completes when everything exists.</returns>
     public static async Task DeclareAsync(IChannel channel, string queue, string routingKey, CancellationToken cancellationToken)
     {
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         await RabbitMqEventPublisher.DeclareExchangeAsync(channel, cancellationToken).ConfigureAwait(false);
 
         // <queue>.dead-letter keeps the message until someone looks (contracts/events/README.md)
         string deadLetterQueue = queue + ".dead-letter";
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         await channel.ExchangeDeclareAsync(DeadLetterExchange, ExchangeType.Direct, durable: true, autoDelete: false, cancellationToken: cancellationToken).ConfigureAwait(false);
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         await channel.QueueDeclareAsync(deadLetterQueue, durable: true, exclusive: false, autoDelete: false, Quorum(), cancellationToken: cancellationToken).ConfigureAwait(false);
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         await channel.QueueBindAsync(deadLetterQueue, DeadLetterExchange, queue, cancellationToken: cancellationToken).ConfigureAwait(false);
 
         // A quorum queue counts deliveries: a requeued message is tried once plus DeliveryLimit times, then dead-lettered
@@ -39,9 +35,7 @@ internal static class QueueTopology
         arguments["x-delivery-limit"] = DeliveryLimit;
         arguments["x-dead-letter-exchange"] = DeadLetterExchange;
         arguments["x-dead-letter-routing-key"] = queue;
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         await channel.QueueDeclareAsync(queue, durable: true, exclusive: false, autoDelete: false, arguments, cancellationToken: cancellationToken).ConfigureAwait(false);
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         await channel.QueueBindAsync(queue, RabbitMqEventPublisher.Exchange, routingKey, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 

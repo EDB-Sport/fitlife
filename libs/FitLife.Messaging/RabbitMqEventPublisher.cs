@@ -14,12 +14,9 @@ public sealed class RabbitMqEventPublisher(RabbitMqConnection connection) : IEve
     public async Task PublishAsync<TEvent>(TEvent integrationEvent, CancellationToken cancellationToken)
         where TEvent : IIntegrationEvent
     {
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         IChannel channel = await connection.CreateChannelAsync(cancellationToken).ConfigureAwait(false);
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         await using (channel.ConfigureAwait(false))
         {
-            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             await PublishAsync(channel, integrationEvent, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -27,7 +24,6 @@ public sealed class RabbitMqEventPublisher(RabbitMqConnection connection) : IEve
     private static async Task PublishAsync<TEvent>(IChannel channel, TEvent integrationEvent, CancellationToken cancellationToken)
         where TEvent : IIntegrationEvent
     {
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         await DeclareExchangeAsync(channel, cancellationToken).ConfigureAwait(false);
 
         var properties = new BasicProperties
@@ -41,7 +37,6 @@ public sealed class RabbitMqEventPublisher(RabbitMqConnection connection) : IEve
         };
         CorrelationHeaders.Write(properties.Headers);
 
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         await channel.BasicPublishAsync(Exchange, TEvent.RoutingKey, mandatory: false, properties, EventJson.Serialize(integrationEvent), cancellationToken).ConfigureAwait(false);
     }
 

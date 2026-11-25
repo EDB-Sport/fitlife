@@ -29,9 +29,7 @@ public sealed class RabbitMqConnection : IAsyncDisposable, IDisposable
     /// <returns>A new channel. The caller disposes it.</returns>
     public async Task<IChannel> CreateChannelAsync(CancellationToken cancellationToken)
     {
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         IConnection connection = await GetConnectionAsync(cancellationToken).ConfigureAwait(false);
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         return await connection.CreateChannelAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
@@ -49,7 +47,6 @@ public sealed class RabbitMqConnection : IAsyncDisposable, IDisposable
     {
         if (_connection is not null)
         {
-            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             await _connection.DisposeAsync().ConfigureAwait(false);
             _connection = null;
         }
@@ -59,11 +56,9 @@ public sealed class RabbitMqConnection : IAsyncDisposable, IDisposable
 
     private async Task<IConnection> GetConnectionAsync(CancellationToken cancellationToken)
     {
-        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             _connection ??= await _open(cancellationToken).ConfigureAwait(false);
             return _connection;
         }

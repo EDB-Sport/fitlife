@@ -92,6 +92,32 @@ public sealed class PaymentProviderClientTests
     }
 
     [Test]
+    public async Task Charge_WhenTheProviderAnswersWithoutAnOutcome_IsNotPaid()
+    {
+        // Arrange
+        using var provider = new StubProvider(HttpStatusCode.Created, """{ "charge_id": "ch_1001" }""");
+
+        // Act
+        bool paid = await Charge(provider);
+
+        // Assert
+        Assert.That(paid, Is.False);
+    }
+
+    [Test]
+    public async Task Charge_WhenTheOutcomeIsNotApproved_IsNotPaid()
+    {
+        // Arrange
+        using var provider = new StubProvider(HttpStatusCode.Created, """{ "charge_id": "ch_1001", "outcome": "pending" }""");
+
+        // Act
+        bool paid = await Charge(provider);
+
+        // Assert
+        Assert.That(paid, Is.False);
+    }
+
+    [Test]
     public async Task Charge_WhenTheCallerCancels_IsCancelled()
     {
         // Arrange
@@ -130,6 +156,7 @@ public sealed class PaymentProviderClientTests
         Assert.That(body.RootElement.GetProperty("customer_reference").GetString(), Is.EqualTo(MemberId.ToString()));
         Assert.That(body.RootElement.GetProperty("amount_minor").GetInt64(), Is.EqualTo(29900));
         Assert.That(body.RootElement.GetProperty("currency").GetString(), Is.EqualTo("DKK"));
+        Assert.That(body.RootElement.GetProperty("description").GetString(), Is.EqualTo("FitLife membership fee"));
     }
 
     private static async Task<bool> Charge(StubProvider provider, CancellationToken cancellationToken = default)

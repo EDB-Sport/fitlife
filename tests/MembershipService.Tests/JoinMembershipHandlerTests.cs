@@ -95,6 +95,34 @@ public sealed class JoinMembershipHandlerTests
     }
 
     [Test]
+    public async Task Join_WhenTheFirstFeeIsPaid_StoresAnActiveMembership()
+    {
+        // Arrange
+        JoinMembershipHandler handler = Handler();
+
+        // Act
+        await handler.HandleAsync(new JoinMembershipCommand("account-1"), CancellationToken.None);
+
+        // Assert
+        Assert.That(_memberships.Stored.Single().Status, Is.EqualTo(MembershipStatus.Active));
+    }
+
+    [Test]
+    public async Task Join_WhenTheChargeIsInterrupted_LeavesNoActiveMembership()
+    {
+        // Arrange: the request is cancelled while the provider is charging, as when the client goes away
+        _payments.Interrupt = true;
+        JoinMembershipHandler handler = Handler();
+
+        // Act
+        Func<Task> act = () => handler.HandleAsync(new JoinMembershipCommand("account-1"), CancellationToken.None);
+
+        // Assert
+        await Assert.ThatAsync(act, Throws.InstanceOf<OperationCanceledException>()).ConfigureAwait(false);
+        Assert.That(_memberships.Stored.Single().Status, Is.EqualTo(MembershipStatus.PaymentMissing));
+    }
+
+    [Test]
     public async Task Join_NewAccount_ChargesTheMonthlyFeeForTheNewMember()
     {
         // Arrange
@@ -125,11 +153,18 @@ public sealed class JoinMembershipHandlerTests
     {
         public bool Paid { get; set; } = true;
 
+        public bool Interrupt { get; set; }
+
         public List<(Guid MemberId, decimal AmountDkk)> Charges { get; } = [];
 
         public Task<bool> ChargeMembershipFeeAsync(Guid memberId, decimal amountDkk, CancellationToken cancellationToken)
         {
             Charges.Add((memberId, amountDkk));
+            if (Interrupt)
+            {
+                throw new OperationCanceledException("The request was cancelled while the fee was being charged.");
+            }
+
             return Task.FromResult(Paid);
         }
     }
@@ -162,9 +197,15 @@ public sealed class JoinMembershipHandlerTests
     {
         public List<Membership> Stored { get; } = [];
 
+        // Copies, as a database does: a change to a membership is stored only when it is saved
+        private static Membership Copy(Membership membership)
+        {
+            return Membership.Restore(membership.Id, membership.MemberId, membership.Type, membership.Status, membership.StartDate);
+        }
+
         public Task AddAsync(Membership membership, CancellationToken cancellationToken)
         {
-            Stored.Add(membership);
+            Stored.Add(Copy(membership));
             return Task.CompletedTask;
         }
 
@@ -177,7 +218,7 @@ public sealed class JoinMembershipHandlerTests
         public Task SaveAsync(Membership membership, CancellationToken cancellationToken)
         {
             Stored.RemoveAll(stored => stored.Id == membership.Id);
-            Stored.Add(membership);
+            Stored.Add(Copy(membership));
             return Task.CompletedTask;
         }
 

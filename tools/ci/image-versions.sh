@@ -58,7 +58,7 @@ while IFS= read -r -d '' file; do
   while IFS= read -r line || [[ -n $line ]]; do
     lineno=$((lineno + 1))
     read -ra words <<<"$line"
-    [[ ${#words[@]} -gt 1 && ${words[0]^^} == FROM ]] || continue
+    [[ ${#words[@]} -gt 1 && ${words[0]} == [Ff][Rr][Oo][Mm] ]] || continue
     i=1
     while [[ ${words[i]:-} == --* ]]; do i=$((i + 1)); done
     image=${words[i]:-}
@@ -79,7 +79,8 @@ while IFS= read -r -d '' file; do
     [[ -n $image && $image != *'$'* ]] && record "$file" "$lineno" "$image"
   done < <(grep -nE '^[[:space:]]*image:[[:space:]]*[^[:space:]]' "$file" || true)
 done < <(find deploy . -maxdepth 4 -type f \( -name '*.yml' -o -name '*.yaml' \) \
-  -not -path './.git/*' -not -path '*/node_modules/*' -not -path './.github/*' -print0 2>/dev/null | sort -zu)
+  -not -path './.git/*' -not -path '*/node_modules/*' -not -path './.github/*' -not -path './deploy/*' \
+  -print0 2>/dev/null | sort -zu)
 
 # --- Bicep: param <name> [string] = '<image>'
 for file in $(find deploy -type f \( -name '*.bicep' -o -name '*.bicepparam' \) 2>/dev/null | sort); do
@@ -90,7 +91,7 @@ for file in $(find deploy -type f \( -name '*.bicep' -o -name '*.bicepparam' \) 
     lineno=$((lineno + 1))
     [[ $line =~ $param_re ]] || continue
     param=${BASH_REMATCH[1]} value=${BASH_REMATCH[3]}
-    lower=${param,,}
+    lower=$(tr '[:upper:]' '[:lower:]' <<<"$param")
     [[ $lower == *image* && $lower != *tag* && -n $value ]] || continue
     [[ $tag_params == *" ${param}Tag "* ]] && continue
     record "$file" "$lineno" "$value"

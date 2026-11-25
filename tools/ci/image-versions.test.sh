@@ -110,6 +110,9 @@ expect 0 "an image built from this repo (fitlife/...) is not checked"
 fresh; compose 'mongo:8'; compose 'mongo:9' other.yml
 expect 1 "every failure is reported, not just the first" 'mongo:9'
 
+fresh; compose 'mongo:8.0.38'
+expect 0 "a compose file under deploy/ is read once: one reference, not two" 'image-versions: 1 image reference\(s\) checked'
+
 # The real tree passes (the issue: today's develop passes, or the PR fixes what it finds).
 if out=$("$check" 2>&1); then
   echo "PASS  the repository passes"

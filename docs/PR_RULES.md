@@ -2,7 +2,7 @@
 
 Checked by CI (`PR description`, `tools/ci/check-pr-body.sh`):
 
-1. Link the issue: `Closes #<issue number>`, or `Refs #<issue number>` when the PR is only part of the issue. Release and hotfix PRs into `main` have no issue.
+1. Link the issue: `Closes #<issue number>`, or `Refs #<issue number>` when the PR is only part of the issue. Release and hotfix PRs into `main` have no issue. Assign issue so noone starts duplicate work.
 2. Fill in **What changed and why**: one or two lines.
 3. In **Tests**, tick "No existing test was changed or removed", or say which test changed and why.
 

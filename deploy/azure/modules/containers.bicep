@@ -28,13 +28,16 @@ param dockerHubToken string
 @description('Bounded context of the thin-slice service: booking, membership or identity.')
 param serviceContext string
 
-@description('Service image with its tag, e.g. edbsport/bookingservice:0.1.0.')
+@description('Service image with its tag, e.g. albertarnason/bookingservice:0.1.0.')
 param serviceImage string
 
 @description('Health endpoint of the service.')
 param serviceHealthPath string
 
-@description('Member portal image with its tag.')
+@description('Whether the member portal is in the group. False until it has a release, as there is no image to pull.')
+param includeMemberPortal bool
+
+@description('Member portal image with its tag. Unused while includeMemberPortal is false.')
 param uiImage string
 
 @description('Health endpoint of the member portal.')
@@ -165,6 +168,319 @@ func commandProbe(command string[], initialDelaySeconds int) object => {
   failureThreshold: 3
 }
 
+// Every container the group can hold. The member portal is dropped below until it has a release (#198).
+var containerDefinitions = [
+  {
+    name: 'caddy'
+    properties: {
+      image: caddyImage
+      resources: smallContainer
+      ports: [
+        {
+          port: 443
+          protocol: 'TCP'
+        }
+      ]
+      environmentVariables: [
+        // Read by deploy/azure/caddy/Caddyfile.
+        {
+          name: 'SITE_ADDRESS'
+          value: fqdn
+        }
+        {
+          name: 'GATEWAY_PORT'
+          value: string(gatewayPort)
+        }
+        {
+          name: 'CADDY_HTTP_PORT'
+          value: string(caddyHttpPort)
+        }
+      ]
+      volumeMounts: [
+        {
+          name: 'caddyfile'
+          mountPath: '/etc/caddy' // the image's default command reads /etc/caddy/Caddyfile
+          readOnly: true
+        }
+        {
+          name: 'caddy-data'
+          mountPath: '/data'
+        }
+      ]
+      // Caddy's admin API, which only listens on localhost inside the container.
+      livenessProbe: commandProbe(['wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:2019/config/'], 10)
+      readinessProbe: commandProbe(['wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:2019/config/'], 5)
+    }
+  }
+  {
+    name: 'nginx'
+    properties: {
+      image: nginxImage
+      resources: smallContainer
+      ports: [
+        {
+          port: gatewayPort
+          protocol: 'TCP'
+        }
+      ]
+      environmentVariables: [
+        // Rendered into the shared template by the image's envsubst at start, like in compose.
+        // A route whose app isn't in the group yet answers 502.
+        {
+          name: 'NGINX_RESOLVER'
+          value: '168.63.129.16' // Azure's DNS. The upstreams are IP addresses, so it is rarely asked.
+        }
+        {
+          name: 'BOOKING_URL'
+          value: 'http://127.0.0.1:${servicePorts.booking}'
+        }
+        {
+          name: 'MEMBERSHIP_URL'
+          value: 'http://127.0.0.1:${servicePorts.membership}'
+        }
+        {
+          name: 'IDENTITY_URL'
+          value: 'http://127.0.0.1:${servicePorts.identity}'
+        }
+        {
+          name: 'MEMBER_PORTAL_URL'
+          value: 'http://127.0.0.1:${uiPort}'
+        }
+        {
+          // The template's /grafana/ route (compose: monitoring.yml). Grafana isn't in the group,
+          // so nothing listens on this port and the route answers 502.
+          name: 'GRAFANA_URL'
+          value: 'http://127.0.0.1:3000'
+        }
+      ]
+      volumeMounts: [
+        {
+          name: 'nginx-templates'
+          mountPath: '/etc/nginx/templates'
+          readOnly: true
+        }
+      ]
+      livenessProbe: healthProbe('/health', gatewayPort, 10)
+      readinessProbe: healthProbe('/health', gatewayPort, 5)
+    }
+  }
+  {
+    name: '${serviceContext}-svc'
+    properties: {
+      image: serviceImage
+      resources: dotnetContainer
+      ports: [
+        {
+          port: servicePorts[serviceContext]
+          protocol: 'TCP'
+        }
+      ]
+      environmentVariables: [
+        {
+          name: 'ASPNETCORE_HTTP_PORTS'
+          value: string(servicePorts[serviceContext])
+        }
+        {
+          // Its secret, secret/<context>-svc, from the Vault container in this group (#17). The service
+          // waits for Vault and the seed job itself (Vault:WaitSeconds), as in compose.
+          name: 'Vault__Address'
+          value: 'http://127.0.0.1:${vaultPort}'
+        }
+        {
+          name: 'Vault__Token'
+          secureValue: vaultRootToken
+        }
+      ]
+      livenessProbe: healthProbe(serviceHealthPath, servicePorts[serviceContext], 30)
+      readinessProbe: healthProbe(serviceHealthPath, servicePorts[serviceContext], 10)
+    }
+  }
+  {
+    name: 'member-portal'
+    properties: {
+      image: uiImage
+      resources: dotnetContainer
+      ports: [
+        {
+          port: uiPort
+          protocol: 'TCP'
+        }
+      ]
+      environmentVariables: [
+        {
+          name: 'ASPNETCORE_HTTP_PORTS'
+          value: string(uiPort)
+        }
+      ]
+      livenessProbe: healthProbe(uiHealthPath, uiPort, 30)
+      readinessProbe: healthProbe(uiHealthPath, uiPort, 10)
+    }
+  }
+  {
+    name: 'mongodb'
+    properties: {
+      image: mongoImage
+      resources: mongoContainer
+      ports: [
+        {
+          port: mongoPort
+          protocol: 'TCP'
+        }
+      ]
+      environmentVariables: [
+        {
+          name: 'MONGO_INITDB_ROOT_USERNAME'
+          value: mongoRootUsername
+        }
+        {
+          name: 'MONGO_INITDB_ROOT_PASSWORD'
+          secureValue: mongoRootPassword
+        }
+        {
+          name: 'SERVICE_DATABASES'
+          value: serviceDatabases
+        }
+        {
+          name: 'BOOKING_DB_PASSWORD' // the password of the MongoDB user booking-svc
+          secureValue: bookingDbPassword
+        }
+        {
+          name: 'MEMBERSHIP_DB_PASSWORD' // the password of the MongoDB user membership-svc
+          secureValue: membershipDbPassword
+        }
+        {
+          name: 'IDENTITY_DB_PASSWORD' // the password of the MongoDB user identity-svc
+          secureValue: identityDbPassword
+        }
+        {
+          name: 'NOTIFICATION_DB_PASSWORD' // the password of the MongoDB user notification-svc
+          secureValue: notificationDbPassword
+        }
+      ]
+      volumeMounts: [
+        {
+          name: 'mongodb-data'
+          mountPath: '/data/db'
+        }
+        {
+          name: 'mongodb-init'
+          mountPath: '/docker-entrypoint-initdb.d'
+          readOnly: true
+        }
+      ]
+      livenessProbe: commandProbe(['mongosh', '--quiet', '--eval', 'quit(db.adminCommand("ping").ok ? 0 : 1)'], 30)
+      readinessProbe: commandProbe(['mongosh', '--quiet', '--eval', 'quit(db.adminCommand("ping").ok ? 0 : 1)'], 10)
+    }
+  }
+  {
+    name: 'rabbitmq'
+    properties: {
+      image: rabbitmqImage
+      resources: rabbitmqContainer
+      ports: [
+        {
+          port: rabbitmqPort
+          protocol: 'TCP'
+        }
+        {
+          port: rabbitmqManagementPort
+          protocol: 'TCP'
+        }
+      ]
+      environmentVariables: [
+        {
+          name: 'RABBITMQ_DEFAULT_USER'
+          value: rabbitmqUsername
+        }
+        {
+          name: 'RABBITMQ_DEFAULT_PASS'
+          secureValue: rabbitmqPassword
+        }
+      ]
+      livenessProbe: commandProbe(['rabbitmq-diagnostics', '-q', 'check_port_connectivity'], 60)
+      readinessProbe: commandProbe(['rabbitmq-diagnostics', '-q', 'check_port_connectivity'], 20)
+    }
+  }
+  {
+    // Dev mode, as in compose: deploy/compose/vault/start.sh starts the server and seeds it from these
+    // variables on every start, because dev-mode Vault keeps its secrets in memory only (#17).
+    name: 'vault'
+    properties: {
+      image: vaultImage
+      command: [
+        '/bin/sh'
+        '/vault/config/start.sh'
+      ]
+      resources: smallContainer
+      ports: [
+        {
+          port: vaultPort
+          protocol: 'TCP'
+        }
+      ]
+      environmentVariables: [
+        {
+          name: 'VAULT_DEV_ROOT_TOKEN_ID'
+          secureValue: vaultRootToken
+        }
+        {
+          name: 'VAULT_DEV_LISTEN_ADDRESS'
+          value: '127.0.0.1:${vaultPort}' // the group's localhost; nothing outside it reaches Vault
+        }
+        {
+          name: 'VAULT_ADDR'
+          value: 'http://127.0.0.1:${vaultPort}'
+        }
+        {
+          name: 'VAULT_TOKEN'
+          secureValue: vaultRootToken
+        }
+        {
+          name: 'SERVICE_DATABASES'
+          value: serviceDatabases
+        }
+        {
+          name: 'RABBITMQ_USERNAME'
+          value: rabbitmqUsername
+        }
+        {
+          name: 'RABBITMQ_PASSWORD'
+          secureValue: rabbitmqPassword
+        }
+        {
+          name: 'JWT_SIGNING_KEY'
+          secureValue: jwtSigningKey
+        }
+        {
+          name: 'BOOKING_DB_PASSWORD' // the password of the MongoDB user booking-svc
+          secureValue: bookingDbPassword
+        }
+        {
+          name: 'MEMBERSHIP_DB_PASSWORD' // the password of the MongoDB user membership-svc
+          secureValue: membershipDbPassword
+        }
+        {
+          name: 'IDENTITY_DB_PASSWORD' // the password of the MongoDB user identity-svc
+          secureValue: identityDbPassword
+        }
+        {
+          name: 'NOTIFICATION_DB_PASSWORD' // the password of the MongoDB user notification-svc
+          secureValue: notificationDbPassword
+        }
+      ]
+      volumeMounts: [
+        {
+          name: 'vault-scripts'
+          mountPath: '/vault/config'
+          readOnly: true
+        }
+      ]
+      livenessProbe: commandProbe(['/bin/sh', '-c', 'vault status >/dev/null'], 10)
+      readinessProbe: commandProbe(['/bin/sh', '-c', 'test -f /tmp/vault-seeded && vault status >/dev/null'], 5)
+    }
+  }
+]
+
 resource storageAccount 'Microsoft.Storage/storageAccounts@2025-06-01' existing = {
   name: storageAccountName
 }
@@ -193,317 +509,7 @@ resource containerGroup 'Microsoft.ContainerInstance/containerGroups@2025-09-01'
         }
       ]
     }
-    containers: [
-      {
-        name: 'caddy'
-        properties: {
-          image: caddyImage
-          resources: smallContainer
-          ports: [
-            {
-              port: 443
-              protocol: 'TCP'
-            }
-          ]
-          environmentVariables: [
-            // Read by deploy/azure/caddy/Caddyfile.
-            {
-              name: 'SITE_ADDRESS'
-              value: fqdn
-            }
-            {
-              name: 'GATEWAY_PORT'
-              value: string(gatewayPort)
-            }
-            {
-              name: 'CADDY_HTTP_PORT'
-              value: string(caddyHttpPort)
-            }
-          ]
-          volumeMounts: [
-            {
-              name: 'caddyfile'
-              mountPath: '/etc/caddy' // the image's default command reads /etc/caddy/Caddyfile
-              readOnly: true
-            }
-            {
-              name: 'caddy-data'
-              mountPath: '/data'
-            }
-          ]
-          // Caddy's admin API, which only listens on localhost inside the container.
-          livenessProbe: commandProbe(['wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:2019/config/'], 10)
-          readinessProbe: commandProbe(['wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:2019/config/'], 5)
-        }
-      }
-      {
-        name: 'nginx'
-        properties: {
-          image: nginxImage
-          resources: smallContainer
-          ports: [
-            {
-              port: gatewayPort
-              protocol: 'TCP'
-            }
-          ]
-          environmentVariables: [
-            // Rendered into the shared template by the image's envsubst at start, like in compose.
-            // A route whose app isn't in the group yet answers 502.
-            {
-              name: 'NGINX_RESOLVER'
-              value: '168.63.129.16' // Azure's DNS. The upstreams are IP addresses, so it is rarely asked.
-            }
-            {
-              name: 'BOOKING_URL'
-              value: 'http://127.0.0.1:${servicePorts.booking}'
-            }
-            {
-              name: 'MEMBERSHIP_URL'
-              value: 'http://127.0.0.1:${servicePorts.membership}'
-            }
-            {
-              name: 'IDENTITY_URL'
-              value: 'http://127.0.0.1:${servicePorts.identity}'
-            }
-            {
-              name: 'MEMBER_PORTAL_URL'
-              value: 'http://127.0.0.1:${uiPort}'
-            }
-            {
-              // The template's /grafana/ route (compose: monitoring.yml). Grafana isn't in the group,
-              // so nothing listens on this port and the route answers 502.
-              name: 'GRAFANA_URL'
-              value: 'http://127.0.0.1:3000'
-            }
-          ]
-          volumeMounts: [
-            {
-              name: 'nginx-templates'
-              mountPath: '/etc/nginx/templates'
-              readOnly: true
-            }
-          ]
-          livenessProbe: healthProbe('/health', gatewayPort, 10)
-          readinessProbe: healthProbe('/health', gatewayPort, 5)
-        }
-      }
-      {
-        name: '${serviceContext}-svc'
-        properties: {
-          image: serviceImage
-          resources: dotnetContainer
-          ports: [
-            {
-              port: servicePorts[serviceContext]
-              protocol: 'TCP'
-            }
-          ]
-          environmentVariables: [
-            {
-              name: 'ASPNETCORE_HTTP_PORTS'
-              value: string(servicePorts[serviceContext])
-            }
-            {
-              // Its secret, secret/<context>-svc, from the Vault container in this group (#17). The service
-              // waits for Vault and the seed job itself (Vault:WaitSeconds), as in compose.
-              name: 'Vault__Address'
-              value: 'http://127.0.0.1:${vaultPort}'
-            }
-            {
-              name: 'Vault__Token'
-              secureValue: vaultRootToken
-            }
-          ]
-          livenessProbe: healthProbe(serviceHealthPath, servicePorts[serviceContext], 30)
-          readinessProbe: healthProbe(serviceHealthPath, servicePorts[serviceContext], 10)
-        }
-      }
-      {
-        name: 'member-portal'
-        properties: {
-          image: uiImage
-          resources: dotnetContainer
-          ports: [
-            {
-              port: uiPort
-              protocol: 'TCP'
-            }
-          ]
-          environmentVariables: [
-            {
-              name: 'ASPNETCORE_HTTP_PORTS'
-              value: string(uiPort)
-            }
-          ]
-          livenessProbe: healthProbe(uiHealthPath, uiPort, 30)
-          readinessProbe: healthProbe(uiHealthPath, uiPort, 10)
-        }
-      }
-      {
-        name: 'mongodb'
-        properties: {
-          image: mongoImage
-          resources: mongoContainer
-          ports: [
-            {
-              port: mongoPort
-              protocol: 'TCP'
-            }
-          ]
-          environmentVariables: [
-            {
-              name: 'MONGO_INITDB_ROOT_USERNAME'
-              value: mongoRootUsername
-            }
-            {
-              name: 'MONGO_INITDB_ROOT_PASSWORD'
-              secureValue: mongoRootPassword
-            }
-            {
-              name: 'SERVICE_DATABASES'
-              value: serviceDatabases
-            }
-            {
-              name: 'BOOKING_DB_PASSWORD' // the password of the MongoDB user booking-svc
-              secureValue: bookingDbPassword
-            }
-            {
-              name: 'MEMBERSHIP_DB_PASSWORD' // the password of the MongoDB user membership-svc
-              secureValue: membershipDbPassword
-            }
-            {
-              name: 'IDENTITY_DB_PASSWORD' // the password of the MongoDB user identity-svc
-              secureValue: identityDbPassword
-            }
-            {
-              name: 'NOTIFICATION_DB_PASSWORD' // the password of the MongoDB user notification-svc
-              secureValue: notificationDbPassword
-            }
-          ]
-          volumeMounts: [
-            {
-              name: 'mongodb-data'
-              mountPath: '/data/db'
-            }
-            {
-              name: 'mongodb-init'
-              mountPath: '/docker-entrypoint-initdb.d'
-              readOnly: true
-            }
-          ]
-          livenessProbe: commandProbe(['mongosh', '--quiet', '--eval', 'quit(db.adminCommand("ping").ok ? 0 : 1)'], 30)
-          readinessProbe: commandProbe(['mongosh', '--quiet', '--eval', 'quit(db.adminCommand("ping").ok ? 0 : 1)'], 10)
-        }
-      }
-      {
-        name: 'rabbitmq'
-        properties: {
-          image: rabbitmqImage
-          resources: rabbitmqContainer
-          ports: [
-            {
-              port: rabbitmqPort
-              protocol: 'TCP'
-            }
-            {
-              port: rabbitmqManagementPort
-              protocol: 'TCP'
-            }
-          ]
-          environmentVariables: [
-            {
-              name: 'RABBITMQ_DEFAULT_USER'
-              value: rabbitmqUsername
-            }
-            {
-              name: 'RABBITMQ_DEFAULT_PASS'
-              secureValue: rabbitmqPassword
-            }
-          ]
-          livenessProbe: commandProbe(['rabbitmq-diagnostics', '-q', 'check_port_connectivity'], 60)
-          readinessProbe: commandProbe(['rabbitmq-diagnostics', '-q', 'check_port_connectivity'], 20)
-        }
-      }
-      {
-        // Dev mode, as in compose: deploy/compose/vault/start.sh starts the server and seeds it from these
-        // variables on every start, because dev-mode Vault keeps its secrets in memory only (#17).
-        name: 'vault'
-        properties: {
-          image: vaultImage
-          command: [
-            '/bin/sh'
-            '/vault/config/start.sh'
-          ]
-          resources: smallContainer
-          ports: [
-            {
-              port: vaultPort
-              protocol: 'TCP'
-            }
-          ]
-          environmentVariables: [
-            {
-              name: 'VAULT_DEV_ROOT_TOKEN_ID'
-              secureValue: vaultRootToken
-            }
-            {
-              name: 'VAULT_DEV_LISTEN_ADDRESS'
-              value: '127.0.0.1:${vaultPort}' // the group's localhost; nothing outside it reaches Vault
-            }
-            {
-              name: 'VAULT_ADDR'
-              value: 'http://127.0.0.1:${vaultPort}'
-            }
-            {
-              name: 'VAULT_TOKEN'
-              secureValue: vaultRootToken
-            }
-            {
-              name: 'SERVICE_DATABASES'
-              value: serviceDatabases
-            }
-            {
-              name: 'RABBITMQ_USERNAME'
-              value: rabbitmqUsername
-            }
-            {
-              name: 'RABBITMQ_PASSWORD'
-              secureValue: rabbitmqPassword
-            }
-            {
-              name: 'JWT_SIGNING_KEY'
-              secureValue: jwtSigningKey
-            }
-            {
-              name: 'BOOKING_DB_PASSWORD' // the password of the MongoDB user booking-svc
-              secureValue: bookingDbPassword
-            }
-            {
-              name: 'MEMBERSHIP_DB_PASSWORD' // the password of the MongoDB user membership-svc
-              secureValue: membershipDbPassword
-            }
-            {
-              name: 'IDENTITY_DB_PASSWORD' // the password of the MongoDB user identity-svc
-              secureValue: identityDbPassword
-            }
-            {
-              name: 'NOTIFICATION_DB_PASSWORD' // the password of the MongoDB user notification-svc
-              secureValue: notificationDbPassword
-            }
-          ]
-          volumeMounts: [
-            {
-              name: 'vault-scripts'
-              mountPath: '/vault/config'
-              readOnly: true
-            }
-          ]
-          livenessProbe: commandProbe(['/bin/sh', '-c', 'vault status >/dev/null'], 10)
-          readinessProbe: commandProbe(['/bin/sh', '-c', 'test -f /tmp/vault-seeded && vault status >/dev/null'], 5)
-        }
-      }
-    ]
+    containers: filter(containerDefinitions, c => includeMemberPortal || c.name != 'member-portal')
     volumes: [
       {
         // One source for the gateway config: the compose template, mounted as a file.

@@ -6,6 +6,8 @@
 # the others, but it fails the run. Reports go to newman-reports/.
 # Needs docker and newman (with newman-reporter-htmlextra) on PATH.
 # Usage: tools/ci/api-tests.sh   (run from the repo root; exit code 0 = every collection passes)
+#        API_TESTS_BUILD=1 tools/ci/api-tests.sh   rebuilds the fitlife/*:local images first (`up --build`).
+#        Off by default: compose then reuses the images it has, which may be older than your change (#284).
 set -uo pipefail
 shopt -s nullglob
 
@@ -27,9 +29,12 @@ stop_stack() { (cd "$compose_dir" && docker compose down -v); }
 # The made-up passwords in .env.example are what CI uses (deploy/compose/README.md). A local .env is kept.
 [ -f "$compose_dir/.env" ] || cp "$compose_dir/.env.example" "$compose_dir/.env"
 
+up=(docker compose up -d --wait)
+[ "${API_TESTS_BUILD:-0}" = 1 ] && up+=(--build)
+
 trap stop_stack EXIT
 echo "::group::Start the stack"
-if ! (cd "$compose_dir" && docker compose up -d --wait); then
+if ! (cd "$compose_dir" && "${up[@]}"); then
   echo "::endgroup::"
   echo "::error::api-tests: the compose stack in $compose_dir didn't start, so no collection ran."
   exit 1

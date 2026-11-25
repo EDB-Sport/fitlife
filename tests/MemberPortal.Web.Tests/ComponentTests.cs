@@ -44,7 +44,8 @@ public class ComponentTests : BunitContext
     public void Error_ShowsTheRequestId()
     {
         // Arrange
-        using var activity = new System.Diagnostics.Activity("request").Start();
+        using var activity = new System.Diagnostics.Activity("request");
+        activity.Start();
 
         // Act
         IRenderedComponent<Error> cut = Render<Error>();

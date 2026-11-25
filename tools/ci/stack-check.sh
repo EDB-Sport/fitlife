@@ -13,10 +13,13 @@
 #   HEAD_SHA     the PR's head commit
 #   PR_NUMBER    this PR's number
 #   HEAD_BRANCH  the PR's head branch (never its own parent)
-#   OPEN_PRS     the open PRs, one "<number> <head branch>" per line; when unset, read with gh
+#   OPEN_PRS     the open PRs, one "<number> <head branch> [<base branch>]" per line (base defaults to
+#                develop); when unset, read with gh
 #                (needs GH_TOKEN and GITHUB_REPOSITORY)
 #   DEVELOP_REF  default origin/develop
 #   BRANCH_PREFIX  default origin/ (where the open PRs' branches are found)
+# Commits on the other PR's own base branch aren't that PR's commits (issue #316): a hotfix PR into main
+# shares main's release merge with a back-merge into develop, which doesn't make it the back-merge's parent.
 # A PR from a fork has no branch here, so it can be checked but never be a parent.
 set -uo pipefail
 
@@ -27,8 +30,8 @@ prefix=${BRANCH_PREFIX-origin/}
 
 if [ -z "${OPEN_PRS+x}" ]; then
   OPEN_PRS=$(gh pr list -R "$GITHUB_REPOSITORY" --state open --limit 1000 \
-    --json number,headRefName,isCrossRepository \
-    --jq '.[] | select(.isCrossRepository | not) | "\(.number) \(.headRefName)"') || {
+    --json number,headRefName,baseRefName,isCrossRepository \
+    --jq '.[] | select(.isCrossRepository | not) | "\(.number) \(.headRefName) \(.baseRefName)"') || {
     echo "::error::Could not list the open PRs."
     exit 2
   }
@@ -45,7 +48,7 @@ fi
 sibling_source() {
   local candidate=$1 tip=$2 number branch other base covered
   [ -n "$(git rev-list -n 1 "$tip" "^$develop_ref" "^$HEAD_SHA")" ] || return 1
-  while read -r number branch; do
+  while read -r number branch _; do
     [ -n "${number:-}" ] && [ -n "${branch:-}" ] || continue
     [ "$number" = "$candidate" ] || [ "$branch" = "${HEAD_BRANCH:-}" ] && continue
     [ "$number" -lt "$candidate" ] || continue # the lower number is the source, as for parents
@@ -63,7 +66,7 @@ sibling_source() {
 }
 
 failed=0
-while read -r number branch; do
+while read -r number branch pr_base; do
   [ -n "${number:-}" ] && [ -n "${branch:-}" ] || continue
   [ "$branch" = "${HEAD_BRANCH:-}" ] && continue
   tip=$(git rev-parse --verify --quiet "${prefix}${branch}^{commit}") || continue
@@ -71,10 +74,13 @@ while read -r number branch; do
   # This PR is beneath that one (numbers reversed) when its own commits are all in the other tip. Merge
   # commits don't count: develop merged into this PR is a merge commit the other PR can't have (issue #140).
   [ -z "$(git rev-list -n 1 --no-merges "$HEAD_SHA" "^$develop_ref" "^$tip")" ] && continue
+  # The other PR's base branch (default develop): commits on it aren't that PR's own commits.
+  other_base_ref=$(git rev-parse --verify --quiet "${prefix}${pr_base:-}^{commit}") || other_base_ref=$develop_ref
   shared_unmerged=0
   while read -r base; do
     [ -n "$base" ] || continue
-    git merge-base --is-ancestor "$base" "$develop_ref" || shared_unmerged=1
+    git merge-base --is-ancestor "$base" "$develop_ref" && continue
+    git merge-base --is-ancestor "$base" "$other_base_ref" || shared_unmerged=1
   done < <(git merge-base --all "$tip" "$HEAD_SHA")
   [ "$shared_unmerged" -eq 1 ] || continue # only develop in common (or nothing)
   failed=1

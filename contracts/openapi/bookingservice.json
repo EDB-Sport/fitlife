@@ -264,7 +264,7 @@
             }
           },
           "409": {
-            "description": "A seat is free, or the waitlist has closed (2 hours before start).",
+            "description": "A seat is free, the waitlist has closed, the class session is cancelled, or the member already has a place.",
             "content": {
               "application/problem+json": {
                 "schema": {

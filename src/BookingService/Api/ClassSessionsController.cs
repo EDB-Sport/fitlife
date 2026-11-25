@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using BookingService.Domain;
 using BookingService.Repositories;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -14,6 +15,7 @@ namespace BookingService.Api;
 public sealed class ClassSessionsController : ControllerBase
 {
     private const string ChangedMeanwhileTitle = "The class session changed at the same time. Try again.";
+    private const string ClassSessionCancelledTitle = "The class session is cancelled.";
 
     private readonly IClassSessionRepository _repository;
     private readonly TimeProvider _clock;
@@ -77,8 +79,10 @@ public sealed class ClassSessionsController : ControllerBase
                 return Problem(statusCode: StatusCodes.Status409Conflict, title: "The class session is full. Join its waitlist instead.");
             case ReservationResult.MemberAlreadyHasReservation:
                 return Problem(statusCode: StatusCodes.Status409Conflict, title: "The member already has a seat on this class session.");
+            case ReservationResult.ClassSessionCancelled:
+                return Problem(statusCode: StatusCodes.Status409Conflict, title: ClassSessionCancelledTitle);
             default:
-                return Problem(statusCode: StatusCodes.Status409Conflict, title: "The class session is cancelled.");
+                throw new UnreachableException($"ReservationResult.{result} has no status code.");
         }
 
         if (!await _repository.SaveAsync(classSession, cancellationToken).ConfigureAwait(false))
@@ -123,7 +127,7 @@ public sealed class ClassSessionsController : ControllerBase
     /// <param name="id">The class session.</param>
     /// <param name="request">The member who wants to wait for a seat.</param>
     /// <param name="cancellationToken">Stops the request.</param>
-    /// <response code="409">A seat is free, or the waitlist has closed (2 hours before start).</response>
+    /// <response code="409">A seat is free, the waitlist has closed, the class session is cancelled, or the member already has a place.</response>
     [HttpPost("{id:guid}/waitlist")]
     [Consumes("application/json")]
     [ProducesResponseType<WaitlistEntryResponse>(StatusCodes.Status201Created)]
@@ -139,14 +143,22 @@ public sealed class ClassSessionsController : ControllerBase
         }
 
         WaitlistResult result = classSession.JoinWaitlist(request.MemberId, _clock);
-        if (result == WaitlistResult.ClassSessionNotFull)
+        switch (result)
         {
-            return Problem(statusCode: StatusCodes.Status409Conflict, title: "A seat is free. Reserve it instead.");
-        }
-
-        if (result == WaitlistResult.WaitlistClosed)
-        {
-            return Problem(statusCode: StatusCodes.Status409Conflict, title: "The waitlist closed 2 hours before start.");
+            case WaitlistResult.Joined:
+                break;
+            case WaitlistResult.ClassSessionNotFull:
+                return Problem(statusCode: StatusCodes.Status409Conflict, title: "A seat is free. Reserve it instead.");
+            case WaitlistResult.WaitlistClosed:
+                return Problem(statusCode: StatusCodes.Status409Conflict, title: "The waitlist closed 2 hours before start.");
+            case WaitlistResult.MemberAlreadyHasReservation:
+                return Problem(statusCode: StatusCodes.Status409Conflict, title: "The member already has a seat on this class session.");
+            case WaitlistResult.MemberAlreadyOnWaitlist:
+                return Problem(statusCode: StatusCodes.Status409Conflict, title: "The member is already on the waitlist of this class session.");
+            case WaitlistResult.ClassSessionCancelled:
+                return Problem(statusCode: StatusCodes.Status409Conflict, title: ClassSessionCancelledTitle);
+            default:
+                throw new UnreachableException($"WaitlistResult.{result} has no status code.");
         }
 
         if (!await _repository.SaveAsync(classSession, cancellationToken).ConfigureAwait(false))

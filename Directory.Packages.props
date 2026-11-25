@@ -28,6 +28,8 @@
     <!-- NLog → Loki (course rule #8, docs/CSHARP_SETUP_TODO.md section 7) -->
     <PackageVersion Include="NLog.Web.AspNetCore" Version="6.2.2" />
     <PackageVersion Include="NLog.Targets.Loki" Version="2.7.1" />
+    <!-- Checks the JWT from Identity, the same way in every service (libs/FitLife.Authentication, #183) -->
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.15" />
   </ItemGroup>
 
   <!-- Added to every test project automatically by tests/Directory.Build.props. -->
@@ -60,7 +62,7 @@
 
   <!--
     The project's own analyzers in tools/Analyzers (docs/CSHARP_SETUP_TODO.md section 4).
-    Microsoft.CodeAnalysis.CSharp stays at 5.0.0, the Roslyn in SDK 10.0.100 (global.json):
+    Microsoft.CodeAnalysis.CSharp stays at 5.0.0, which is not newer than the Roslyn of the SDK in global.json (10.0.203):
     an analyzer built against a newer Roslyn than the compiler that loads it is not loaded (CS8032).
   -->
   <ItemGroup Label="Roslyn analyzers">

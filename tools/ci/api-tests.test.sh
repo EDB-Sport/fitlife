@@ -9,6 +9,8 @@ script="$here/api-tests.sh"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 failures=0
+# A developer who exports API_TESTS_BUILD must not change the cases that run without it.
+unset API_TESTS_BUILD
 
 # Stubs: each call is one line in $work/calls. newman fails for a collection named *failing*,
 # `docker compose up` fails when STUB_UP_FAILS=1.
@@ -109,7 +111,18 @@ check "a stack that doesn't start fails the job" [ "$status" -ne 0 ]
 check "no collection runs without the stack" no_call '^newman'
 check "the stack is stopped after a failed start" has_call '^docker compose down -v'
 
-# 5. The repo's own collections assert status codes and bodies, never response times: a timing
+# 5. API_TESTS_BUILD=1 rebuilds the fitlife/*:local images; without it the command is the same as before (#284)
+repo=$(fixture)
+add "$repo" services booking
+API_TESTS_BUILD=1 run "$repo"
+check "API_TESTS_BUILD=1 starts the stack with up -d --wait --build" has_call '^docker compose up -d --wait --build \(in compose\)$'
+check "API_TESTS_BUILD=1 still passes" [ "$status" -eq 0 ]
+repo=$(fixture)
+add "$repo" services booking
+API_TESTS_BUILD=0 run "$repo"
+check "API_TESTS_BUILD=0 doesn't build" has_call '^docker compose up -d --wait \(in compose\)$'
+
+# 6. The repo's own collections assert status codes and bodies, never response times: a timing
 #    assertion against a mock server on the internet depends on the network, not on the code (#135)
 timed=$(grep -rlE 'responseTime' "$here/../../tests/postman" --include='*.postman_collection.json' || true)
 check "no collection asserts a response time" [ -z "$timed" ]

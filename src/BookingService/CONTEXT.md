@@ -1,7 +1,7 @@
 # Booking (`src/BookingService/`)
 
 > From `docs/templates/CONTEXT.md`. Keep it under about 80 lines, and update it in the same PR that changes the model.
-> **Status: first invariant modelled (#155).** The context map (`docs/domain/CONTEXT-MAP.md`) is decided in ADR 007. The tactical model below is DDD_PLAN step 4; the rules come from the TO-BE-kontekst §8 (Booking). Each further invariant is its own issue.
+> **Status: invariants 1–2 modelled (#155, #156).** The context map (`docs/domain/CONTEXT-MAP.md`) is decided in ADR 007. The tactical model below is DDD_PLAN step 4; the rules come from the TO-BE-kontekst §8 (Booking). Each further invariant is its own issue.
 
 ## Purpose
 
@@ -35,7 +35,7 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | # | Rule (TO-BE §8) | Test or issue |
 |---|---|---|
 | 1 | The reservations never exceed the capacity | `ClassSessionTests.Reserve_WhenClassSessionIsFull_IsRejected` |
-| 2 | A member can't reserve the same class session twice | #156 |
+| 2 | A member can't reserve the same class session twice | `ClassSessionTests.Reserve_WhenTheMemberAlreadyHasAReservation_IsRejected` |
 | 3 | A full class session offers a waitlist entry, first come first served | #157 |
 | 4 | A freed seat goes to the first waitlist entry | #158 |
 | 5 | Class sessions can be reserved at most 4 weeks ahead | #159 |
@@ -47,7 +47,7 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 
 | Kind | Name | Notes |
 |---|---|---|
-| Command | `ClassSession.Reserve(memberId)` | Returns `ReservationResult.Made` or `ClassSessionFull` |
+| Command | `ClassSession.Reserve(memberId)` | Returns `ReservationResult.Made`, `MemberAlreadyHasReservation` or `ClassSessionFull` |
 
 ## Talks to
 

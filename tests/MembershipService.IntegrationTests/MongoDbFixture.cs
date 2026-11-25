@@ -35,6 +35,16 @@ public sealed class MongoDbFixture : IAsyncDisposable
         }
     }
 
+    /// <summary>Runs a mongosh script as the container's root user, for state the service would never write itself.</summary>
+    public async Task RunScriptAsync(string script)
+    {
+        ExecResult result = await _container.ExecScriptAsync(script).ConfigureAwait(false);
+        if (result.ExitCode != 0)
+        {
+            throw new InvalidOperationException("The mongosh script failed: " + result.Stderr);
+        }
+    }
+
     /// <inheritdoc />
     public ValueTask DisposeAsync()
     {

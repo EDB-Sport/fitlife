@@ -1,12 +1,15 @@
 <Solution>
   <Folder Name="/libs/">
+    <Project Path="libs/FitLife.Configuration/FitLife.Configuration.csproj" />
     <Project Path="libs/FitLife.Correlation/FitLife.Correlation.csproj" />
     <Project Path="libs/FitLife.Messaging/FitLife.Messaging.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/BookingService/BookingService.csproj" />
+    <Project Path="src/MemberPortal.Web/MemberPortal.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/FitLife.Configuration.Tests/FitLife.Configuration.Tests.csproj" />
     <Project Path="tests/FitLife.Correlation.Tests/FitLife.Correlation.Tests.csproj" />
     <Project Path="tests/FitLife.Contracts.Testing/FitLife.Contracts.Testing.csproj" />
     <Project Path="tests/FitLife.Contracts.Tests/FitLife.Contracts.Tests.csproj" />
@@ -14,6 +17,8 @@
     <Project Path="tests/FitLife.Messaging.IntegrationTests/FitLife.Messaging.IntegrationTests.csproj" />
     <Project Path="tests/BookingService.IntegrationTests/BookingService.IntegrationTests.csproj" />
     <Project Path="tests/BookingService.Tests/BookingService.Tests.csproj" />
+    <Project Path="tests/MemberPortal.Web.IntegrationTests/MemberPortal.Web.IntegrationTests.csproj" />
+    <Project Path="tests/MemberPortal.Web.Tests/MemberPortal.Web.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/" />
   <Folder Name="/tools/Analyzers/">

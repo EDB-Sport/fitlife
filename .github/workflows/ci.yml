@@ -2,6 +2,7 @@
 # Pushes to other branches get CI through their PR, so a PR head has one run, not a push run
 # plus a PR run with diff-scan skipped (GitHub reports a skipped job as passing).
 # Every job here is meant to be a required check on develop and main, by its job name (section 9).
+# build, format and test write a short failure summary to the run summary page (tools/ci/summarize.sh, #132).
 # tdd-check and pr-description have their own workflows; security, deploy-check and api-tests
 # come through their own issues (#20, #21, #22).
 name: CI
@@ -28,8 +29,8 @@ jobs:
   restore:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           global-json-file: global.json
       - name: Restore from the lock files
@@ -38,44 +39,48 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           global-json-file: global.json
       - run: dotnet restore --locked-mode
       - name: Build (compiler, analyzers, TEAM rules)
-        run: dotnet build -c Release --no-restore -v q -clp:NoSummary -tl:off
+        run: tools/ci/summarize.sh build "Fix the first compiler or analyzer error, the others often follow from it. Run dotnet build -c Release locally." -- dotnet build -c Release --no-restore -v q -clp:NoSummary -tl:off
 
   format:
+    # After build, so one compile error fails build only and is shown once (issue #134)
+    needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           global-json-file: global.json
       - run: dotnet restore --locked-mode
       - name: Check formatting
-        run: dotnet format --verify-no-changes --no-restore
+        run: tools/ci/summarize.sh format "Run dotnet format locally and commit what it changes." -- dotnet format --verify-no-changes --no-restore
 
   test:
+    # After build, so one compile error fails build only and is shown once (issue #134)
+    needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           global-json-file: global.json
       - run: dotnet restore --locked-mode
       - run: dotnet build -c Release --no-restore -v q -clp:NoSummary -tl:off
       - name: Test with coverage
-        run: dotnet test -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
+        run: tools/ci/summarize.sh test "Run the named test with dotnet test -c Release --filter, and read its Error Message." -- dotnet test -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
       - name: Coverage report
-        uses: danielpalme/ReportGenerator-GitHub-Action@5
+        uses: danielpalme/ReportGenerator-GitHub-Action@70c37c4d588cff5bf9cf190830c6f01dfcfb884b # v5.6.1
         with:
           reports: TestResults/**/coverage.cobertura.xml
           targetdir: coverage-report
           reporttypes: Html
       - name: Upload the coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: coverage-report
           path: coverage-report
@@ -85,10 +90,10 @@ jobs:
   contract:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0 # the release tags are needed for the breaking-change check
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           global-json-file: global.json
       - run: dotnet restore --locked-mode
@@ -101,8 +106,8 @@ jobs:
   ci-scripts:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4 # mutation.test.sh builds and mutates a throwaway project
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1, because mutation.test.sh builds and mutates a throwaway project
         with:
           global-json-file: global.json
       - name: Run every tools/ci/*.test.sh
@@ -120,8 +125,8 @@ jobs:
   build-rules:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           global-json-file: global.json
       - name: Check that every build rule still fails the build
@@ -137,7 +142,7 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0 # the history of every branch, to see what is beneath this PR
       - name: Look for commits of another open PR
@@ -154,10 +159,10 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0 # the diff needs the base branch
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           global-json-file: global.json
       - name: Mutation testing on the changed C# files
@@ -166,7 +171,7 @@ jobs:
           SINCE: origin/${{ github.base_ref }}
       - name: Upload the mutation report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: mutation-report
           path: StrykerOutput/*/reports/
@@ -180,7 +185,7 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0 # the diff needs the base commit
       - name: Scan the lines this PR adds

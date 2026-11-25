@@ -132,6 +132,16 @@ git -C "$repo" checkout --quiet -b feature/b develop && commit "$repo" b
 git -C "$repo" checkout --quiet -b feature/a feature/b && commit "$repo" a
 expect "bottom of a stack with the higher number passes" pass "" -- "$repo" develop feature/b 11 "$open_prs"
 
+# 12b. Numbers reversed, then develop merged into the bottom PR (issue #140, like #55 under #32): the
+#      bottom's head is no longer an ancestor of the other tip, but its own commits are all in it.
+repo=$(fixture)
+git -C "$repo" checkout --quiet -b feature/b develop && commit "$repo" b
+git -C "$repo" checkout --quiet -b feature/a feature/b && commit "$repo" a
+git -C "$repo" checkout --quiet develop && commit "$repo" later
+git -C "$repo" checkout --quiet feature/b && git -C "$repo" merge --quiet develop -m "Merge develop"
+expect "bottom of a reversed stack passes after develop is merged into it" pass "" -- \
+  "$repo" develop feature/b 11 "$open_prs"
+
 # expect_without <description> <text the output must not contain> -- <repo> <base> <head> <PR number> <open PRs>
 # The check must still fail (exit 1), but without <text> in its output (issue #116).
 expect_without() {

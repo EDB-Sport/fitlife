@@ -51,10 +51,11 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 
 ## Talks to
 
-None yet. The relations (Membership upstream, Notification downstream) are in the context map.
+The relations (Membership upstream, Notification downstream) are in the context map.
 
 | Other context / system | How | Pattern | Why |
 |---|---|---|---|
+| Membership | REST: `GET members/by-account/{accountId}` with the member's own token passed on (`Clients/MembershipClient`, `IMembershipClient`). Address `Membership:BaseUrl`; time-out, retry and circuit breaker from `AddStandardResilienceHandler()` | Open Host Service (Membership upstream) | Who the member behind an account is, and whether the membership is active, before a reservation (#256, used by #260). The answer is found, not a member, or unavailable, never an exception |
 
 ## Rules for this folder
 

@@ -23,6 +23,8 @@
     <PackageVersion Include="Scalar.AspNetCore" Version="3.1.1" />
     <!-- Writes contracts/openapi/<service>.json on build (docs/CSHARP_SETUP_TODO.md section 8) -->
     <PackageVersion Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.15" />
+    <!-- Booking's call to Membership: time-out, retry and circuit breaker (#256) -->
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.11.1" />
     <!-- NLog → Loki (course rule #8, docs/CSHARP_SETUP_TODO.md section 7) -->
     <PackageVersion Include="NLog.Web.AspNetCore" Version="6.2.2" />
     <PackageVersion Include="NLog.Targets.Loki" Version="2.7.1" />

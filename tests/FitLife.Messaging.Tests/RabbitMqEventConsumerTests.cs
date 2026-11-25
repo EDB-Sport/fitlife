@@ -149,7 +149,8 @@ public sealed class RabbitMqEventConsumerTests
     public async Task StartAsync_RabbitMqNotReachable_TriesAgainAfterTheDelay()
     {
         // Arrange
-        using var rabbitMq = new FakeRabbitMq { Failures = 1 };
+        var failingTryEnds = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var rabbitMq = new FakeRabbitMq { Failures = 1, FailingTryEnds = failingTryEnds.Task };
         var time = new FakeTimeProvider();
         using RabbitMqEventConsumer<ReservationMade> consumer = Create(rabbitMq, new RecordingSubscriber(), time);
         await consumer.StartAsync(CancellationToken.None).ConfigureAwait(false);
@@ -160,6 +161,8 @@ public sealed class RabbitMqEventConsumerTests
             time.Advance(TimeSpan.FromSeconds(5));
             await Task.Yield();
         }
+
+        failingTryEnds.SetResult();
 
         // Assert
         await consumer.Consuming.WaitAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false);

@@ -186,3 +186,91 @@ groups:
           runbook_url: 'http://localhost:8080/grafana/d/fitlife-logs'
           __dashboardUid__: fitlife-logs
           __panelId__: '3'
+      - uid: mcp-server-error-rate
+        title: mcp-server error rate
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              refId: A
+              queryType: range
+              expr: 'sum(count_over_time({app="mcp-server"} | json | __error__="" | level=~"(?i)error|fatal" [5m]))'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              settings:
+                mode: dropNN
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [5]
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        labels:
+          app: mcp-server
+          severity: warning
+        annotations:
+          summary: 'mcp-server logged more than 5 errors in 5 minutes'
+          description: 'Open the FitLife logs dashboard, pick mcp-server and level Error, then follow a CorrelationId.'
+          runbook_url: 'http://localhost:8080/grafana/d/fitlife-logs'
+          __dashboardUid__: fitlife-logs
+          __panelId__: '3'
+      - uid: member-portal-error-rate
+        title: member-portal error rate
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              refId: A
+              queryType: range
+              expr: 'sum(count_over_time({app="member-portal"} | json | __error__="" | level=~"(?i)error|fatal" [5m]))'
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              settings:
+                mode: dropNN
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [5]
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        labels:
+          app: member-portal
+          severity: warning
+        annotations:
+          summary: 'member-portal logged more than 5 errors in 5 minutes'
+          description: 'Open the FitLife logs dashboard, pick member-portal and level Error, then follow a CorrelationId.'
+          runbook_url: 'http://localhost:8080/grafana/d/fitlife-logs'
+          __dashboardUid__: fitlife-logs
+          __panelId__: '3'

@@ -1,7 +1,7 @@
 # Identity (`src/IdentityService/`)
 
 > From `docs/templates/CONTEXT.md`. Keep it under about 80 lines, and update it in the same PR that changes the model.
-> **Status: the `Account` model and its repository (#233).** Nothing is reachable over HTTP yet: the service answers `/health` only. `POST /accounts` is #234, `POST /tokens` is #235. The context map (`docs/domain/CONTEXT-MAP.md`) is decided in ADR 007.
+> **Status: accounts, tokens and demo accounts (#233, #234, #235, #237).** `POST /accounts` creates an account with the role Medlem. `POST /tokens` logs in and gives a JWT with the account's id and roles. With `Seed:DemoAccounts` true, one demo account per role is seeded after start-up. The context map (`docs/domain/CONTEXT-MAP.md`) is decided in ADR 007.
 
 ## Purpose
 
@@ -27,13 +27,20 @@ Words from other contexts that we do **not** use here:
 | Rule | Test |
 |---|---|
 | A new account has the role Medlem | `AccountTests.Create_WithAnEmailAndAPasswordHash_HasRoleMedlem` |
+| A demo account has exactly the one role it is created with | `AccountTests.Create_WithARole_HasOnlyThatRole` |
 | An account has an e-mail address and a password hash, never the password | `AccountTests.Create_WithoutAPasswordHash_Throws`, `Create_WithoutAnEmail_Throws` |
 | A role is exactly Medlem, Træner or Admin, with the glossary's names | `RoleTests.All_IsMedlemTraenerAndAdmin_WithTheGlossaryNames`, `FromName_WithAnotherName_Throws` |
 | E-mail addresses that differ only in letter case are the same e-mail address; a unique index guards it | `MongoAccountRepositoryTests.AddAsync_WithTheSameEmailInAnotherLetterCase_IsRejected`, `FindByEmailAsync_WithAnotherLetterCase_ReturnsTheAccount` |
 
 ## Commands, queries and events
 
-None yet. Creating an account (#234) and issuing a token (#235) come next. Identity publishes no events: Membership reads the account's id from the token.
+| Kind | Name | Endpoint | What it does |
+|---|---|---|---|
+| Command | `CreateAccountCommand` (`CreateAccountHandler`) | `POST /accounts` | Hashes the password with `PasswordHasher<Account>` and stores a new account with the role Medlem. `EmailAlreadyTaken` (409) when another account has the e-mail address in any letter case. The password and the hash are never in a response or a log line |
+| Command | `LogInCommand` (`LogInHandler`) | `POST /tokens` | Checks the password against the stored hash and, with `TokenWriter`, signs a JWT with the `FitLifeJwt` values: `sub` = the account's id, one `role` claim per role, valid for 60 minutes from `TimeProvider`'s now. An unknown e-mail address and a wrong password give the same 401. The key is read from `Jwt:SigningKey` when a token is written, so the service starts without one |
+| Seed | `DemoAccountSeeder` (`DemoAccountSeedService`) | – | Only when `Seed:DemoAccounts` is `true`: after start-up, adds `medlem@`, `traener@` and `admin@fitlife.example`, each with its one role and a password from `Seed:MedlemPassword`, `Seed:TraenerPassword` or `Seed:AdminPassword`. An account that exists is left as it is. `/health` is unhealthy until the seed has finished; a failed seed is logged as an error and the service keeps running |
+
+Identity publishes no events: Membership reads the account's id from the token.
 
 ## Talks to
 

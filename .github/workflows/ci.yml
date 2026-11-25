@@ -2,7 +2,8 @@
 # Pushes to other branches get CI through their PR, so a PR head has one run, not a push run
 # plus a PR run with diff-scan skipped (GitHub reports a skipped job as passing).
 # Every job here is meant to be a required check on develop and main, by its job name (section 9).
-# build, format and test write a short failure summary to the run summary page (tools/ci/summarize.sh, #132).
+# Every check step runs through tools/ci/summarize.sh (#132, #376): a failure writes a short summary to the
+# run summary page and an annotation that gh run view lists. ci-scripts annotates each failing script by name.
 # tdd-check and pr-description have their own workflows; security, deploy-check and api-tests
 # come through their own issues (#20, #21, #22).
 name: CI
@@ -92,6 +93,7 @@ jobs:
   # The committed OpenAPI contracts match the code (issue #90, section 8): every API change shows in the PR diff.
   # Then no contract breaks the one at its service's last <service>/vX.Y.Z tag (issue #91).
   contract:
+    needs: build # one compile error fails build only (#322)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -103,9 +105,9 @@ jobs:
           global-json-file: global.json
       - run: dotnet restore --locked-mode
       - name: Regenerate the contracts and compare them with the commit
-        run: tools/ci/check-contracts.sh
+        run: tools/ci/summarize.sh contract "Run tools/ci/check-contracts.sh locally and commit the regenerated contracts." -- tools/ci/check-contracts.sh
       - name: No breaking change since each service's last release (oasdiff)
-        run: tools/ci/oasdiff-breaking.sh
+        run: tools/ci/summarize.sh contract "A contract breaks its service's last release. Keep the old shape, or release a new major version." -- tools/ci/oasdiff-breaking.sh
 
   # Runs the tests of the CI scripts themselves, so a change to a script fails its own tests.
   ci-scripts:
@@ -120,8 +122,16 @@ jobs:
         run: |
           status=0
           for test in tools/ci/*.test.sh; do
+            # Mutation testing is disabled for now (see the mutation job below).
+            if [ "$test" = tools/ci/mutation.test.sh ]; then
+              echo "skipped $test: mutation testing is disabled"
+              continue
+            fi
             echo "::group::$test"
-            "$test" || status=1
+            if ! "$test"; then
+              status=1
+              echo "::error title=ci-scripts::$test failed. Run it locally and read its FAIL lines."
+            fi
             echo "::endgroup::"
           done
           exit "$status"
@@ -137,7 +147,7 @@ jobs:
         with:
           global-json-file: global.json
       - name: Check that every build rule still fails the build
-        run: tools/ci/check-build-rules.sh
+        run: tools/ci/summarize.sh build-rules "A build rule in Directory.Build.* no longer fails the build. Run tools/ci/check-build-rules.sh locally." -- tools/ci/check-build-rules.sh
 
   # Fails a PR into develop that is built on another open PR's branch (issue #110, #106).
   # Needs: pull-requests read to list the open PRs. On a draft PR it runs like on any other PR.
@@ -154,7 +164,7 @@ jobs:
         with:
           fetch-depth: 0 # the history of every branch, to see what is beneath this PR
       - name: Look for commits of another open PR
-        run: tools/ci/stack-check.sh
+        run: tools/ci/summarize.sh stack-check "This branch holds commits of another open PR. Rebase it on develop, or wait for that PR to merge." -- tools/ci/stack-check.sh
         env:
           GH_TOKEN: ${{ github.token }}
           BASE_REF: ${{ github.base_ref }}
@@ -163,8 +173,12 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
 
   # Stryker on the C# files the PR changes; fails below the break threshold in stryker-config.json (issue #53).
+  # DISABLED 2026-11-25 (owner's call): it was the CI bottleneck (8-22 min per service PR, whole-file
+  # mutation, whole-solution builds) and gave no useful signal yet. A skipped job still satisfies the
+  # required check. Re-enable by restoring the line below and the mutation.test.sh run in ci-scripts,
+  # after #353, #382 and #336. Original condition: if: github.event_name == 'pull_request'
   mutation:
-    if: github.event_name == 'pull_request'
+    if: false
     runs-on: ubuntu-latest
     # Measured (issue #335): service PRs with Testcontainers integration tests take 8-20 min (max 20.2 min).
     # Don't tighten this by the "2-3x normal run time" rule; a 10-minute limit cancelled them.
@@ -177,7 +191,7 @@ jobs:
         with:
           global-json-file: global.json
       - name: Mutation testing on the changed C# files
-        run: tools/ci/mutation.sh
+        run: tools/ci/summarize.sh mutation "Add a test that kills the surviving mutants listed in the mutation report." -- tools/ci/mutation.sh
         env:
           SINCE: origin/${{ github.base_ref }}
       - name: Upload the mutation report
@@ -202,7 +216,7 @@ jobs:
           fetch-depth: 0 # the diff needs the base commit
       - name: Scan the lines this PR adds
         id: scan
-        run: tools/ci/diff-scan.sh
+        run: tools/ci/summarize.sh diff-scan "A line this PR adds matches a scan rule. Remove it, or read the rule in tools/ci/diff-scan.sh." -- tools/ci/diff-scan.sh
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}

@@ -66,6 +66,12 @@ server {
         proxy_pass $identity_upstream;
     }
 
+    # The MCP server (#213), with the path unchanged: /mcp reaches it as /mcp.
+    location /mcp {
+        set $mcp_server_upstream ${MCP_SERVER_URL};
+        proxy_pass $mcp_server_upstream;
+    }
+
     # Grafana (monitoring.yml), served under /grafana/ (GF_SERVER_SERVE_FROM_SUB_PATH), so the path is
     # passed on as it is. 502 when the monitoring group isn't running.
     location = /grafana {

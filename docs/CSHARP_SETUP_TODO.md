@@ -285,7 +285,7 @@ The project description's test terms map onto this as: *unit tests* = Unit, *int
   *Why:* fast tests of real HTTP behaviour, including `[Authorize]` returning 401 without a token. The production test enforces **course rule #7: Scalar only in development**.
 - [ ] **Testcontainers** for integration tests (`Testcontainers.MongoDb`, `Testcontainers.RabbitMq`).
   *Why:* real dependencies, started fresh each run, so tests are Repeatable and run on GitHub's Ubuntu runners. It's the course's own MongoDB and RabbitMQ, started from a test.
-- [ ] **A JSON Schema test for each RabbitMQ event:** serialise the event class (e.g. `ReservationMade`) and validate it against `contracts/events/ReservationMade.schema.json` with JsonSchema.Net. Producer and consumer tests both use the same file.
+- [ ] **A JSON Schema test for each RabbitMQ event:** serialise the event class (e.g. `ReservationMade`) and validate it against `contracts/events/reservation-made.schema.json` with JsonSchema.Net (schema files are kebab-case, one per event: `<event-name>.schema.json`, see `contracts/events/README.md`). Producer and consumer tests both use the same file.
   *Why:* the course teaches JSON Schema as the contract (M5) and requires documented event formats. The schema is that documentation, and in one repo both sides test against exactly the same file. The schemas also go in the report's appendix of technical service contracts.
 - [ ] **Postman collections, run by Newman** (METHODOLOGY §7), in this layout:
 
@@ -306,7 +306,7 @@ The project description's test terms map onto this as: *unit tests* = Unit, *int
   - **Results as evidence:** Newman runs with the `cli`, `junit` and `htmlextra` reporters (`newman-reporter-htmlextra`). CI uploads the HTML reports as build artifacts: those are the result tables and screenshots the report asks for.
 
   *Why:* the project description asks for exactly these four kinds of Postman evidence (integration, API, mock server, end-to-end), and the Agil udvikling course: most real bugs live in error paths, and a wrong status code should turn the build red just like a failing unit test.
-- [ ] **Stryker.NET mutation testing on PRs:** `tools/ci/mutation.sh`: Stryker on the C# files changed since `origin/${{ github.base_ref }}` (usually `develop`), with `"thresholds": { "break": 60 }` in a code-owned `stryker-config.json`. Raise the threshold over time. `stryker-config.json` also sets `"ignore-methods": ["*ConfigureAwait"]`, so Stryker doesn't mutate the `ConfigureAwait(false)` calls.
+- [ ] **Stryker.NET mutation testing on PRs:** `tools/ci/mutation.sh`: Stryker on the C# files changed since `origin/${{ github.base_ref }}` (usually `develop`), with `"thresholds": { "break": 60 }` in a code-owned `stryker-config.json`. Raise the threshold over time. `stryker-config.json` also sets `"ignore-mutations": ["Boolean"]`, so Stryker skips the equivalent `ConfigureAwait(false)` -> `true` mutant (and every other boolean-literal mutant); the arithmetic inside a `ConfigureAwait(...)` call is mutated.
   *Why:* proves the tests catch changes to the code, which a coverage number alone doesn't. The project description still asks for coverage reports, so CI produces both (section 10, job 4). It also answers the course question "if you remove the rule from the model, does the test fail?" (M4.02) for every rule at once.
 - [ ] **Adopt the tdd-check workflow** (`.github/workflows/tdd-check.yml`):
   - `TEST_CMD="dotnet test -c Release"`

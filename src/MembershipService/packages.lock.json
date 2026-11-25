@@ -1,0 +1,208 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net10.0": {
+      "Meziantou.Analyzer": {
+        "type": "Direct",
+        "requested": "[3.0.342, )",
+        "resolved": "3.0.342",
+        "contentHash": "g8p2VDRGOui0eTVEOG0MOS6ib4IPNVDwSSier3o95S1xeJltMF8ntpuBWzzmn6A6Y5a0VcEmeGkrMLNXPs/QeQ=="
+      },
+      "Microsoft.AspNetCore.OpenApi": {
+        "type": "Direct",
+        "requested": "[10.0.15, )",
+        "resolved": "10.0.15",
+        "contentHash": "pptFDPMWyPDDtt68s/HsvLYeHJ0WQtntjyve6ztp/5MrLOEzdZvafYIyWSeErtexIGaB8XGYCnnUK8T/Vn4MwQ==",
+        "dependencies": {
+          "Microsoft.OpenApi": "[2.13.0, 3.0.0)"
+        }
+      },
+      "Microsoft.CodeAnalysis.BannedApiAnalyzers": {
+        "type": "Direct",
+        "requested": "[5.6.0, )",
+        "resolved": "5.6.0",
+        "contentHash": "Kcobt3pnOdO0A+6CKiMHZdTEluJpsfxiV20axtZdmfBQnDmiWTKPJADlgAfdTuKNAnVarrkJa0UEGwuOo91muw=="
+      },
+      "Microsoft.Extensions.ApiDescription.Server": {
+        "type": "Direct",
+        "requested": "[10.0.15, )",
+        "resolved": "10.0.15",
+        "contentHash": "zmUfi9Knemv2OomGJQSoh05jjuM/3UICYL93lm4Ggf8x6GpWw2V968zLVwQQWOdA+yGCc2e2Q2gG+gZWrU1usQ=="
+      },
+      "MongoDB.Driver": {
+        "type": "Direct",
+        "requested": "[3.14.1, )",
+        "resolved": "3.14.1",
+        "contentHash": "cQcNL4H5XxIPEjkkSvPMl/LBEjqt4mUpaoodwpQq3Z/yxyVjqR6SbFa3ISKeanLfWVgOr50OgJZghOVlOyOMvg==",
+        "dependencies": {
+          "DnsClient": "1.6.1",
+          "MongoDB.Bson": "3.14.1",
+          "SharpCompress": "0.48.1",
+          "Snappier": "1.3.1",
+          "ZstdSharp.Port": "0.7.3"
+        }
+      },
+      "NLog.Targets.Loki": {
+        "type": "Direct",
+        "requested": "[2.7.1, )",
+        "resolved": "2.7.1",
+        "contentHash": "H9E+UtIyAkGpejRF9+EJxaQSqvEN521uYTZCn0dVMFFc8CyViEucel8m12vaRzgtWnf+NjAj9Hq1ROYRQ/CjEQ==",
+        "dependencies": {
+          "NLog": "6.2.0"
+        }
+      },
+      "NLog.Web.AspNetCore": {
+        "type": "Direct",
+        "requested": "[6.2.2, )",
+        "resolved": "6.2.2",
+        "contentHash": "37r7FrgeTDdhTq1TA/T+XB+vAqeKZLyXItnw5LV2O8mpkRKATh4m+AhG6A9tFj2K3dsN1WTqIZHySmM8gP5UPw==",
+        "dependencies": {
+          "NLog.Extensions.Logging": "6.2.2"
+        }
+      },
+      "Nullable.Extended.Analyzer": {
+        "type": "Direct",
+        "requested": "[1.19.0, )",
+        "resolved": "1.19.0",
+        "contentHash": "SZf443/kZxsgQh+n3gr0WmwHY2Tq6FTM9Ai4GVddXHELkabx5LjdwrbGReI9XsEkm9GwH91dM7nUz8qb57BZ/g=="
+      },
+      "Scalar.AspNetCore": {
+        "type": "Direct",
+        "requested": "[3.1.1, )",
+        "resolved": "3.1.1",
+        "contentHash": "vI+FzdXwxmoih0njtFcE1TxILgBsTUdjilMg40L79Y5lD4PPrXif+iYEvhVqMI8DGiOQZsfkP+5vdq/K566M1Q=="
+      },
+      "SonarAnalyzer.CSharp": {
+        "type": "Direct",
+        "requested": "[10.37.0.15768, )",
+        "resolved": "10.37.0.15768",
+        "contentHash": "73Qo5UF1HSCwUGqiZ9XOKXWNRAe3WN8dfsj3pWIi5oIuenY1Uo9WuMinGibs3up9zcJ5CFk5Ex/Ei/S17mcBvg=="
+      },
+      "DnsClient": {
+        "type": "Transitive",
+        "resolved": "1.6.1",
+        "contentHash": "4H/f2uYJOZ+YObZjpY9ABrKZI+JNw3uizp6oMzTXwDw6F+2qIPhpRl/1t68O/6e98+vqNiYGu+lswmwdYUy3gg=="
+      },
+      "Microsoft.Bcl.Cryptography": {
+        "type": "Transitive",
+        "resolved": "10.0.2",
+        "contentHash": "LG9Yll3B5aNpxv0+D47g6LiOiKBIlodhcHdQwcYzo8VeexFLGqx5ymetmA2aBRyo9cCcWsQWrFsdbsr8LvmWDw=="
+      },
+      "Microsoft.IdentityModel.Abstractions": {
+        "type": "Transitive",
+        "resolved": "8.19.2",
+        "contentHash": "HJbo/lnSfNHUfphPRT910poQc4T2/9+8svFLvzuaYHGAOJ2Tu+oEDqpX0BVP3BJ4OuUM1kylEKyaiX2fCAK3Cw=="
+      },
+      "Microsoft.IdentityModel.JsonWebTokens": {
+        "type": "Transitive",
+        "resolved": "8.19.2",
+        "contentHash": "ui3fuBT4fs8kdKfBthI4NzLYIBIneEVS8UrL1JVBzAn80UiKmngBBi0BEByE7n/9c+EElcfFlCMFFTqpkBSLNA==",
+        "dependencies": {
+          "Microsoft.IdentityModel.Tokens": "8.19.2"
+        }
+      },
+      "Microsoft.IdentityModel.Logging": {
+        "type": "Transitive",
+        "resolved": "8.19.2",
+        "contentHash": "r5YLDIxGOnkVJHrqXv/iD1FM1CgGrQOdriXuvuWvTPmKbnGANhEysq9XKmN6IHjf2a+9bAGEpnoRBsAQlvJU5w==",
+        "dependencies": {
+          "Microsoft.IdentityModel.Abstractions": "8.19.2"
+        }
+      },
+      "Microsoft.IdentityModel.Protocols": {
+        "type": "Transitive",
+        "resolved": "8.19.2",
+        "contentHash": "sGxSsSrZXNmca6D+jHH2rVRyo2nNRd/g4H9CFbPmLLq0xgoH1U0orLWE5minfijw7+zq49tBs7txenbfAErRoQ==",
+        "dependencies": {
+          "Microsoft.IdentityModel.Tokens": "8.19.2"
+        }
+      },
+      "Microsoft.IdentityModel.Protocols.OpenIdConnect": {
+        "type": "Transitive",
+        "resolved": "8.19.2",
+        "contentHash": "1XOcyY36cVymzE3qKdzKaUEZ4Pzt7ZpSa14JZoPPK1NLFUkQDs85TCqpV6XDo0YjFXj6nVK00AfOHppjghjhtw==",
+        "dependencies": {
+          "Microsoft.IdentityModel.Protocols": "8.19.2",
+          "System.IdentityModel.Tokens.Jwt": "8.19.2"
+        }
+      },
+      "Microsoft.IdentityModel.Tokens": {
+        "type": "Transitive",
+        "resolved": "8.19.2",
+        "contentHash": "GtPC1S02uH1gOO4fQ+zRysIicKmEXaYFP8PIkdJYXqMyruYhopre4ozVHp0XiDSA0+GJvOZH9prxCPvgBMg4Ww==",
+        "dependencies": {
+          "Microsoft.Bcl.Cryptography": "10.0.2",
+          "Microsoft.IdentityModel.Logging": "8.19.2"
+        }
+      },
+      "Microsoft.OpenApi": {
+        "type": "Transitive",
+        "resolved": "2.13.0",
+        "contentHash": "wavlgBYnn7uU/ZGhFHNl0UlDOlwz+6KRduKkqdCCbfxxANaQ1rmBpETVGdwXanAM6twQOxsvI3CBEGF4OScbeQ=="
+      },
+      "MongoDB.Bson": {
+        "type": "Transitive",
+        "resolved": "3.14.1",
+        "contentHash": "ljmATiszGAAQC1nYudvdCTBJF96x2nOy1c4CBDw7vfUggDTL9NOdO93b2C8t7IAycerWNveDLwsfeELYRDxhjw=="
+      },
+      "NLog": {
+        "type": "Transitive",
+        "resolved": "6.2.2",
+        "contentHash": "Hoxigm/d7wY/+y4y2ILF2ERSojhxgLd8ASBZQbrnm52jB5NHkF4AWW5tZzMxJ/HTOp0bLwClGOokrA31iSXuMA=="
+      },
+      "NLog.Extensions.Logging": {
+        "type": "Transitive",
+        "resolved": "6.2.2",
+        "contentHash": "Z5ctMnl27a2rEJIP6uiOnfVa7PqQ8KFlAG2JRS2B3paDeKFVPiaMPASADBW5JcSjoNlJNWi8iTSF0iXYbT2t/Q==",
+        "dependencies": {
+          "NLog": "6.2.2"
+        }
+      },
+      "SharpCompress": {
+        "type": "Transitive",
+        "resolved": "0.48.1",
+        "contentHash": "SqGaVniGG943Gph/gHhUQUiZPyC7y0tXZyMf0/B2oGsMav9dqs7JJOuUA+xOkwKYaWM2TM7aZQjNK91f4bX71A=="
+      },
+      "Snappier": {
+        "type": "Transitive",
+        "resolved": "1.3.1",
+        "contentHash": "DOdDQiO8YZ5rBtVLY+6CmR1yp9WYoJRgEEktPBrR0tEj9QO2djA/zv0O3DX0OZpEAfosbY8pytQ9tQUogwQsEA=="
+      },
+      "System.IdentityModel.Tokens.Jwt": {
+        "type": "Transitive",
+        "resolved": "8.19.2",
+        "contentHash": "gqhDC/icByKEutygpr+OFgAmjwTVowyzFjWB8K0q1ww8uFj5a1BQNL+QvijUl9uhq4p8OdDwcAIrjVC+eC9FVA==",
+        "dependencies": {
+          "Microsoft.IdentityModel.JsonWebTokens": "8.19.2",
+          "Microsoft.IdentityModel.Tokens": "8.19.2"
+        }
+      },
+      "ZstdSharp.Port": {
+        "type": "Transitive",
+        "resolved": "0.7.3",
+        "contentHash": "U9Ix4l4cl58Kzz1rJzj5hoVTjmbx1qGMwzAcbv1j/d3NzrFaESIurQyg+ow4mivCgkE3S413y+U9k4WdnEIkRA=="
+      },
+      "fitlife.authentication": {
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.AspNetCore.Authentication.JwtBearer": "[10.0.15, )"
+        }
+      },
+      "fitlife.configuration": {
+        "type": "Project"
+      },
+      "fitlife.correlation": {
+        "type": "Project"
+      },
+      "Microsoft.AspNetCore.Authentication.JwtBearer": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.15, )",
+        "resolved": "10.0.15",
+        "contentHash": "Y8VbPrQuABpTkMrqO/K2URdfqBBheri/YDcB+sO530arpqsy7vsd/go/YfEP8XaRkACWPQV2gPxedl7dnxp0zg==",
+        "dependencies": {
+          "Microsoft.IdentityModel.Protocols.OpenIdConnect": "8.19.2"
+        }
+      }
+    }
+  }
+}

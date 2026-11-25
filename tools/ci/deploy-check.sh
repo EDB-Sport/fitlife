@@ -16,6 +16,7 @@
 #   5. `az bicep build` and `az bicep lint` on deploy/azure/main.bicep, when it exists (#10)
 #   6. every acceptance check deploy/**/*.test.sh, e.g. Vault in compose (#17) and the ACI topology (#23),
 #      with BICEP set to the pinned Bicep CLI in a container (#77)
+#   7. tools/ci/image-versions.sh: every image a full version, the same version for the same image (#275)
 # Every check runs, and the script exits 1 at the end if any of them failed.
 set -euo pipefail
 
@@ -331,6 +332,14 @@ for check in ${acceptance_checks[@]+"${acceptance_checks[@]}"}; do
     fail "$check failed (see above)"
   fi
 done
+
+# ---------------------------------------------------------------------------------------------------
+step "7. Image versions: full versions, the same version for the same image"
+if (cd "$ROOT" && tools/ci/image-versions.sh "$ROOT"); then
+  ok "tools/ci/image-versions.sh"
+else
+  fail "tools/ci/image-versions.sh found problems (see above)"
+fi
 
 # ---------------------------------------------------------------------------------------------------
 echo

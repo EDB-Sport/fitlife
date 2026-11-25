@@ -27,6 +27,7 @@ docker compose up -d --wait
 | What | Where |
 |---|---|
 | Gateway | http://localhost:8080 (`/health`, `/api/<context>/...`) |
+| Member portal | http://localhost:8080/ through the gateway (the `member-portal` container, #204) |
 | RabbitMQ management | http://localhost:15672, user and password from `.env` |
 | Vault | http://localhost:8200, log in with `VAULT_DEV_ROOT_TOKEN` from `.env` |
 | MongoDB | `mongodb://localhost:27018` (27018, so it doesn't clash with a local MongoDB on 27017) |
@@ -44,6 +45,14 @@ Stop and delete the data (MongoDB then creates the users again on the next start
 ```bash
 docker compose down -v
 ```
+
+**After you change a service, rebuild its image.** `up` builds a `fitlife/*:local` image only when it doesn't exist yet. Once it does, `up` reuses it, so the stack runs your old code. Rebuild with:
+
+```bash
+docker compose up -d --wait --build
+```
+
+`tools/ci/api-tests.sh` does the same with `API_TESTS_BUILD=1 tools/ci/api-tests.sh`. Without the switch it reuses the images it has, as before. CI starts on a fresh runner with no images, so it builds them either way (#284).
 
 One group on its own: `docker compose -f infrastructure.yml up -d --wait`.
 
@@ -100,7 +109,7 @@ mongodb://booking-svc:<BOOKING_DB_PASSWORD>@mongodb:27017/booking?authSource=boo
 `nginx/default.conf.template` is rendered by the nginx image's `envsubst` at start, so the upstream addresses are environment variables (`BOOKING_URL`, `MEMBERSHIP_URL`, `IDENTITY_URL`, `MEMBER_PORTAL_URL`, `GRAFANA_URL` in `services.yml`). Azure mounts the same file with `http://127.0.0.1:<port>` addresses instead (`deploy/azure/`, #10). Every variable must be set, or Nginx won't start.
 
 - `/api/<context>/<path>` reaches the service as `/<path>`, e.g. `/api/booking/reservations/42` → `http://booking-svc:8080/reservations/42`.
-- Every other path goes to the member portal (Blazor UI) unchanged, with WebSocket upgrade for Blazor's SignalR connection.
+- Every other path goes to the member portal (Blazor UI, the `member-portal` container) unchanged, with WebSocket upgrade for Blazor's SignalR connection. Open the member portal at http://localhost:8080/. Running it with `dotnet run` instead, it reaches the stack's APIs through `Gateway:BaseUrl` (`http://localhost:8080` in `appsettings.Development.json`).
 - A route whose service isn't running answers 502; the gateway itself still starts.
 - The gateway passes on the caller's `X-Correlation-ID`, or sets a new one, and returns it in the response (section 7).
 - `/grafana/` reaches Grafana (`GRAFANA_URL`) with the path unchanged, since Grafana serves itself under `/grafana/`. WebSocket upgrades are passed on (Grafana Live).

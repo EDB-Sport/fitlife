@@ -31,7 +31,7 @@ public sealed class AccountsApiTests
 
         // Assert
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
-        using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
         Account stored = factory.Repository.Accounts.Single();
         Assert.That(body.RootElement.GetProperty("id").GetGuid(), Is.EqualTo(stored.Id));
         Assert.That(body.RootElement.GetProperty("email").GetString(), Is.EqualTo(Email));
@@ -86,7 +86,7 @@ public sealed class AccountsApiTests
         // Assert
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Conflict));
         Assert.That(response.Content.Headers.ContentType?.MediaType, Is.EqualTo("application/problem+json"));
-        using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
         Assert.That(body.RootElement.GetProperty("code").GetString(), Is.EqualTo("EmailAlreadyTaken"));
         Assert.That(factory.Repository.Accounts, Has.Count.EqualTo(1));
     }

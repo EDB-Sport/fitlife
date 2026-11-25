@@ -47,6 +47,9 @@ public sealed class ClassSession
     /// <summary>The class session will not take place (Hold aflyst).</summary>
     public bool IsCancelled { get; private set; }
 
+    /// <summary>How many seats are not reserved yet. A cancelled class session has none.</summary>
+    public int FreeSeats => IsCancelled ? 0 : Capacity.Value - _reservations.Count;
+
     /// <summary>The members' seats, in the order they were reserved.</summary>
     public IReadOnlyList<Reservation> Reservations => _reservations.AsReadOnly();
 

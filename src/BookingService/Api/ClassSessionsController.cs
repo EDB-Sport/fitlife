@@ -27,7 +27,7 @@ public sealed class ClassSessionsController : ControllerBase
         _clock = clock;
     }
 
-    /// <summary>Lists the class sessions of a centre, or of every centre, with their free seats. No login needed.</summary>
+    /// <summary>Lists the class sessions of a centre, or of every centre, with their free seats; a cancelled one has none. No login needed.</summary>
     /// <param name="centerId">The centre; leave it out for every centre.</param>
     /// <param name="cancellationToken">Stops the request.</param>
     [HttpGet]
@@ -41,7 +41,8 @@ public sealed class ClassSessionsController : ControllerBase
             classSession.ClassTypeId,
             classSession.StartTime,
             classSession.Capacity.Value,
-            classSession.Capacity.Value - classSession.Reservations.Count)).ToList());
+            classSession.FreeSeats,
+            classSession.IsCancelled)).ToList());
     }
 
     /// <summary>Reserves a seat for the member.</summary>

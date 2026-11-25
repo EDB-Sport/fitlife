@@ -10,7 +10,7 @@
         "tags": [
           "ClassSessions"
         ],
-        "summary": "Lists the class sessions of a centre, or of every centre, with their free seats. No login needed.",
+        "summary": "Lists the class sessions of a centre, or of every centre, with their free seats; a cancelled one has none. No login needed.",
         "parameters": [
           {
             "name": "centerId",
@@ -286,7 +286,8 @@
           "classTypeId",
           "startTime",
           "capacity",
-          "freeSeats"
+          "freeSeats",
+          "isCancelled"
         ],
         "type": "object",
         "properties": {
@@ -325,8 +326,12 @@
               "integer",
               "string"
             ],
-            "description": "How many seats are not reserved yet.",
+            "description": "How many seats are not reserved yet; 0 when the class session is cancelled.",
             "format": "int32"
+          },
+          "isCancelled": {
+            "type": "boolean",
+            "description": "The class session will not take place (Hold aflyst)."
           }
         },
         "description": "One class session in the class schedule."

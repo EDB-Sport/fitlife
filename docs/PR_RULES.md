@@ -2,9 +2,11 @@
 
 Checked by CI (`PR description`, `tools/ci/check-pr-body.sh`):
 
-1. Link the issue: `Closes #<issue number>`, or `Refs #<issue number>` when the PR is only part of the issue. Release and hotfix PRs into `main` have no issue. Assign issue so noone starts duplicate work.
+1. Link the issue: `Closes #<issue number>`, or `Refs #<issue number>` when the PR is only part of the issue. Release and hotfix PRs into `main` have no issue.
 2. Fill in **What changed and why**: one or two lines.
 3. In **Tests**, tick "No existing test was changed or removed", or say which test changed and why.
+
+Not checked by CI: assign yourself to the issue when you start, before you open the PR, so nobody else starts the same work.
 
 **Lock file diff filtering**: `.gitattributes` marks `**/packages.lock.json` as `linguist-generated`, so GitHub collapses it in the PR diff. Local `git diff` still shows it. `gh pr diff <pr>` ignores `.gitattributes`: add `--exclude '**/packages.lock.json'` to hide lock files. A lock file change can hide a dependency change, so the PR description must name the packages that changed (locked-mode restore in CI, see issue #47).
 

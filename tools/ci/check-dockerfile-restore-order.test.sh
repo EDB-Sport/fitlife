@@ -54,6 +54,18 @@ RUN dotnet restore src/Svc/Svc.csproj --locked-mode
 RUN dotnet publish src/Svc/Svc.csproj -c Release -o /app/publish --no-restore
 EOF
 
+# The source is copied before the restore, which is allowed when the restore has a BuildKit cache mount: the
+# packages then survive a code change (MemberPortal.Web, #374). Without the mount it is the bad shape above.
+cache_mount="$work/cache-mount.Dockerfile"
+cat > "$cache_mount" <<'EOF'
+FROM sdk AS build
+WORKDIR /app
+COPY global.json Directory.Build.props ./
+COPY src/Svc/ src/Svc/
+RUN --mount=type=cache,target=/root/.nuget/packages dotnet restore src/Svc/Svc.csproj --locked-mode
+RUN dotnet publish src/Svc/Svc.csproj -c Release -o /app/publish --no-restore
+EOF
+
 # The analyzer source directory is source too, even though restore reads part of it
 analyzer_dir="$work/analyzer-dir.Dockerfile"
 cat > "$analyzer_dir" <<'EOF'
@@ -85,6 +97,7 @@ EOF
 
 expect 0 "restore inputs first, then source: passes" "$good"
 expect 1 "source directory copied before the restore: fails" "$source_first"
+expect 0 "source copied before a restore with a cache mount: passes" "$cache_mount"
 expect 1 "analyzer source directory copied before the restore: fails" "$analyzer_dir"
 expect 1 "a .cs file in a multi-source COPY before the restore: fails" "$mixed"
 expect 1 "no dotnet restore in the Dockerfile: fails" "$no_restore"

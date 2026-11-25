@@ -2,6 +2,7 @@
   <Folder Name="/libs/">
     <Project Path="libs/FitLife.Configuration/FitLife.Configuration.csproj" />
     <Project Path="libs/FitLife.Correlation/FitLife.Correlation.csproj" />
+    <Project Path="libs/FitLife.Messaging/FitLife.Messaging.csproj" />
     <Project Path="libs/FitLife.Authentication/FitLife.Authentication.csproj" />
   </Folder>
   <Folder Name="/src/">
@@ -12,6 +13,10 @@
   <Folder Name="/tests/">
     <Project Path="tests/FitLife.Configuration.Tests/FitLife.Configuration.Tests.csproj" />
     <Project Path="tests/FitLife.Correlation.Tests/FitLife.Correlation.Tests.csproj" />
+    <Project Path="tests/FitLife.Contracts.Testing/FitLife.Contracts.Testing.csproj" />
+    <Project Path="tests/FitLife.Contracts.Tests/FitLife.Contracts.Tests.csproj" />
+    <Project Path="tests/FitLife.Messaging.Tests/FitLife.Messaging.Tests.csproj" />
+    <Project Path="tests/FitLife.Messaging.IntegrationTests/FitLife.Messaging.IntegrationTests.csproj" />
     <Project Path="tests/FitLife.Authentication.Tests/FitLife.Authentication.Tests.csproj" />
     <Project Path="tests/BookingService.IntegrationTests/BookingService.IntegrationTests.csproj" />
     <Project Path="tests/BookingService.Tests/BookingService.Tests.csproj" />

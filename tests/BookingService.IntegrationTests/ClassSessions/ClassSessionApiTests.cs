@@ -390,7 +390,7 @@ public sealed class ClassSessionApiTests
 
     private static ClassSession ClassSessionAt(Guid centerId, int capacity, DateTimeOffset startTime)
     {
-        return new ClassSession(Guid.NewGuid(), centerId, Guid.NewGuid(), new Capacity(capacity), startTime);
+        return new ClassSession(Guid.NewGuid(), new Capacity(capacity), startTime, new ClassSessionDetails(centerId, Guid.NewGuid(), new Instructor("Mette"), TimeSpan.FromMinutes(60)));
     }
 
     private static Uri ReservationsOf(ClassSession classSession)

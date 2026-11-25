@@ -20,6 +20,8 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | Medlem | Booking only knows the member's id | `MemberId` (a `Guid`) |
 | Center | One of the six centres. Booking only knows its id | `CenterId` (a `Guid`) |
 | Holdtype | The kind of class a class session is a run of. Booking only knows its id | `ClassTypeId` (a `Guid`) |
+| Instruktør | The trainer who leads a class session. Booking only knows the name | `Instructor` |
+| Holdoplysninger | A class session's centre, class type, instructor and duration | `ClassSessionDetails` |
 | Booking oprettet | A member got a seat, directly or from the waitlist | `ReservationMade` |
 | Booking afmeldt | A member gave up their seat | `ReservationCancelled` |
 | Sen afmelding | A cancellation under 2 hours before start, statistics only. A seat from the waitlist is never late | `ReservationCancelled.IsLateCancellation` |
@@ -32,9 +34,11 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 
 | Part | Kind | Notes |
 |---|---|---|
-| `ClassSession` | Aggregate root | Id, centre id, class type id, `Capacity`, start time, whether it is cancelled, the reservations, the waitlist |
+| `ClassSession` | Aggregate root | Id, `Capacity`, start time, `ClassSessionDetails` (centre id, class type id, instructor, duration), whether it is cancelled, the reservations, the waitlist |
 | `Reservation` | Entity, inside the aggregate | Made by `ClassSession.Reserve`, or from the waitlist (`IsFromWaitlist`) |
 | `Capacity` | Value object | At least 1 seat |
+| `ClassSessionDetails` | Value object | Centre id, class type id, `Instructor` and a duration of more than zero. No start time: that is `ClassSession.StartTime` |
+| `Instructor` | Value object | A name that isn't empty or white space |
 | `WaitlistEntry` | Entity, inside the aggregate | Made only by `ClassSession.JoinWaitlist`; becomes a `Reservation` when a seat is freed |
 
 ### Invariants

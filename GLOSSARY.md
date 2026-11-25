@@ -30,6 +30,7 @@ People and agents use these words, and only these words, in code, tests, issues,
 | Hold | One scheduled run of a class: centre, class type, instructor, start time, duration and capacity | `ClassSession` | Event | Booking | Aggregate root | Session, Class, Lesson, Event |
 | Starttid | When a class session starts: a date and a time with an offset (ISO 8601). `startTime` in JSON and event contracts | `StartTime` | DateTime | Booking | Value object | StartDate, StartsAt, Begin, Time, Date |
 | Kapacitet | How many members can have a reservation on one class session | `Capacity` | – | Booking | Value object | Seats, Size, Max, Limit |
+| Holdoplysninger | A class session's centre, class type, instructor and duration. Its start time is Starttid | `ClassSessionDetails` | – | Booking | Value object | Info, Metadata, Description |
 | Booking | A member's seat on one class session | `Reservation` | Reservation | Booking | Entity | Booking (as a name in code), Signup, Enrollment, Tilmelding |
 | Ventelisteplads | A member's place in the queue for a full class session, first come first served | `WaitlistEntry` | – | Booking | Entity | Queue, Standby, Waiting |
 | Sen afmelding | A cancellation less than two hours before the class session starts. Statistics only, no consequence. A seat from the waitlist is never late | `ReservationCancelled.IsLateCancellation` | – | Booking | Term | Late cancel, No-show |

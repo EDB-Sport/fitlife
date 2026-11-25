@@ -7,16 +7,17 @@ namespace BookingService.Tests.Domain;
 public sealed class ClassSessionTests
 {
     private static readonly DateTimeOffset Now = new(2026, 11, 24, 12, 0, 0, TimeSpan.Zero);
+    private static readonly ClassSessionDetails Details = new(Guid.NewGuid(), Guid.NewGuid(), new Instructor("Mette"), TimeSpan.FromMinutes(60));
     private readonly FakeTimeProvider _clock = new(Now);
 
     private static ClassSession ClassSessionWithCapacity(int capacity)
     {
-        return new ClassSession(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), new Capacity(capacity), Now.AddDays(1));
+        return new ClassSession(Guid.NewGuid(), new Capacity(capacity), Now.AddDays(1), Details);
     }
 
     private static ClassSession ClassSessionStartingAt(DateTimeOffset startTime)
     {
-        return new ClassSession(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), new Capacity(1), startTime);
+        return new ClassSession(Guid.NewGuid(), new Capacity(1), startTime, Details);
     }
 
     [Test]

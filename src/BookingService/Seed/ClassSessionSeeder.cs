@@ -31,6 +31,9 @@ public sealed partial class ClassSessionSeeder : IHostedService
         new("7a2b3c4d-0000-4000-8000-000000000003"), // crossfit
     ];
 
+    private static readonly Instructor[] Instructors = [new("Mette"), new("Jonas"), new("Sara")];
+    private static readonly TimeSpan ClassSessionDuration = TimeSpan.FromMinutes(60);
+
     private readonly IServiceScopeFactory _scopes;
     private readonly TimeProvider _clock;
     private readonly ILogger<ClassSessionSeeder> _logger;
@@ -89,7 +92,8 @@ public sealed partial class ClassSessionSeeder : IHostedService
                 {
                     Guid classTypeId = ClassTypeIds[(day + slot) % ClassTypeIds.Length];
                     DateTimeOffset startTime = today.AddDays(day).AddHours(17 + slot);
-                    var classSession = new ClassSession(Guid.NewGuid(), centerId, classTypeId, new Capacity(20), startTime);
+                    var details = new ClassSessionDetails(centerId, classTypeId, Instructors[(day + slot) % Instructors.Length], ClassSessionDuration);
+                    var classSession = new ClassSession(Guid.NewGuid(), new Capacity(20), startTime, details);
                     await repository.AddAsync(classSession, cancellationToken).ConfigureAwait(false);
                     count++;
                 }

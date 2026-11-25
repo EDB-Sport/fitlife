@@ -10,6 +10,7 @@ WORKDIR /app
 # The build props and the analyzer project come first because every project imports them.
 COPY global.json Directory.Build.props Directory.Build.targets Directory.Packages.props ./
 COPY tools/Analyzers/Team.Analyzers/Team.Analyzers.csproj tools/Analyzers/Team.Analyzers/packages.lock.json tools/Analyzers/Team.Analyzers/
+COPY libs/FitLife.Authentication/FitLife.Authentication.csproj libs/FitLife.Authentication/packages.lock.json libs/FitLife.Authentication/
 COPY libs/FitLife.Configuration/FitLife.Configuration.csproj libs/FitLife.Configuration/packages.lock.json libs/FitLife.Configuration/
 COPY libs/FitLife.Correlation/FitLife.Correlation.csproj libs/FitLife.Correlation/packages.lock.json libs/FitLife.Correlation/
 COPY src/IdentityService/IdentityService.csproj src/IdentityService/packages.lock.json src/IdentityService/

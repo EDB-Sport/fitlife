@@ -2,7 +2,8 @@ namespace FitLife.Authentication;
 
 /// <summary>
 /// The names of the policies <see cref="AuthorizationExtensions.AddFitLifeAuthorization"/> registers.
-/// Pick one with <c>RequireAuthorization(FitLifePolicies.Admin)</c>. An endpoint without one only needs a valid token.
+/// Pick one with <c>RequireAuthorization(FitLifePolicies.Admin)</c>. An endpoint without one only needs a valid token,
+/// and one marked <c>AllowAnonymous()</c> (<c>/health</c>, the OpenAPI document and Scalar in Development) needs none.
 /// </summary>
 public static class FitLifePolicies
 {

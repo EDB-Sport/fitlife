@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\NotificationService\NotificationService.csproj" />
+    <!-- The consumer test reads the schema's example (#92) -->
+    <ProjectReference Include="..\FitLife.Contracts.Testing\FitLife.Contracts.Testing.csproj" />
+  </ItemGroup>
+
+</Project>

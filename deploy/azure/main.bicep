@@ -38,10 +38,13 @@ param serviceImage string
 @minLength(5)
 param serviceImageTag string
 
+@description('Whether the member portal is in the container group. False until it has a release (no image to pull yet); then Nginx answers 502 on its routes.')
+param includeMemberPortal bool
+
 @description('Docker Hub repository of the member portal (Blazor UI), without a tag.')
 param uiImage string
 
-@description('Released version of the member portal image, X.Y.Z. Never latest.')
+@description('Released version of the member portal image, X.Y.Z. Never latest. Unused while includeMemberPortal is false.')
 @minLength(5)
 param uiImageTag string
 
@@ -151,6 +154,7 @@ module containers 'modules/containers.bicep' = {
     serviceContext: serviceContext
     serviceImage: '${serviceImage}:${serviceImageTag}'
     serviceHealthPath: serviceHealthPath
+    includeMemberPortal: includeMemberPortal
     uiImage: '${uiImage}:${uiImageTag}'
     uiHealthPath: uiHealthPath
     nginxImage: nginxImage

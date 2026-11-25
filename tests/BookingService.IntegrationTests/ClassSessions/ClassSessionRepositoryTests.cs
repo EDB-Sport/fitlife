@@ -1,3 +1,4 @@
+using BookingService.Application;
 using BookingService.Domain;
 using BookingService.Repositories;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,9 +23,9 @@ public sealed class ClassSessionRepositoryTests
         using IServiceScope second = factory.Services.CreateScope();
         IClassSessionRepository firstRepository = first.ServiceProvider.GetRequiredService<IClassSessionRepository>();
         IClassSessionRepository secondRepository = second.ServiceProvider.GetRequiredService<IClassSessionRepository>();
-        ClassSession firstCopy = await firstRepository.GetAsync(classSession.Id, CancellationToken.None).ConfigureAwait(false)
+        ClassSession firstCopy = await firstRepository.GetByIdAsync(classSession.Id, CancellationToken.None).ConfigureAwait(false)
             ?? throw new InvalidOperationException("The class session wasn't stored.");
-        ClassSession secondCopy = await secondRepository.GetAsync(classSession.Id, CancellationToken.None).ConfigureAwait(false)
+        ClassSession secondCopy = await secondRepository.GetByIdAsync(classSession.Id, CancellationToken.None).ConfigureAwait(false)
             ?? throw new InvalidOperationException("The class session wasn't stored.");
         firstCopy.Reserve(Guid.NewGuid(), clock);
         secondCopy.Reserve(Guid.NewGuid(), clock);
@@ -49,7 +50,7 @@ public sealed class ClassSessionRepositoryTests
         IClassSessionRepository repository = scope.ServiceProvider.GetRequiredService<IClassSessionRepository>();
 
         // Act
-        ClassSession? stored = await repository.GetAsync(classSession.Id, CancellationToken.None).ConfigureAwait(false);
+        ClassSession? stored = await repository.GetByIdAsync(classSession.Id, CancellationToken.None).ConfigureAwait(false);
 
         // Assert
         Assert.That(stored?.Details, Is.EqualTo(details));

@@ -4,6 +4,8 @@
 # A feature PR (the default):
 #   1. Production code changed  -> test code changed too.
 #   2. No added skip markers    (NUnit [Ignore], [Explicit], IgnoreReason, Assert.Ignore, Assert.Inconclusive, Assume.).
+#                               A marker inside a string literal (test data such as [TestCase("Assert.Ignore(\"x\");")]) is not
+#                               a skipped test: the added lines are matched with their string literals emptied (#380).
 #   3. No test removed          (the number of [Test]/[TestCase]/... attributes, outside comment lines, does not go down).
 #   4. Red on base              the PR's tests pass with the change and fail without it
 #                               (production code reset to the base branch, tests kept).
@@ -38,6 +40,8 @@ TEST_FILE_REGEX="${TEST_FILE_REGEX:-\.cs$}"
 # Errors that stop the test run before anything is built: no project or solution found, or a failed restore.
 default_setup_errors='error (MSB1003|MSB1009|NU1[0-9]{3}):'
 SETUP_ERRORS="${SETUP_ERRORS:-$default_setup_errors}"
+# Check 2 empties string literals before it looks for a marker: @"..." (a doubled "" is a quote) and "..." (\" is a quote).
+STRING_LITERALS='s/@"([^"]|"")*"/""/g; s/"([^"\\]|\\.)*"/""/g'
 SKIP_MARKERS="${SKIP_MARKERS:-[[,][[:space:]]*(Ignore|Explicit)\b|\bIgnoreReason\b|Assert\.(Ignore|Inconclusive)|\bAssume\.}"
 TEST_MARKERS="${TEST_MARKERS:-[[,][[:space:]]*(Test|TestCase|TestCaseSource|Theory)\b}"
 PR_LABELS="${PR_LABELS:-}"
@@ -118,7 +122,7 @@ skipped=""
 if [[ -n "$test_changes" ]]; then
   test_files=()
   while IFS= read -r file; do test_files+=("$file"); done <<< "$test_changes"
-  skipped=$(git diff -U0 --no-renames "$BASE_SHA...$HEAD_SHA" -- "${test_files[@]}" | grep -E '^\+[^+]' | grep -E "$SKIP_MARKERS" || true)
+  skipped=$(git diff -U0 --no-renames "$BASE_SHA...$HEAD_SHA" -- "${test_files[@]}" | grep -E '^\+[^+]' | sed -E "$STRING_LITERALS" | grep -E "$SKIP_MARKERS" || true)
 fi
 if [[ -n "$skipped" ]]; then
   fail "the PR adds skipped tests:"; echo "$skipped"

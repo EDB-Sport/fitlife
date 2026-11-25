@@ -135,6 +135,29 @@ edit "$repo/tests/CalculatorTests.cs" 's|Subtract_TwoNumbers_ReturnsDifference()
 git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
 expect "added Assume.That fails" fail "$repo" "adds skipped tests"
 
+# 3b. A skip marker inside a string literal is test data, not a skipped test (issue #380).
+repo=$(feature_pr)
+cat >> "$repo/tests/CalculatorTests.cs" <<'EOF2'
+public class MarkerDataTests
+{
+    [TestCase("Assert.Ignore(\"x\");")]
+    public void Marker_InString_IsData(string source) { }
+}
+EOF2
+git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+expect "added [TestCase(\"Assert.Ignore(...)\")] passes" pass "$repo"
+
+repo=$(feature_pr)
+edit "$repo/tests/CalculatorTests.cs" 's|Subtract_TwoNumbers_ReturnsDifference() { }|Subtract_TwoNumbers_ReturnsDifference() { Assert.Ignore("x"); }|'
+git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+expect "added Assert.Ignore(\"x\"); statement fails" fail "$repo" "adds skipped tests"
+
+repo=$(feature_pr)
+edit "$repo/tests/CalculatorTests.cs" "s|    \[Test\] // needs: Subtract|    [Ignore(\"x\")]\\
+    [Test] // needs: Subtract|"
+git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+expect "added [Ignore(\"x\")] attribute fails" fail "$repo" "adds skipped tests"
+
 # 4. Removed tests
 repo=$(fixture)
 edit "$repo/tests/CalculatorTests.cs" '/\[TestCase(2, 3)\]/d'

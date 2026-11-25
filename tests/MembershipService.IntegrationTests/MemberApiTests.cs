@@ -201,9 +201,9 @@ public sealed class MemberApiTests
     {
         // Arrange
         using HttpClient client = ClientFor(TestTokens.For(TestTokens.NewAccountId()));
-        DateOnly before = DateOnly.FromDateTime(TimeProvider.System.GetUtcNow().UtcDateTime);
+        var before = DateOnly.FromDateTime(TimeProvider.System.GetUtcNow().UtcDateTime);
         using HttpResponseMessage joined = await Join(client).ConfigureAwait(false);
-        DateOnly after = DateOnly.FromDateTime(TimeProvider.System.GetUtcNow().UtcDateTime);
+        var after = DateOnly.FromDateTime(TimeProvider.System.GetUtcNow().UtcDateTime);
         using JsonDocument joinedBody = await Body(joined).ConfigureAwait(false);
 
         // Act

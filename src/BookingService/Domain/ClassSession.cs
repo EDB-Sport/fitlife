@@ -12,6 +12,7 @@ public sealed class ClassSession
 
     private static readonly TimeSpan HowFarAheadMembersCanReserve = TimeSpan.FromDays(28);
     private static readonly TimeSpan WhenTheWaitlistClosesBeforeStart = TimeSpan.FromHours(2);
+    private static readonly TimeSpan WhenACancellationIsLateBeforeStart = TimeSpan.FromHours(2);
 
     /// <summary>Creates a class session with no reservations.</summary>
     /// <param name="id">The class session's id.</param>
@@ -72,7 +73,7 @@ public sealed class ClassSession
             return ReservationResult.ClassSessionFull;
         }
 
-        _reservations.Add(new Reservation(memberId));
+        _reservations.Add(new Reservation(memberId, isFromWaitlist: false));
         return ReservationResult.Made;
     }
 
@@ -115,25 +116,33 @@ public sealed class ClassSession
         return WaitlistResult.Joined;
     }
 
-    /// <summary>Cancels the member's reservation. When someone is on the waitlist, the first waitlist entry gets the seat.</summary>
+    /// <summary>
+    /// Cancels the member's reservation. Less than 2 hours before start it is a late cancellation, unless the seat came from the
+    /// waitlist. When someone is on the waitlist, the first waitlist entry gets the seat.
+    /// </summary>
     /// <param name="memberId">The member who gives up the seat.</param>
+    /// <param name="clock">Tells the time now.</param>
     /// <returns><see cref="CancellationResult.NoReservation"/> when the member has no reservation; then nothing changes.</returns>
-    public CancellationResult CancelReservation(Guid memberId)
+    public CancellationResult CancelReservation(Guid memberId, TimeProvider clock)
     {
+        ArgumentNullException.ThrowIfNull(clock);
+
         int index = _reservations.FindIndex(reservation => reservation.MemberId == memberId);
         if (index < 0)
         {
             return CancellationResult.NoReservation;
         }
 
+        Reservation reservation = _reservations[index];
+        bool isLateCancellation = !reservation.IsFromWaitlist && StartTime - clock.GetUtcNow() < WhenACancellationIsLateBeforeStart;
         _reservations.RemoveAt(index);
-        _domainEvents.Add(new ReservationCancelled(Id, memberId));
+        _domainEvents.Add(new ReservationCancelled(Id, memberId, isLateCancellation));
 
         if (_waitlist.Count > 0)
         {
             WaitlistEntry firstWaitlistEntry = _waitlist[0];
             _waitlist.RemoveAt(0);
-            _reservations.Add(new Reservation(firstWaitlistEntry.MemberId));
+            _reservations.Add(new Reservation(firstWaitlistEntry.MemberId, isFromWaitlist: true));
             _domainEvents.Add(new ReservationMade(Id, firstWaitlistEntry.MemberId));
         }
 

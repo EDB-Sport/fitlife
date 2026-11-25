@@ -31,7 +31,7 @@ People and agents use these words, and only these words, in code, tests, issues,
 | Kapacitet | How many members can have a reservation on one class session | `Capacity` | – | Booking | Value object | Seats, Size, Max, Limit |
 | Booking | A member's seat on one class session | `Reservation` | Reservation | Booking | Entity | Booking (as a name in code), Signup, Enrollment, Tilmelding |
 | Ventelisteplads | A member's place in the queue for a full class session, first come first served | `WaitlistEntry` | – | Booking | Entity | Queue, Standby, Waiting |
-| Sen afmelding | A cancellation less than two hours before the class session starts. Statistics only, no consequence | – | – | Booking | Term | Late cancel, No-show |
+| Sen afmelding | A cancellation less than two hours before the class session starts. Statistics only, no consequence. A seat from the waitlist is never late | `ReservationCancelled.IsLateCancellation` | – | Booking | Term | Late cancel, No-show |
 | Instruktør | The trainer who leads a class session. Booking only knows the instructor's id and name | `Instructor` | Person | Booking | Value object | Trainer, Coach, Teacher |
 | Personlig træner | A trainer in a personal training programme with one member (NEXT) | `PersonalTrainer` | Person | Training | Entity | Instructor, Coach, PT |
 | Træningspas | One completed training session in a personal training programme (NEXT) | `TrainingSession` | ExerciseAction | Training | Entity | Session, Workout, Visit |

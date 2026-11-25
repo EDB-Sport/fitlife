@@ -197,7 +197,7 @@ public sealed class ClassSessionTests
         classSession.JoinWaitlist(secondWaitingMemberId, _clock);
 
         // Act
-        CancellationResult result = classSession.CancelReservation(memberId);
+        CancellationResult result = classSession.CancelReservation(memberId, _clock);
 
         // Assert
         Assert.Multiple(() =>
@@ -209,7 +209,7 @@ public sealed class ClassSessionTests
                 classSession.DomainEvents,
                 Is.EqualTo(new DomainEvent[]
                 {
-                    new ReservationCancelled(classSession.Id, memberId),
+                    new ReservationCancelled(classSession.Id, memberId, IsLateCancellation: false),
                     new ReservationMade(classSession.Id, firstWaitingMemberId),
                 }));
         });
@@ -224,14 +224,14 @@ public sealed class ClassSessionTests
         classSession.Reserve(memberId, _clock);
 
         // Act
-        CancellationResult result = classSession.CancelReservation(memberId);
+        CancellationResult result = classSession.CancelReservation(memberId, _clock);
 
         // Assert
         Assert.Multiple(() =>
         {
             Assert.That(result, Is.EqualTo(CancellationResult.Cancelled));
             Assert.That(classSession.Reservations, Is.Empty);
-            Assert.That(classSession.DomainEvents, Is.EqualTo(new DomainEvent[] { new ReservationCancelled(classSession.Id, memberId) }));
+            Assert.That(classSession.DomainEvents, Is.EqualTo(new DomainEvent[] { new ReservationCancelled(classSession.Id, memberId, IsLateCancellation: false) }));
         });
     }
 
@@ -243,7 +243,7 @@ public sealed class ClassSessionTests
         classSession.Reserve(Guid.NewGuid(), _clock);
 
         // Act
-        CancellationResult result = classSession.CancelReservation(Guid.NewGuid());
+        CancellationResult result = classSession.CancelReservation(Guid.NewGuid(), _clock);
 
         // Assert
         Assert.Multiple(() =>
@@ -365,6 +365,56 @@ public sealed class ClassSessionTests
             Assert.That(classSession.Waitlist, Has.Count.EqualTo(1));
             Assert.That(classSession.DomainEvents, Is.Empty);
         });
+    }
+
+    [Test]
+    public void CancelReservation_LessThanTwoHoursBeforeStart_IsALateCancellation()
+    {
+        // Arrange
+        ClassSession classSession = ClassSessionStartingAt(Now.AddHours(2).AddMinutes(-1));
+        var memberId = Guid.NewGuid();
+        classSession.Reserve(memberId, _clock);
+
+        // Act
+        classSession.CancelReservation(memberId, _clock);
+
+        // Assert
+        Assert.That(classSession.DomainEvents, Is.EqualTo(new DomainEvent[] { new ReservationCancelled(classSession.Id, memberId, IsLateCancellation: true) }));
+    }
+
+    [Test]
+    public void CancelReservation_ExactlyTwoHoursBeforeStart_IsNotALateCancellation()
+    {
+        // Arrange
+        ClassSession classSession = ClassSessionStartingAt(Now.AddHours(2));
+        var memberId = Guid.NewGuid();
+        classSession.Reserve(memberId, _clock);
+
+        // Act
+        classSession.CancelReservation(memberId, _clock);
+
+        // Assert
+        Assert.That(classSession.DomainEvents, Is.EqualTo(new DomainEvent[] { new ReservationCancelled(classSession.Id, memberId, IsLateCancellation: false) }));
+    }
+
+    [Test]
+    public void CancelReservation_OfASeatFromTheWaitlist_IsNeverALateCancellation()
+    {
+        // Arrange
+        var clock = new FakeTimeProvider(Now);
+        ClassSession classSession = ClassSessionStartingAt(Now.AddHours(3));
+        var waitingMemberId = Guid.NewGuid();
+        var memberId = Guid.NewGuid();
+        classSession.Reserve(memberId, clock);
+        classSession.JoinWaitlist(waitingMemberId, clock);
+        classSession.CancelReservation(memberId, clock);
+        clock.Advance(TimeSpan.FromHours(2));
+
+        // Act
+        classSession.CancelReservation(waitingMemberId, clock);
+
+        // Assert
+        Assert.That(classSession.DomainEvents[^1], Is.EqualTo(new ReservationCancelled(classSession.Id, waitingMemberId, IsLateCancellation: false)));
     }
 
     [TestCase(0)]

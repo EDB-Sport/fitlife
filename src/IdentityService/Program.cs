@@ -11,6 +11,7 @@ try
     WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
     // Course rule #9: the secret/identity-svc secret from Vault (Vault:Address, Vault:Token), read through IConfiguration
+    // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
     await builder.Configuration.AddVaultAsync().ConfigureAwait(false);
 
     // Course rule #8: NLog → Loki, with the shared libs/nlog.config
@@ -41,6 +42,7 @@ try
         app.Logger.LogInformation("Starting {Service} {Version}", app.Environment.ApplicationName, version);
     }
 
+    // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
     await app.RunAsync().ConfigureAwait(false);
 }
 catch (Exception exception) when (exception is not HostAbortedException) // WebApplicationFactory stops the host with HostAbortedException

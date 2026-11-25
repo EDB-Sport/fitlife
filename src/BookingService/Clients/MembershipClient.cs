@@ -25,6 +25,7 @@ public sealed class MembershipClient(HttpClient http) : IMembershipClient
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
         try
         {
+            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             using HttpResponseMessage response = await http.SendAsync(request, cancellationToken).ConfigureAwait(false);
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
@@ -36,6 +37,7 @@ public sealed class MembershipClient(HttpClient http) : IMembershipClient
                 return MemberLookup.Unavailable;
             }
 
+            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             MemberResponse? member = await response.Content.ReadFromJsonAsync<MemberResponse>(cancellationToken).ConfigureAwait(false);
             if (member is null)
             {

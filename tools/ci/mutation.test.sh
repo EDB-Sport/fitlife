@@ -140,7 +140,8 @@ commit "docs only"
 expect pass "a change without C# files passes" "nothing to mutate"
 
 # 3b. ConfigureAwait(false) -> true is an equivalent mutant: ASP.NET Core has no SynchronizationContext, so no
-#     test can kill it (issue #270). A tested async method must score 100, not lose a point to it.
+#     test can kill it (issue #270). A '// Stryker disable once Boolean' comment on the call site ignores it,
+#     so a tested async method scores 100.
 add_async='
     /// <summary>Returns the sum of two numbers, asynchronously.</summary>
     /// <param name="left">The first number.</param>
@@ -148,6 +149,7 @@ add_async='
     /// <returns>The sum.</returns>
     public static async Task<int> AddAsync(int left, int right)
     {
+        // Stryker disable once Boolean : equivalent mutant
         return await Task.FromResult(left + right).ConfigureAwait(false);
     }'
 add_async_test='
@@ -163,7 +165,7 @@ commit "AddAsync with its test"
 expect pass "a ConfigureAwait(false) mutant isn't counted" "final mutation score is 100"
 
 # 3c. The arithmetic mutant in Task.FromResult(left + right).ConfigureAwait(false) must still be counted (#322):
-#     a test with a weak assertion leaves it alive. Ignoring the whole ConfigureAwait(...) call would hide it.
+#     a test with a weak assertion leaves it alive. The disable comment only covers the Boolean mutator, not the whole call.
 add_async_weak_test='
     [Test]
     public async Task AddAsync_TwoNumbers_ReturnsNonZero()

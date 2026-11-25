@@ -74,7 +74,7 @@ git -C "$repo" init -q
 git -C "$repo" config user.email test@example.invalid
 git -C "$repo" config user.name test
 mkdir -p "$repo/tools/ci" "$repo/contracts/openapi"
-cp "$here/release-gate.sh" "$here/oasdiff-breaking.sh" "$here/services.sh" "$repo/tools/ci/" 2>/dev/null
+cp "$here/release-gate.sh" "$here/oasdiff-breaking.sh" "$here/services.sh" "$here/changes.sh" "$repo/tools/ci/" 2>/dev/null
 service BookingService 1.0.0
 service MembershipService 1.0.0
 service MemberPortal.Web 1.0.0
@@ -103,26 +103,26 @@ expect 0 release/2.0.0 "a breaking change with a MAJOR passes"
 
 # Hotfixes start from the tags again
 git -C "$repo" checkout -q -b hotfix/bookingservice-1.0.1 bookingservice/v1.0.0
-cp "$here/release-gate.sh" "$here/oasdiff-breaking.sh" "$here/services.sh" "$repo/tools/ci/" 2>/dev/null
+cp "$here/release-gate.sh" "$here/oasdiff-breaking.sh" "$here/services.sh" "$here/changes.sh" "$repo/tools/ci/" 2>/dev/null
 echo "// fix" > "$repo/src/BookingService/Fix.cs"; service BookingService 1.0.1
 echo "// fix" > "$repo/src/MembershipService/Fix.cs"; service MembershipService 1.0.1
 commit "hotfix two services"
 expect 1 hotfix/bookingservice-1.0.1 "a hotfix touching two services fails" "only one service"
 
 git -C "$repo" checkout -q -B hotfix/bookingservice-1.1.0 bookingservice/v1.0.0
-cp "$here/release-gate.sh" "$here/oasdiff-breaking.sh" "$here/services.sh" "$repo/tools/ci/" 2>/dev/null
+cp "$here/release-gate.sh" "$here/oasdiff-breaking.sh" "$here/services.sh" "$here/changes.sh" "$repo/tools/ci/" 2>/dev/null
 echo "// fix" > "$repo/src/BookingService/Fix.cs"; service BookingService 1.1.0; commit "hotfix raises MINOR"
 expect 1 hotfix/bookingservice-1.1.0 "a hotfix that raises more than PATCH fails" "only PATCH"
 
 git -C "$repo" checkout -q -B hotfix/bookingservice-1.0.1 bookingservice/v1.0.0
-cp "$here/release-gate.sh" "$here/oasdiff-breaking.sh" "$here/services.sh" "$repo/tools/ci/" 2>/dev/null
+cp "$here/release-gate.sh" "$here/oasdiff-breaking.sh" "$here/services.sh" "$here/changes.sh" "$repo/tools/ci/" 2>/dev/null
 echo "// fix" > "$repo/src/BookingService/Fix.cs"; service BookingService 1.0.1; commit "hotfix one service"
 expect 0 hotfix/bookingservice-1.0.1 "a hotfix raising PATCH of one service passes"
 
 # Shared code (#112): BookingService -> FitLife.Shared -> FitLife.Inner (indirect), MembershipService -> FitLife.Other,
 # FitLife.Unused is referenced by nobody. A new release line, tagged at 1.5.0, starts from the 1.0.0 tags.
 git -C "$repo" checkout -q -B release/1.6.0 bookingservice/v1.0.0
-cp "$here/release-gate.sh" "$here/oasdiff-breaking.sh" "$here/services.sh" "$repo/tools/ci/" 2>/dev/null
+cp "$here/release-gate.sh" "$here/oasdiff-breaking.sh" "$here/services.sh" "$here/changes.sh" "$repo/tools/ci/" 2>/dev/null
 lib FitLife.Inner
 lib FitLife.Shared '..\FitLife.Inner\FitLife.Inner.csproj'
 lib FitLife.Other

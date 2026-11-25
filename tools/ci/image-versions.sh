@@ -10,7 +10,7 @@
 #   - string literals given to Testcontainers builders in tests/**/*.cs:  new MongoDbBuilder("mongo:8.0.38")
 # Rule 1: a full version X.Y.Z[-suffix], or a digest (@sha256:...).
 # Rule 2: the same image name has the same reference in all those places.
-# Not checked: mcr.microsoft.com/dotnet/aspnet (the .NET runtime image restores no packages, so it may float,
+# Not checked: the tag `develop` in deploy/compose/compose.develop.yml (#340), mcr.microsoft.com/dotnet/aspnet (the .NET runtime image restores no packages, so it may float,
 # ADR 004), images built from this repo (fitlife/...), `FROM scratch` and `FROM <earlier stage>`.
 set -euo pipefail
 
@@ -41,6 +41,8 @@ record() {
     name=$image
   fi
   [[ $name == "$FLOATING_OK" || $name == fitlife/* ]] && return 0
+  # The :develop images of every merge into develop (#340) are floating by design, and run only through this override
+  [[ $version == develop && $(basename "$1") == compose.develop.yml ]] && return 0
   if [[ $version == @* || $version =~ ^[0-9]+\.[0-9]+\.[0-9]+(-.+)?$ ]]; then
     refs+=("$name"$'\t'"$version"$'\t'"$where")
   elif [[ -z $version ]]; then

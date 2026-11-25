@@ -425,7 +425,7 @@ These follow `METHODOLOGY.md` §2.1, with one repo and a separate version per se
   - runs Trivy
 
   *Why:* course rules #10 and #11. Each service's image, DLL and git tag carry the same version, and an unchanged service is never re-released.
-- [ ] **On push to `develop`** (optional): push images tagged `develop` for the services that changed (path filters, e.g. `dorny/paths-filter`).
+- [x] **On push to `develop`** (optional): push images tagged `develop` for the services that changed: `develop-images.yml`, with `tools/ci/develop-plan.sh` deciding which (#340).
   *Why:* METHODOLOGY says `develop` is always deployable to the test environment (the compose stack). This makes that literal.
 - [ ] **The version is visible at runtime:** a startup log line with the service name and version, and `version` as a Loki label (section 7).
   *Why:* you can see in Grafana which release produced an error.

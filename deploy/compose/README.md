@@ -54,6 +54,16 @@ docker compose up -d --wait --build
 
 `tools/ci/api-tests.sh` does the same with `API_TESTS_BUILD=1 tools/ci/api-tests.sh`. Without the switch it reuses the images it has, as before. CI starts on a fresh runner with no images, so it builds them either way (#284).
 
+### Pull the images of `develop` instead of building them
+
+Every merge into `develop` builds, scans and pushes the images of the services it changed to Docker Hub as `albertarnason/<service>:develop` and `:sha-<short>` (`.github/workflows/develop-images.yml`, #340). `compose.develop.yml` makes the stack run them instead of building, which is much faster than a first build (most of that time is downloading base images):
+
+```bash
+docker compose -f compose.yaml -f compose.develop.yml up -d --wait
+```
+
+`pull_policy: always` pulls the newest `:develop` on every `up`. To run one service from your own code, leave the override out and build from source (`docker compose up -d --wait --build`). `:develop` is a moving tag, allowed only in `compose.develop.yml` (`tools/ci/image-versions.sh`); the other compose files, CI and the api-tests build the PR's code from source. A merge that changes nothing a service builds with delivers no image for it. The released versions (`X.Y.Z`, `latest`) are still the release's alone.
+
 One group on its own: `docker compose -f infrastructure.yml up -d --wait`.
 
 Two stacks side by side (two worktrees, say): give each its own project name and ports, e.g. `docker compose -p fitlife-6 up -d --wait` with other `*_PORT` values in that folder's `.env`.

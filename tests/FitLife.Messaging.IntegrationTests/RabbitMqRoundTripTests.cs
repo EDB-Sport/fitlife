@@ -4,6 +4,7 @@ using FitLife.Correlation;
 using FitLife.Messaging.Events;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -116,6 +117,36 @@ public sealed class RabbitMqRoundTripTests
         // Assert
         await logs.WaitForAsync("not reachable", Timeout).ConfigureAwait(false);
         Assert.That(ConsumerOf(host).Consuming.IsCompleted, Is.False);
+    }
+
+    [Test]
+    public async Task CheckHealth_Consuming_IsHealthy()
+    {
+        // Arrange
+        using IHost host = await StartHostAsync(new RecordingHandler()).ConfigureAwait(false);
+
+        // Act
+        HealthReport report = await host.Services.GetRequiredService<HealthCheckService>().CheckHealthAsync().ConfigureAwait(false);
+
+        // Assert
+        Assert.That(report.Status, Is.EqualTo(HealthStatus.Healthy));
+    }
+
+    [Test]
+    public async Task CheckHealth_RabbitMqNotReachable_IsUnhealthyAndNamesTheQueue()
+    {
+        // Arrange
+        using var logs = new WaitingLoggerProvider();
+        using IHost host = BuildHost(new RecordingHandler(), new Uri("amqp://guest:guest@127.0.0.1:1"), logs);
+        await host.StartAsync().ConfigureAwait(false);
+        await logs.WaitForAsync("not reachable", Timeout).ConfigureAwait(false);
+
+        // Act
+        HealthReport report = await host.Services.GetRequiredService<HealthCheckService>().CheckHealthAsync().ConfigureAwait(false);
+
+        // Assert
+        Assert.That(report.Status, Is.EqualTo(HealthStatus.Unhealthy));
+        Assert.That(report.Entries.Values.Select(entry => entry.Description), Has.Some.Contains(ConsumerOf(host).Queue));
     }
 
     [Test]

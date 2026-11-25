@@ -145,9 +145,11 @@ services:
       # RabbitMq:Username and RabbitMq:Password. The service waits for Vault and the seed job itself (Vault:WaitSeconds).
       Vault__Address: http://vault:8200 # infrastructure.yml
       Vault__Token: ${VAULT_DEV_ROOT_TOKEN:?set it in deploy/compose/.env}
-    # No depends_on, so this group still starts on its own: the consumer keeps trying until RabbitMQ answers
+    # No depends_on, so this group still starts on its own: the consumer keeps trying until RabbitMQ answers.
+    # /health is unhealthy until it consumes (#258); start_period covers RabbitMQ's own start-up.
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 60s

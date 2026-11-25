@@ -21,7 +21,7 @@ public sealed class StartupLogTests
         using HttpClient client = factory.CreateClient();
 
         // Assert
-        Assert.That(logs.Messages, Has.Some.Contains("BookingService").And.Contains("0.1.0"));
+        Assert.That(logs.Messages, Has.Some.Contains("BookingService").And.Contains("0.1.1"));
     }
 
     private sealed class CapturingLoggerProvider : ILoggerProvider, ILogger

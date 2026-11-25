@@ -122,7 +122,7 @@ mongodb://booking-svc:<BOOKING_DB_PASSWORD>@mongodb:27017/booking?authSource=boo
 1. Add the service to `services.yml`: name it `<name>-svc`, listen on 8080, give it a `healthcheck` on `/health`, and pass its MongoDB and RabbitMQ hosts, the Vault address and `VAULT_DEV_ROOT_TOKEN` as environment variables. Its passwords come from Vault, at `secret/<name>-svc`.
 2. If it has a database: add its name to `SERVICE_DATABASES` in `infrastructure.yml`, add `<NAME>_DB_PASSWORD` there (under `x-service-secrets`) and to `.env.example`, then `docker compose down -v` so the init script runs again. Vault gets the new secret on its next start.
 3. If it has an HTTP API: add a `location /api/<context>/` block to the Nginx template and the `<NAME>_URL` variable to the gateway in `services.yml`.
-4. Logging: pass `LOKI_URL: http://loki:3100` to the service, log with the labels and fields below, and if its name isn't one of the four already in `grafana/provisioning/alerting/error-rate.yml`, add an error-rate rule for it there.
+4. Logging: pass `LOKI_URL: http://loki:3100` to the service, log with the labels and fields below, and if `grafana/provisioning/alerting/error-rate.yml` has no rule for its name yet, add an error-rate rule for it there.
 
 ## Logging and monitoring
 

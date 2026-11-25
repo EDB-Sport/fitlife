@@ -58,7 +58,7 @@ How the group gets from the project description to services whose boundaries and
 - **Done when:**
   - `templates/CONTEXT-MAP.md` is copied to `docs/domain/CONTEXT-MAP.md` and filled in
   - each bounded context is named and mapped to one service
-  - an ADR (`docs/adr/00X-bounded-contexts.md`) says why the contexts are cut this way, and which alternative cut was rejected
+  - an ADR ([`docs/adr/007-bounded-contexts.md`](adr/007-bounded-contexts.md)) says why the contexts are cut this way, and which alternative cut was rejected
 
 *An illustration only, to be decided in the session:* the language test might show that "session" means a login session to IdentityService and a scheduled class to BookingService, and that "member" means anyone who can log in to one and a person with a paid membership to the other. Each double meaning points at a boundary, and each gets its own name in code (`LoginSession`/`ClassSession`, `Account`/`Member`).
 

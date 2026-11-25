@@ -86,6 +86,10 @@ for workflow in "$root"/.github/workflows/*.yml; do
   expect "every job in $name sets timeout-minutes${missing:+ (missing: $missing)}" test -z "$missing"
 done
 
+# Service PRs with Testcontainers integration tests run mutation for 8-20 min (max 20.2 min), so a 10-minute limit cancels them (issue #335).
+mutation_timeout=$(sed -n 's/^    timeout-minutes: \([0-9][0-9]*\)$/\1/p' <<<"$(job_block mutation)")
+expect "mutation sets timeout-minutes of at least 30 (issue #335)" test "${mutation_timeout:-0}" -ge 30
+
 # A hanging test is killed after 5 minutes and named, without a dump file (issue #276).
 hang_flags='--blame-hang-timeout 5m --blame-hang-dump-type none'
 expect "ci.yml's test step passes $hang_flags" \

@@ -110,15 +110,18 @@ if [[ -d tests ]]; then
   done < <(grep -rnE --include='*.cs' '[A-Za-z]+Builder\("[^"]+"\)' tests || true)
 
   # The override form, Builder(env["MONGO_IMAGE"] ?? "<image>"), on the builder's line or the line after it (#315).
-  # A builder call is "<Something>Builder(" with an argument, so ConfigurationBuilder() alone doesn't count.
+  # A Testcontainers builder is "new <Name>Builder(" with an argument. Method calls (WithWebHostBuilder) and the .NET
+  # builders (StringBuilder, ConfigurationBuilder, UriBuilder, ...) are not images (review on PR #426).
   while IFS='|' read -r file lineno image; do
     record "$file" "$lineno" "$image"
   done < <(find tests -type f -name '*.cs' -not -path '*/bin/*' -not -path '*/obj/*' -print0 | sort -z |
     xargs -0 -r awk '
       FNR == 1 { previous = "" }
       {
-        builder = "[A-Za-z]+Builder[(]([^)]|$)"
-        if ((match($0, builder) || match(previous, builder)) && match($0, /[?][?][ \t]*"[^"]+"[ \t]*[)]/)) {
+        builder = "new[ \t]+[A-Z][A-Za-z0-9]*Builder[(]([^)]|$)"
+        dotnet = "new[ \t]+(String|Configuration|Uri|HostApplication|WebApplication|Host|WebHost|ServiceCollection|Model|Options|Connection[A-Za-z]*|Sql[A-Za-z]*)Builder[(]"
+        if (((match($0, builder) && !match($0, dotnet)) || (match(previous, builder) && !match(previous, dotnet))) &&
+            match($0, /[?][?][ \t]*"[^"]+"[ \t]*[)]/)) {
           hit = substr($0, RSTART, RLENGTH)
           sub(/^[?][?][ \t]*"/, "", hit)
           sub(/"[ \t]*[)]$/, "", hit)

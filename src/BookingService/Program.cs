@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using BookingService.Clients;
 using BookingService.Repositories;
 using BookingService.Seed;
 using FitLife.Configuration;
@@ -29,6 +30,9 @@ try
     {
         builder.Services.AddHostedService<ClassSessionSeeder>();
     }
+
+    // Who the member behind an account is, from Membership (#256). The reservation endpoints use it (#260)
+    builder.Services.AddMembershipClient();
 
     WebApplication app = builder.Build();
 

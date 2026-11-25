@@ -193,6 +193,32 @@ git -C "$repo" checkout --quiet feature/c && commit "$repo" c2
 expect "child of this PR open, parent moved: the parent still gets base advice" fail "set the base to feature/c" -- \
   "$repo" develop feature/b 11 $'9 feature/c\n11 feature/b\n12 feature/d'
 
+# 16. The other PR targets main, not develop (issue #316, #313 vs #310): `main` is ahead of develop, a
+#     hotfix PR branched from main, and a release PR into develop that brings main's commits. The only
+#     history they share is on the hotfix's own base, so the hotfix isn't a parent. Open PR lines carry
+#     the base branch as a third field.
+repo=$(fixture)
+git -C "$repo" checkout --quiet -b main develop && commit "$repo" released
+git -C "$repo" checkout --quiet -b hotfix/x main && commit "$repo" fix1 && commit "$repo" fix2
+git -C "$repo" checkout --quiet -b release/y main && commit "$repo" release-note
+expect "release PR passes when the other open PR is a hotfix into main" pass "" -- \
+  "$repo" develop release/y 13 $'10 hotfix/x main\n13 release/y develop'
+
+# 17. A real stack still fails when the other PR's base is given: #10 targets develop (third field).
+repo=$(fixture)
+git -C "$repo" checkout --quiet -b feature/a develop && commit "$repo" a
+git -C "$repo" checkout --quiet -b feature/b feature/a && commit "$repo" b
+expect "stacked on #10 fails with its base given" fail "merge #10 first" -- \
+  "$repo" develop feature/b 11 $'10 feature/a develop\n11 feature/b develop'
+
+# 18. A hotfix's own commits inside a PR into develop still count: the PR is built on the hotfix.
+repo=$(fixture)
+git -C "$repo" checkout --quiet -b main develop && commit "$repo" released
+git -C "$repo" checkout --quiet -b hotfix/x main && commit "$repo" fix1
+git -C "$repo" checkout --quiet -b feature/c hotfix/x && commit "$repo" c
+expect "a PR into develop built on a hotfix's own commits fails" fail "merge #10 first" -- \
+  "$repo" develop feature/c 11 $'10 hotfix/x main\n11 feature/c develop'
+
 echo
 if [ "$failures" -eq 0 ]; then
   echo "stack-check behaves as specified."

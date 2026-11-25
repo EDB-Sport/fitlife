@@ -19,12 +19,19 @@
     <PackageReference Include="NLog.Web.AspNetCore" />
     <PackageReference Include="NLog.Targets.Loki" />
     <PackageReference Include="MongoDB.Driver" />
+    <!-- Time-out, retry and circuit breaker on the call to Membership (#256) -->
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- Shared code: correlation ID middleware and handler (docs/CSHARP_SETUP_TODO.md section 7) -->
     <ProjectReference Include="$(RepoRoot)libs/FitLife.Configuration/FitLife.Configuration.csproj" />
     <ProjectReference Include="$(RepoRoot)libs/FitLife.Correlation/FitLife.Correlation.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The tests shorten the resilience delays through an internal overload (#256) -->
+    <InternalsVisibleTo Include="BookingService.Tests" />
   </ItemGroup>
 
   <ItemGroup>

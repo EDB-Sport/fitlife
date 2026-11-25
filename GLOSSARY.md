@@ -28,6 +28,7 @@ People and agents use these words, and only these words, in code, tests, issues,
 | Center | One of FitLife's six centres [PB p. 3] | `Center` | ExerciseGym | Booking | Entity | Gym, Location, Club, Site |
 | Holdtype | A kind of class that recurs in the schedule, e.g. spinning or yoga | `ClassType` | – | Booking | Entity | Activity, Program, Course |
 | Hold | One scheduled run of a class: centre, class type, instructor, start time, duration and capacity | `ClassSession` | Event | Booking | Aggregate root | Session, Class, Lesson, Event |
+| Starttid | When a class session starts: a date and a time with an offset (ISO 8601). `startTime` in JSON and event contracts | `StartTime` | DateTime | Booking | Value object | StartDate, StartsAt, Begin, Time, Date |
 | Kapacitet | How many members can have a reservation on one class session | `Capacity` | – | Booking | Value object | Seats, Size, Max, Limit |
 | Booking | A member's seat on one class session | `Reservation` | Reservation | Booking | Entity | Booking (as a name in code), Signup, Enrollment, Tilmelding |
 | Ventelisteplads | A member's place in the queue for a full class session, first come first served | `WaitlistEntry` | – | Booking | Entity | Queue, Standby, Waiting |

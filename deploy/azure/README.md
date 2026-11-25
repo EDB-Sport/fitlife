@@ -28,9 +28,9 @@ A container group has a limit per region: 4 vCPU and 16 GB for Linux containers 
 
 | | vCPU | GB |
 |---|---|---|
-| Today: Caddy, Nginx, Vault (0.25 / 0.25 each), one service, member portal (0.25 / 0.5 each), RabbitMQ (0.25 / 0.5), MongoDB (0.5 / 1.0). Without the member portal: 1.75 vCPU, 2.75 GB | 2.0 | 3.25 |
+| Today: Caddy, Nginx, Vault (0.25 / 0.3 each, because ACI takes memory in 0.1 GB steps), one service, member portal (0.25 / 0.5 each), RabbitMQ (0.25 / 0.5), MongoDB (0.5 / 1.0). Without the member portal: 1.75 vCPU, 2.9 GB | 2.0 | 3.4 |
 | Later: three more services and one more UI (0.25 / 0.5 each), Loki and Grafana (0.25 / 0.5 each) | +1.5 | +3.0 |
-| Total | 3.5 | 6.25 |
+| Total | 3.5 | 6.4 |
 
 That fits in one group. If it ever doesn't, split it into a second group (section 9a).
 
@@ -97,4 +97,4 @@ Check without Azure: `az bicep build --file deploy/azure/main.bicep`, `az bicep 
 
 ## Cost
 
-ACI bills per vCPU-second and GB-second while the group runs. The group requests 2 vCPU and 3.25 GB in total today, 1.75 vCPU and 2.75 GB without the member portal (see "CPU and memory"). Stop the group when nobody needs it (`az container stop --resource-group rg-fitlife-prod --name fitlife`), keep it running from hand-in (18 Dec) through the exam, and delete the resource group after the exam (`az group delete --name rg-fitlife-prod`).
+ACI bills per vCPU-second and GB-second while the group runs. The group requests 2 vCPU and 3.4 GB in total today, 1.75 vCPU and 2.9 GB without the member portal (see "CPU and memory"). Stop the group when nobody needs it (`az container stop --resource-group rg-fitlife-prod --name fitlife`), keep it running from hand-in (18 Dec) through the exam, and delete the resource group after the exam (`az group delete --name rg-fitlife-prod`).

@@ -23,15 +23,16 @@ People and agents use these words, and only these words, in code, tests, issues,
 | Medlemskab | A member's agreement with FitLife: membership type, status, start date and any binding period | `Membership` | ProgramMembership | Membership | Aggregate root | Subscription, Contract, Plan |
 | Medlemstype | The kind of membership offered. The case has exactly one today [PB p. 3]; more are a TO-BE choice | `MembershipType` | – | Membership | Value object | Plan, Tier, Product |
 | Medlemskabets tilstand | Where a membership is in its life: Aktiv, Pause, Betaling mangler, Opsagt, Afsluttet. Only Aktiv gives access and the right to book | `MembershipStatus` | – | Membership | Value object | State, Phase, Active flag |
-| Konto | The log-in identity of a person: user name, password hash and roles | `Account` | – | Identity | Aggregate root | User, Member, Login |
+| Konto | The log-in identity of a person: e-mail address (the log-in name), password hash and roles | `Account` | – | Identity | Aggregate root | User, Member, Login |
 | Rolle | What an account may do: Medlem, Træner or Admin, carried as a claim in the token | `Role` | Role | Identity | Value object | Permission, Group, UserType |
 | Center | One of FitLife's six centres [PB p. 3] | `Center` | ExerciseGym | Booking | Entity | Gym, Location, Club, Site |
 | Holdtype | A kind of class that recurs in the schedule, e.g. spinning or yoga | `ClassType` | – | Booking | Entity | Activity, Program, Course |
 | Hold | One scheduled run of a class: centre, class type, instructor, start time, duration and capacity | `ClassSession` | Event | Booking | Aggregate root | Session, Class, Lesson, Event |
+| Starttid | When a class session starts: a date and a time with an offset (ISO 8601). `startTime` in JSON and event contracts | `StartTime` | DateTime | Booking | Value object | StartDate, StartsAt, Begin, Time, Date |
 | Kapacitet | How many members can have a reservation on one class session | `Capacity` | – | Booking | Value object | Seats, Size, Max, Limit |
 | Booking | A member's seat on one class session | `Reservation` | Reservation | Booking | Entity | Booking (as a name in code), Signup, Enrollment, Tilmelding |
 | Ventelisteplads | A member's place in the queue for a full class session, first come first served | `WaitlistEntry` | – | Booking | Entity | Queue, Standby, Waiting |
-| Sen afmelding | A cancellation less than two hours before the class session starts. Statistics only, no consequence | – | – | Booking | Term | Late cancel, No-show |
+| Sen afmelding | A cancellation less than two hours before the class session starts. Statistics only, no consequence. A seat from the waitlist is never late | `ReservationCancelled.IsLateCancellation` | – | Booking | Term | Late cancel, No-show |
 | Instruktør | The trainer who leads a class session. Booking only knows the instructor's id and name | `Instructor` | Person | Booking | Value object | Trainer, Coach, Teacher |
 | Personlig træner | A trainer in a personal training programme with one member (NEXT) | `PersonalTrainer` | Person | Training | Entity | Instructor, Coach, PT |
 | Træningspas | One completed training session in a personal training programme (NEXT) | `TrainingSession` | ExerciseAction | Training | Entity | Session, Workout, Visit |
@@ -42,6 +43,7 @@ People and agents use these words, and only these words, in code, tests, issues,
 | Notifikation | One message to one member about something that happened, with its delivery log | `Notification` | – | Notification | Aggregate root | Message, Alert, Push |
 | Booking oprettet | A member got a seat on a class session, directly or from the waitlist | `ReservationMade` | – | Booking | Domain event | BookingCreated, ReservationAdded |
 | Booking afmeldt | A member gave up their seat | `ReservationCancelled` | – | Booking | Domain event | BookingDeleted, ReservationRemoved |
+| Ventelisteplads udløbet | The waitlist closed 2 hours before start, and a member's waitlist entry was removed without a seat | `WaitlistEntryExpired` | – | Booking | Domain event | WaitlistEntryRemoved, WaitlistEntryDeleted, QueueExpired |
 | Hold aflyst | A class session will not take place | `ClassSessionCancelled` | – | Booking | Domain event | ClassDeleted, SessionRemoved |
 | Hold ændret | A class session got a new time or place | `ClassSessionChanged` | – | Booking | Domain event | ClassUpdated, SessionEdited |
 | Indmeldelse | A person with an account joins FitLife with their token and gets a member with an active membership (UC5) | `JoinMembershipCommand` | JoinAction | Membership | Command | Signup, Registration, Subscribe, Enroll |

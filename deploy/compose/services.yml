@@ -53,6 +53,7 @@ services:
       # The service waits for Vault and the seed job itself (Vault:WaitSeconds), so it needs no depends_on.
       Vault__Address: http://vault:8200 # infrastructure.yml
       Vault__Token: ${VAULT_DEV_ROOT_TOKEN:?set it in deploy/compose/.env}
+      Membership__BaseUrl: http://membership-svc:8080 # who the member behind an account is (#256)
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
       interval: 5s

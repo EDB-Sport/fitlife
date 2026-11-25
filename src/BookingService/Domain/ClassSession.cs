@@ -111,7 +111,7 @@ public sealed class ClassSession
     /// <see cref="WaitlistResult.ClassSessionCancelled"/>, <see cref="WaitlistResult.MemberAlreadyHasReservation"/>,
     /// <see cref="WaitlistResult.MemberAlreadyOnWaitlist"/>,
     /// <see cref="WaitlistResult.ClassSessionNotFull"/> when a seat is free, or <see cref="WaitlistResult.WaitlistClosed"/>
-    /// less than 2 hours before start; then nothing changes.
+    /// from 2 hours before start; then nothing changes.
     /// </returns>
     public WaitlistResult JoinWaitlist(Guid memberId, TimeProvider clock)
     {
@@ -137,7 +137,8 @@ public sealed class ClassSession
             return WaitlistResult.ClassSessionNotFull;
         }
 
-        if (StartTime - clock.GetUtcNow() < WhenTheWaitlistClosesBeforeStart)
+        // At exactly 2 hours the waitlist is closed: the instant CloseWaitlist may run (#314)
+        if (StartTime - clock.GetUtcNow() <= WhenTheWaitlistClosesBeforeStart)
         {
             return WaitlistResult.WaitlistClosed;
         }

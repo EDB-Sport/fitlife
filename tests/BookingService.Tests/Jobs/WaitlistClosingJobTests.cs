@@ -20,8 +20,10 @@ public sealed class WaitlistClosingJobTests
         // Arrange
         var repository = new StoredClassSession(() => FullWithAWaitlistEntry(Now.AddHours(1)));
 
+        using WaitlistClosingJob job = Job(repository);
+
         // Act
-        await Job(repository).RunOnceAsync(CancellationToken.None).ConfigureAwait(false);
+        await job.RunOnceAsync(CancellationToken.None).ConfigureAwait(false);
 
         // Assert
         Assert.That(repository.Saved?.Waitlist, Is.Empty);
@@ -33,8 +35,10 @@ public sealed class WaitlistClosingJobTests
         // Arrange
         var repository = new StoredClassSession(() => FullWithAWaitlistEntry(Now.AddHours(2).AddSeconds(1)));
 
+        using WaitlistClosingJob job = Job(repository);
+
         // Act
-        await Job(repository).RunOnceAsync(CancellationToken.None).ConfigureAwait(false);
+        await job.RunOnceAsync(CancellationToken.None).ConfigureAwait(false);
 
         // Assert
         Assert.That(repository.Saves, Is.Zero);
@@ -46,8 +50,10 @@ public sealed class WaitlistClosingJobTests
         // Arrange
         var repository = new StoredClassSession(() => new ClassSession(Guid.NewGuid(), new Capacity(1), Now.AddHours(1), Details));
 
+        using WaitlistClosingJob job = Job(repository);
+
         // Act
-        await Job(repository).RunOnceAsync(CancellationToken.None).ConfigureAwait(false);
+        await job.RunOnceAsync(CancellationToken.None).ConfigureAwait(false);
 
         // Assert
         Assert.That(repository.Saves, Is.Zero);
@@ -58,7 +64,7 @@ public sealed class WaitlistClosingJobTests
     {
         // Arrange
         var repository = new StoredClassSession(() => FullWithAWaitlistEntry(Now.AddHours(1))) { SavesToLose = 1 };
-        WaitlistClosingJob job = Job(repository);
+        using WaitlistClosingJob job = Job(repository);
         await job.RunOnceAsync(CancellationToken.None).ConfigureAwait(false);
 
         // Act

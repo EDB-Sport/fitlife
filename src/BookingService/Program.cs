@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Reflection;
 using BookingService.Clients;
+using BookingService.Jobs;
 using BookingService.Repositories;
 using BookingService.Seed;
 using FitLife.Configuration;
@@ -26,6 +27,11 @@ try
     builder.Services.AddProblemDetails();
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddRepositories();
+    if (builder.Configuration.GetValue<bool>("WaitlistClosing:Enabled"))
+    {
+        builder.Services.AddHostedService<WaitlistClosingJob>(); // closes each waitlist 2 hours before start (#314)
+    }
+
     if (builder.Configuration.GetValue<bool>("Seed:Enabled"))
     {
         builder.Services.AddHostedService<ClassSessionSeeder>();

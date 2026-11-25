@@ -45,6 +45,14 @@ Stop and delete the data (MongoDB then creates the users again on the next start
 docker compose down -v
 ```
 
+**After you change a service, rebuild its image.** `up` builds a `fitlife/*:local` image only when it doesn't exist yet. Once it does, `up` reuses it, so the stack runs your old code. Rebuild with:
+
+```bash
+docker compose up -d --wait --build
+```
+
+`tools/ci/api-tests.sh` does the same with `API_TESTS_BUILD=1 tools/ci/api-tests.sh`. Without the switch it reuses the images it has, as before. CI starts on a fresh runner with no images, so it builds them either way (#284).
+
 One group on its own: `docker compose -f infrastructure.yml up -d --wait`.
 
 Two stacks side by side (two worktrees, say): give each its own project name and ports, e.g. `docker compose -p fitlife-6 up -d --wait` with other `*_PORT` values in that folder's `.env`.

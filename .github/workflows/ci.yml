@@ -92,6 +92,7 @@ jobs:
   # The committed OpenAPI contracts match the code (issue #90, section 8): every API change shows in the PR diff.
   # Then no contract breaks the one at its service's last <service>/vX.Y.Z tag (issue #91).
   contract:
+    needs: build # one compile error fails build only (#322)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

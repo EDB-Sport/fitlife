@@ -24,6 +24,7 @@
 #   - Merging several [TestCase] lines into one [TestCaseSource] lowers the count, so check 3 fails it.
 #
 # Usage: BASE_SHA=<base commit> [PR_LABELS=<label,label>] tools/ci/tdd-check.sh
+#        On a label event also EVENT_ACTION, EVENT_LABEL, PR_HEAD_SHA, GITHUB_REPOSITORY and GH_TOKEN (issue #136).
 #        (run from the repo root; compares BASE_SHA...HEAD)
 set -uo pipefail
 
@@ -42,7 +43,39 @@ TEST_MARKERS="${TEST_MARKERS:-[[,][[:space:]]*(Test|TestCase|TestCaseSource|Theo
 PR_LABELS="${PR_LABELS:-}"
 
 failed=0
-fail() { echo "::error::tdd-check: $1"; failed=1; }
+# The failure is an annotation and the first line of the job summary, ahead of any compiler output (#133)
+fail() {
+  echo "::error::tdd-check: $1"
+  failed=1
+  if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then echo "- **tdd-check:** $1" >> "$GITHUB_STEP_SUMMARY"; fi
+}
+
+# A label event other than "refactor" (issue #136). Labels don't change what tdd-check checks, except refactor,
+# so the result of the last completed tdd-check run on the PR's head commit stands: report it again instead of
+# running the suite twice more. The check still reports on this run (a skipped required check counts as passing),
+# and a label can't turn a failing check green. Without an earlier result, or while another tdd-check run on this
+# commit is still going (it may decide the result), run in full.
+EVENT_ACTION="${EVENT_ACTION:-}"
+EVENT_LABEL="${EVENT_LABEL:-}"
+if [[ $EVENT_ACTION == labeled || $EVENT_ACTION == unlabeled ]] && [[ $EVENT_LABEL != refactor ]]; then
+  : "${PR_HEAD_SHA:?Set PR_HEAD_SHA to the head commit of the PR}" "${GITHUB_REPOSITORY:?Set GITHUB_REPOSITORY to owner/repo}"
+  runs=$(gh api "repos/$GITHUB_REPOSITORY/commits/$PR_HEAD_SHA/check-runs?check_name=${CHECK_NAME:-tdd-check}&filter=all" 2>/dev/null || true)
+  # This run itself is one of the runs still going
+  going=$(jq '[.check_runs[]? | select(.status != "completed")] | length' <<<"$runs" 2>/dev/null || echo 0)
+  last=$(jq -r '[.check_runs[]? | select(.status == "completed" and (.conclusion == "success" or .conclusion == "failure"))]
+               | sort_by(.completed_at) | last | .conclusion // ""' <<<"$runs" 2>/dev/null || true)
+  if (( going > 1 )); then
+    echo "Label \"$EVENT_LABEL\" $EVENT_ACTION, but another tdd-check run on this commit is still going: running in full."
+  elif [[ $last == success ]]; then
+    echo "Label \"$EVENT_LABEL\" $EVENT_ACTION: it doesn't change tdd-check, so this run reports the last tdd-check result on this commit again: success."
+    exit 0
+  elif [[ $last == failure ]]; then
+    fail "the last tdd-check run on this commit failed, and label \"$EVENT_LABEL\" doesn't change that. See that run for the reason."
+    exit 1
+  else
+    echo "Label \"$EVENT_LABEL\" $EVENT_ACTION, but there is no earlier tdd-check result on this commit: running in full."
+  fi
+fi
 
 # Files added or modified by the PR under a directory, filtered by a regex. Renames count as delete + add.
 changed_files() { git diff --name-only --no-renames --diff-filter=AM "$BASE_SHA...$HEAD_SHA" -- "$1" | grep -E "$2" || true; }
@@ -116,7 +149,10 @@ if [[ -n "$src_changes" ]]; then
       # Restore the base branch's production code, if it had any. Tests and everything else stay as in the PR.
       if git cat-file -e "$BASE_SHA:$SRC_DIR" 2>/dev/null; then git checkout --quiet "$BASE_SHA" -- "$SRC_DIR" || exit 1; fi
       echo "::group::Tests without the change (must fail)"
-      $TEST_CMD 2>&1 | tee "$worktree/.tdd-check-output"; echo "${PIPESTATUS[0]}" > "$worktree/.tdd-check-exit"
+      # This run is meant to fail, often to compile. Its output is indented, so setup-dotnet's csc problem
+      # matcher (lines that start with a file name) doesn't make its errors annotations (#133). The file keeps
+      # the raw output for the setup-error check below.
+      $TEST_CMD 2>&1 | tee "$worktree/.tdd-check-output" | sed 's/^/  | /'; echo "${PIPESTATUS[0]}" > "$worktree/.tdd-check-exit"
       echo "::endgroup::"
     )
     red=$(cat "$worktree/.tdd-check-exit" 2>/dev/null || echo missing)

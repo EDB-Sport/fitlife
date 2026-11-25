@@ -28,7 +28,7 @@ public sealed class RoleTests
 
         // Assert
         Assert.That(role.Name, Is.EqualTo(name));
-        Assert.That(role, Is.SameAs(Role.All.Single(known => known.Name == name)));
+        Assert.That(role, Is.SameAs(Role.All.Single(known => string.Equals(known.Name, name, StringComparison.Ordinal))));
     }
 
     [TestCase("Trainer")]

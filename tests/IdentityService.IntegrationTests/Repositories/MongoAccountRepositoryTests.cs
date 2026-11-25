@@ -69,11 +69,10 @@ public sealed class MongoAccountRepositoryTests
         Account? found = await repository.FindByEmailAsync("anna@fitlife.example", CancellationToken.None).ConfigureAwait(false);
 
         // Assert
-        Assert.That(found, Is.Not.Null);
-        Assert.That(found!.Id, Is.EqualTo(account.Id));
-        Assert.That(found.Email, Is.EqualTo(account.Email));
-        Assert.That(found.PasswordHash, Is.EqualTo(PasswordHash));
-        Assert.That(found.Roles, Is.EqualTo(new[] { Role.Medlem }));
+        Assert.That(found?.Id, Is.EqualTo(account.Id));
+        Assert.That(found?.Email, Is.EqualTo(account.Email));
+        Assert.That(found?.PasswordHash, Is.EqualTo(PasswordHash));
+        Assert.That(found?.Roles, Is.EqualTo(new[] { Role.Medlem }));
     }
 
     [Test]

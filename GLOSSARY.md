@@ -23,7 +23,7 @@ People and agents use these words, and only these words, in code, tests, issues,
 | Medlemskab | A member's agreement with FitLife: membership type, status, start date and any binding period | `Membership` | ProgramMembership | Membership | Aggregate root | Subscription, Contract, Plan |
 | Medlemstype | The kind of membership offered. The case has exactly one today [PB p. 3]; more are a TO-BE choice | `MembershipType` | – | Membership | Value object | Plan, Tier, Product |
 | Medlemskabets tilstand | Where a membership is in its life: Aktiv, Pause, Betaling mangler, Opsagt, Afsluttet. Only Aktiv gives access and the right to book | `MembershipStatus` | – | Membership | Value object | State, Phase, Active flag |
-| Konto | The log-in identity of a person: user name, password hash and roles | `Account` | – | Identity | Aggregate root | User, Member, Login |
+| Konto | The log-in identity of a person: e-mail address (the log-in name), password hash and roles | `Account` | – | Identity | Aggregate root | User, Member, Login |
 | Rolle | What an account may do: Medlem, Træner or Admin, carried as a claim in the token | `Role` | Role | Identity | Value object | Permission, Group, UserType |
 | Center | One of FitLife's six centres [PB p. 3] | `Center` | ExerciseGym | Booking | Entity | Gym, Location, Club, Site |
 | Holdtype | A kind of class that recurs in the schedule, e.g. spinning or yoga | `ClassType` | – | Booking | Entity | Activity, Program, Course |

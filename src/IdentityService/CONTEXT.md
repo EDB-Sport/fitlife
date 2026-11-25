@@ -1,7 +1,7 @@
 # Identity (`src/IdentityService/`)
 
 > From `docs/templates/CONTEXT.md`. Keep it under about 80 lines, and update it in the same PR that changes the model.
-> **Status: skeleton (#232). Nothing is modelled yet.** The service answers `/health` only. The `Account` model is #233, `POST /accounts` is #234, `POST /tokens` is #235. The context map (`docs/domain/CONTEXT-MAP.md`) is decided in ADR 007.
+> **Status: the `Account` model and its repository (#233).** Nothing is reachable over HTTP yet: the service answers `/health` only. `POST /accounts` is #234, `POST /tokens` is #235. The context map (`docs/domain/CONTEXT-MAP.md`) is decided in ADR 007.
 
 ## Purpose
 
@@ -13,8 +13,8 @@ The rows are in `GLOSSARY.md`; this is the part Identity uses.
 
 | Term | Meaning here | In code |
 |---|---|---|
-| Konto | The log-in identity of a person: user name, password hash and roles | `Account` (#233) |
-| Rolle | What an account may do: Medlem, Træner or Admin, carried as a claim in the token | `Role` (#233) |
+| Konto | The log-in identity of a person: e-mail address (the log-in name), password hash and roles | `Account` |
+| Rolle | What an account may do: Medlem, Træner or Admin, carried as a claim in the token | `Role` |
 
 Words from other contexts that we do **not** use here:
 
@@ -22,7 +22,14 @@ Words from other contexts that we do **not** use here:
 
 ## Aggregates
 
-None yet. `Account` (aggregate root, with its `Role`s as value objects) comes with #233.
+**`Account`** (aggregate root, `Domain/Account.cs`) with its `Role`s (value object, `Domain/Role.cs`). Stored by `IAccountRepository` (`Application/`), implemented by `MongoAccountRepository` (`Repositories/`, the only code that uses `MongoDB.Driver`).
+
+| Rule | Test |
+|---|---|
+| A new account has the role Medlem | `AccountTests.Create_WithAnEmailAndAPasswordHash_HasRoleMedlem` |
+| An account has an e-mail address and a password hash, never the password | `AccountTests.Create_WithoutAPasswordHash_Throws`, `Create_WithoutAnEmail_Throws` |
+| A role is exactly Medlem, Træner or Admin, with the glossary's names | `RoleTests.All_IsMedlemTraenerAndAdmin_WithTheGlossaryNames`, `FromName_WithAnotherName_Throws` |
+| E-mail addresses that differ only in letter case are the same e-mail address; a unique index guards it | `MongoAccountRepositoryTests.AddAsync_WithTheSameEmailInAnotherLetterCase_IsRejected`, `FindByEmailAsync_WithAnotherLetterCase_ReturnsTheAccount` |
 
 ## Commands, queries and events
 

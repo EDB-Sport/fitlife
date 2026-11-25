@@ -43,21 +43,19 @@ public sealed class AccountTests
         Assert.That(second.Id, Is.Not.EqualTo(Guid.Empty));
     }
 
-    [TestCase(null)]
     [TestCase("")]
     [TestCase("  ")]
-    public void Create_WithoutAPasswordHash_Throws(string? passwordHash)
+    public void Create_WithoutAPasswordHash_Throws(string passwordHash)
     {
         // Arrange & Act & Assert
-        Assert.That(() => Account.Create(Email, passwordHash!), Throws.InstanceOf<ArgumentException>());
+        Assert.That(() => Account.Create(Email, passwordHash), Throws.InstanceOf<ArgumentException>());
     }
 
-    [TestCase(null)]
     [TestCase("")]
     [TestCase("  ")]
-    public void Create_WithoutAnEmail_Throws(string? email)
+    public void Create_WithoutAnEmail_Throws(string email)
     {
         // Arrange & Act & Assert
-        Assert.That(() => Account.Create(email!, PasswordHash), Throws.InstanceOf<ArgumentException>());
+        Assert.That(() => Account.Create(email, PasswordHash), Throws.InstanceOf<ArgumentException>());
     }
 }

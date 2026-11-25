@@ -39,3 +39,19 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  member-portal:
+    # The member portal (Blazor UI, #8), built from the repo root (src/MemberPortal.Web/Dockerfile).
+    # The gateway sends it every path that isn't /api/, /health or /grafana/ (MEMBER_PORTAL_URL above, #204).
+    build:
+      context: ../..
+      dockerfile: src/MemberPortal.Web/Dockerfile
+    image: fitlife/memberportal:local
+    environment:
+      Gateway__BaseUrl: http://gateway:80 # where the portal's clients reach the services' APIs (#205 on)
+      Loki__Url: http://loki:3100 # monitoring.yml; Loki:App is member-portal in appsettings.json
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10

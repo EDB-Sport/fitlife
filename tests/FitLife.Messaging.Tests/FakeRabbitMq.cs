@@ -8,15 +8,16 @@ internal sealed class FakeRabbitMq : IDisposable
 {
     public FakeRabbitMq()
     {
-        Client = new RabbitMqConnection(_ =>
+        Client = new RabbitMqConnection(async _ =>
         {
             Attempts++;
             if (Attempts <= Failures)
             {
+                await FailingTryEnds.ConfigureAwait(false);
                 throw new InvalidOperationException("RabbitMQ is not reachable.");
             }
 
-            return Task.FromResult(Connection.Object);
+            return Connection.Object;
         });
         Channel.SetupGet(channel => channel.IsOpen).Returns(true);
         Channel
@@ -46,6 +47,9 @@ internal sealed class FakeRabbitMq : IDisposable
 
     /// <summary>Gets or sets how many tries to open the connection fail before one succeeds, as when RabbitMQ is not up yet.</summary>
     public int Failures { get; set; }
+
+    /// <summary>Gets or sets when a failing try throws, so a test can make it end late, as on a slow runner (#356). By default it throws at once.</summary>
+    public Task FailingTryEnds { get; set; } = Task.CompletedTask;
 
     /// <summary>Gets how many times a connection was opened or tried.</summary>
     public int Attempts { get; private set; }

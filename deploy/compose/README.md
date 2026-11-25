@@ -64,6 +64,8 @@ Two stacks side by side (two worktrees, say): give each its own project name and
 
 The services don't read `.env`: they get their secrets from Vault (below).
 
+The demo accounts' passwords (`DEMO_*_PASSWORD`) go from `.env` straight to `identity-svc`. They are made-up demo data, not the service's secrets, so they aren't in Vault.
+
 ## Vault
 
 Course rule #9: secrets live in Vault, never in code or committed files (#17).

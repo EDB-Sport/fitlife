@@ -67,4 +67,4 @@ Each event has a JSON Schema in `contracts/events/` and is tested against it in 
 
 | Decision | ADR |
 |---|---|
-| Why these bounded contexts | `docs/adr/00X-bounded-contexts.md` |
+| Why these bounded contexts | [`docs/adr/007-bounded-contexts.md`](../adr/007-bounded-contexts.md) |

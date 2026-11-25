@@ -27,10 +27,7 @@ try
     builder.Services.AddProblemDetails();
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddRepositories();
-    if (builder.Configuration.GetValue<bool>("WaitlistClosing:Enabled"))
-    {
-        builder.Services.AddHostedService<WaitlistClosingJob>(); // closes each waitlist 2 hours before start (#314)
-    }
+    builder.Services.AddWaitlistClosing(builder.Configuration); // closes each waitlist 2 hours before start, when enabled (#314)
 
     if (builder.Configuration.GetValue<bool>("Seed:Enabled"))
     {

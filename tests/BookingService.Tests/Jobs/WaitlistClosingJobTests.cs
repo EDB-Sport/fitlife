@@ -1,6 +1,6 @@
+using BookingService.Application;
 using BookingService.Domain;
 using BookingService.Jobs;
-using BookingService.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
@@ -12,7 +12,16 @@ public sealed class WaitlistClosingJobTests
 {
     private static readonly DateTimeOffset Now = new(2026, 11, 24, 12, 0, 0, TimeSpan.Zero);
     private static readonly ClassSessionDetails Details = new(Guid.NewGuid(), Guid.NewGuid(), new Instructor("Mette"), TimeSpan.FromMinutes(60));
-    private readonly FakeTimeProvider _clock = new(Now);
+    // Only a guard so a broken job fails the test instead of hanging it; the job itself runs on the fake clock
+    private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
+    private FakeTimeProvider _clock = new(Now);
+
+    // NUnit shares one fixture instance between tests, and the timer tests advance the clock: every test starts at Now
+    [SetUp]
+    public void StartAtNow()
+    {
+        _clock = new FakeTimeProvider(Now);
+    }
 
     [Test]
     public async Task RunOnceAsync_WithAClassSessionStartingWithinTwoHours_ClosesItsWaitlistAndSavesIt()
@@ -78,6 +87,42 @@ public sealed class WaitlistClosingJobTests
         });
     }
 
+    [Test]
+    public async Task ExecuteAsync_AfterOneInterval_RunsAgainOnTheInjectedClock()
+    {
+        // Arrange: the first run loses its save, so only a second run closes the waitlist
+        var repository = new StoredClassSession(() => FullWithAWaitlistEntry(Now.AddHours(1))) { SavesToLose = 1 };
+        using WaitlistClosingJob job = Job(repository);
+        await job.StartAsync(CancellationToken.None).ConfigureAwait(false);
+        await repository.FirstRead.WaitAsync(TestTimeout).ConfigureAwait(false);
+
+        // Act
+        _clock.Advance(WaitlistClosingJob.Interval);
+        await repository.FirstSuccessfulSave.WaitAsync(TestTimeout).ConfigureAwait(false);
+
+        // Assert
+        await job.StopAsync(CancellationToken.None).ConfigureAwait(false);
+        Assert.That(repository.Saved?.Waitlist, Is.Empty);
+    }
+
+    [Test]
+    public async Task ExecuteAsync_WhenMongoDbTimesOut_KeepsRunningAndClosesOnTheNextRun()
+    {
+        // Arrange
+        var repository = new StoredClassSession(() => FullWithAWaitlistEntry(Now.AddHours(1))) { ReadsToTimeOut = 1 };
+        using WaitlistClosingJob job = Job(repository);
+        await job.StartAsync(CancellationToken.None).ConfigureAwait(false);
+        await repository.FirstRead.WaitAsync(TestTimeout).ConfigureAwait(false);
+
+        // Act
+        _clock.Advance(WaitlistClosingJob.Interval);
+        await repository.FirstSuccessfulSave.WaitAsync(TestTimeout).ConfigureAwait(false);
+
+        // Assert
+        await job.StopAsync(CancellationToken.None).ConfigureAwait(false);
+        Assert.That(repository.Saved?.Waitlist, Is.Empty);
+    }
+
     /// <summary>A full class session with one waitlist entry, joined while the waitlist was still open.</summary>
     private static ClassSession FullWithAWaitlistEntry(DateTimeOffset startTime)
     {
@@ -100,7 +145,18 @@ public sealed class WaitlistClosingJobTests
     /// </summary>
     private sealed class StoredClassSession(Func<ClassSession> build) : IClassSessionRepository
     {
+        private readonly TaskCompletionSource _firstRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _firstSuccessfulSave = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _reads;
+
         public int SavesToLose { get; init; }
+
+        public int ReadsToTimeOut { get; init; }
+
+        /// <summary>Completes on the first read: the job has started its timer by then.</summary>
+        public Task FirstRead => _firstRead.Task;
+
+        public Task FirstSuccessfulSave => _firstSuccessfulSave.Task;
 
         public int Saves { get; private set; }
 
@@ -108,10 +164,17 @@ public sealed class WaitlistClosingJobTests
 
         public Task<IReadOnlyList<ClassSession>> ListAsync(Guid? centerId, CancellationToken cancellationToken)
         {
+            _reads++;
+            _firstRead.TrySetResult();
+            if (_reads <= ReadsToTimeOut)
+            {
+                return Task.FromException<IReadOnlyList<ClassSession>>(new TimeoutException("MongoDB isn't up yet."));
+            }
+
             return Task.FromResult<IReadOnlyList<ClassSession>>([Saved ?? build()]);
         }
 
-        public Task<ClassSession?> GetAsync(Guid id, CancellationToken cancellationToken)
+        public Task<ClassSession?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         {
             throw new NotSupportedException("The job lists class sessions.");
         }
@@ -130,6 +193,7 @@ public sealed class WaitlistClosingJobTests
             }
 
             Saved = classSession;
+            _firstSuccessfulSave.TrySetResult();
             return Task.FromResult(true);
         }
     }

@@ -8,6 +8,8 @@ Follow `docs/PR_RULES.md`. CI fails a PR whose description doesn't follow the te
 
 **A red CI run:** run `gh run view <run id>` first. Its ANNOTATIONS name each failing check and its first error; the run's summary page in the browser adds a hint. Only then use `gh run view --log-failed`, which can be very long (#132).
 
+**Waiting for a PR's checks:** `tools/dev/wait-ci.sh <pr>` waits, prints `all checks green` on success, and otherwise prints only the checks that are not green (#377).
+
 ## Code
 
 - **Tests first:** start with a failing test or executable check (`docs/METHODOLOGY.md` section 4).

@@ -11,6 +11,8 @@ public sealed class TokenWriterTests
 {
     private const string SigningKey = "test-signing-key-for-unit-tests-only-32+";
     private static readonly DateTimeOffset Now = new(2026, 11, 25, 12, 0, 0, TimeSpan.Zero);
+    private static readonly string[] OnlyFitLife = ["fitlife"];
+    private static readonly string[] OnlyMedlem = ["Medlem"];
 
     private static TokenWriter Writer(string? signingKey)
     {
@@ -37,9 +39,9 @@ public sealed class TokenWriterTests
         // Assert
         var token = new JsonWebToken(result.AccessToken);
         Assert.That(token.Issuer, Is.EqualTo("fitlife-identity"));
-        Assert.That(token.Audiences, Is.EqualTo(new[] { "fitlife" }));
+        Assert.That(token.Audiences, Is.EqualTo(OnlyFitLife));
         Assert.That(token.Subject, Is.EqualTo(account.Id.ToString()));
-        Assert.That(token.Claims.Where(claim => claim.Type == "role").Select(claim => claim.Value), Is.EqualTo(new[] { "Medlem" }));
+        Assert.That(token.Claims.Where(claim => string.Equals(claim.Type, "role", StringComparison.Ordinal)).Select(claim => claim.Value), Is.EqualTo(OnlyMedlem));
         Assert.That(token.Alg, Is.EqualTo("HS256"));
     }
 

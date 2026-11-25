@@ -88,7 +88,7 @@ public sealed class TokensApiTests
         // Assert
         Guid accountId = factory.Repository.Accounts.Single().Id;
         Assert.That(token.GetClaim(FitLifeJwt.AccountIdClaim).Value, Is.EqualTo(accountId.ToString()));
-        Assert.That(token.Claims.Where(claim => claim.Type == FitLifeJwt.RoleClaim).Select(claim => claim.Value), Is.EqualTo(OnlyMedlem));
+        Assert.That(token.Claims.Where(claim => string.Equals(claim.Type, FitLifeJwt.RoleClaim, StringComparison.Ordinal)).Select(claim => claim.Value), Is.EqualTo(OnlyMedlem));
         Assert.That(token.Claims.Any(claim => claim.Type.Contains("member", StringComparison.OrdinalIgnoreCase)), Is.False);
     }
 

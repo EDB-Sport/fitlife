@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <!-- The service's own version (METHODOLOGY section 2.1), raised on a release branch -->
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <!-- The OpenAPI contract, generated on build and committed; CI fails when it is stale (docs/CSHARP_SETUP_TODO.md section 8) -->
     <OpenApiDocumentsDirectory>$(RepoRoot)contracts/openapi</OpenApiDocumentsDirectory>
     <OpenApiGenerateDocumentsOptions>--file-name bookingservice</OpenApiGenerateDocumentsOptions>

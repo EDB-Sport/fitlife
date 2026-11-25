@@ -18,8 +18,9 @@ COPY src/BookingService/ src/BookingService/
 RUN dotnet restore src/BookingService/BookingService.csproj --locked-mode
 RUN dotnet publish src/BookingService/BookingService.csproj -c Release -o /app/publish --no-restore
 
-# The runtime from the pinned SDK
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.7-alpine3.23 AS runtime
+# The runtime may be a newer .NET 10 patch than the SDK's (ADR 004). 10.0.15 on Alpine 3.24: 10.0.7 on
+# Alpine 3.23 failed the v0.1.0 release on HIGH and CRITICAL Trivy findings, and 10.0.12 still had some.
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.15-alpine3.24 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
 

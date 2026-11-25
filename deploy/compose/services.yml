@@ -40,6 +40,11 @@ services:
       # password (MongoDb:Password) in secret/identity-svc. Nothing connects until the first request, so no depends_on.
       MongoDb__Host: mongodb
       MongoDb__Port: "27017"
+      # One demo account per role (#237), seeded after start-up; /health waits for it. Passwords from .env, not Vault.
+      Seed__DemoAccounts: "true"
+      Seed__MedlemPassword: ${DEMO_MEDLEM_PASSWORD:?set it in deploy/compose/.env}
+      Seed__TraenerPassword: ${DEMO_TRAENER_PASSWORD:?set it in deploy/compose/.env}
+      Seed__AdminPassword: ${DEMO_ADMIN_PASSWORD:?set it in deploy/compose/.env}
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
       interval: 5s

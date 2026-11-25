@@ -26,7 +26,7 @@ public sealed class DemoAccountSeedServiceTests
     private static DemoAccountSeedService Service(Mock<IAccountRepository> repository, IConfiguration configuration, DemoAccountSeedStatus status, CapturingLogger logger)
     {
         var seeder = new DemoAccountSeeder(repository.Object, new PasswordHasher<Account>(), configuration);
-        return new DemoAccountSeedService(seeder, status, configuration, logger);
+        return new DemoAccountSeedService(new Lazy<DemoAccountSeeder>(() => seeder), status, configuration, logger);
     }
 
     private static async Task RunAsync(DemoAccountSeedService service)

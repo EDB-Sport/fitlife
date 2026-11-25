@@ -31,6 +31,11 @@ try
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddSingleton<TokenWriter>(); // reads Jwt:SigningKey when it writes a token, so the app starts without one
     builder.Services.AddScoped<LogInHandler>();
+    builder.Services.AddSingleton<DemoAccountSeeder>();
+    builder.Services.AddSingleton(provider => new Lazy<DemoAccountSeeder>(provider.GetRequiredService<DemoAccountSeeder>));
+    builder.Services.AddSingleton<DemoAccountSeedStatus>();
+    builder.Services.AddHostedService<DemoAccountSeedService>(); // only when Seed:DemoAccounts is true (#237)
+    builder.Services.AddHealthChecks().AddCheck<DemoAccountSeedHealthCheck>("demo-accounts");
 
     WebApplication app = builder.Build();
 

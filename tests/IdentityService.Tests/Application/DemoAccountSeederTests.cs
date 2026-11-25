@@ -13,6 +13,9 @@ public sealed class DemoAccountSeederTests
     private const string TraenerPassword = "change-me-demo-traener";
     private const string AdminPassword = "change-me-demo-admin";
 
+    private static readonly string[] AllDemoEmails = ["medlem@fitlife.example", "traener@fitlife.example", "admin@fitlife.example"];
+    private static readonly string[] DemoEmailsButTraener = ["medlem@fitlife.example", "admin@fitlife.example"];
+
     private readonly PasswordHasher<Account> _hasher = new();
 
     private static IConfiguration Configuration(string? skippedKey = null)
@@ -49,7 +52,7 @@ public sealed class DemoAccountSeederTests
         await Seeder(repository, Configuration()).SeedAsync(CancellationToken.None).ConfigureAwait(false);
 
         // Assert
-        Assert.That(added.Select(account => account.Email), Is.EqualTo(new[] { "medlem@fitlife.example", "traener@fitlife.example", "admin@fitlife.example" }));
+        Assert.That(added.Select(account => account.Email), Is.EqualTo(AllDemoEmails));
         Assert.That(added.Select(account => account.Roles.Single()), Is.EqualTo(new[] { Role.Medlem, Role.Traener, Role.Admin }));
     }
 
@@ -105,7 +108,7 @@ public sealed class DemoAccountSeederTests
         await Seeder(repository, Configuration()).SeedAsync(CancellationToken.None).ConfigureAwait(false);
 
         // Assert
-        Assert.That(added.Select(account => account.Email), Is.EqualTo(new[] { "medlem@fitlife.example", "admin@fitlife.example" }));
+        Assert.That(added.Select(account => account.Email), Is.EqualTo(DemoEmailsButTraener));
     }
 
     [TestCase("Seed:MedlemPassword")]

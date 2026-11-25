@@ -56,12 +56,8 @@ public sealed class MembershipClient(HttpClient http) : IMembershipClient
         }
         catch (TimeoutRejectedException)
         {
-            // The resilience handler's time-out
-            return MemberLookup.Unavailable;
-        }
-        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            // HttpClient's own time-out. The caller's cancellation is passed on
+            // The resilience handler's time-out: 30 s in all by default, well within HttpClient's own 100 s. The caller's own
+            // cancellation is passed on
             return MemberLookup.Unavailable;
         }
         catch (JsonException)

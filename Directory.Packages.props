@@ -35,7 +35,7 @@
 
   <!-- MongoDB, only in a service's *.Repositories namespace (TEAM001) -->
   <ItemGroup Label="Storage">
-    <PackageVersion Include="MongoDB.Driver" Version="3.13.0" />
+    <PackageVersion Include="MongoDB.Driver" Version="3.14.1" />
   </ItemGroup>
 
   <!-- Added to every test project automatically by tests/Directory.Build.props. -->

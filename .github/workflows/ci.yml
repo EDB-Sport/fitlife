@@ -28,6 +28,7 @@ env:
 jobs:
   restore:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
@@ -38,6 +39,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
@@ -51,6 +53,7 @@ jobs:
     # After build, so one compile error fails build only and is shown once (issue #134)
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
@@ -64,6 +67,7 @@ jobs:
     # After build, so one compile error fails build only and is shown once (issue #134)
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
@@ -72,7 +76,7 @@ jobs:
       - run: dotnet restore --locked-mode
       - run: dotnet build -c Release --no-restore -v q -clp:NoSummary -tl:off
       - name: Test with coverage
-        run: tools/ci/summarize.sh test "Run the named test with dotnet test -c Release --filter, and read its Error Message." -- dotnet test -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
+        run: tools/ci/summarize.sh test "Run the named test with dotnet test -c Release --filter, and read its Error Message." -- dotnet test -c Release --no-build --blame-hang-timeout 5m --blame-hang-dump-type none --collect:"XPlat Code Coverage" --results-directory TestResults
       - name: Coverage report
         uses: danielpalme/ReportGenerator-GitHub-Action@70c37c4d588cff5bf9cf190830c6f01dfcfb884b # v5.6.1
         with:
@@ -89,6 +93,7 @@ jobs:
   # Then no contract breaks the one at its service's last <service>/vX.Y.Z tag (issue #91).
   contract:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -105,6 +110,7 @@ jobs:
   # Runs the tests of the CI scripts themselves, so a change to a script fails its own tests.
   ci-scripts:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1, because mutation.test.sh builds and mutates a throwaway project
@@ -124,6 +130,7 @@ jobs:
   # checks that each rule in Directory.Build.* still fails the build (issue #54).
   build-rules:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
@@ -138,6 +145,7 @@ jobs:
   stack-check:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
       pull-requests: read
@@ -158,6 +166,7 @@ jobs:
   mutation:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -180,6 +189,7 @@ jobs:
   diff-scan:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
       issues: write

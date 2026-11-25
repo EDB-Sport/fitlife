@@ -22,6 +22,7 @@ concurrency:
 jobs:
   tdd-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -41,7 +42,7 @@ jobs:
           EVENT_LABEL: ${{ github.event.label.name }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GH_TOKEN: ${{ github.token }}
-          TEST_CMD: dotnet test -c Release
+          TEST_CMD: dotnet test -c Release --blame-hang-timeout 5m --blame-hang-dump-type none
           SRC_DIR: src/
           TEST_DIR: tests/
           SRC_FILE_REGEX: '\.cs$'
@@ -58,7 +59,7 @@ jobs:
           EVENT_LABEL: ${{ github.event.label.name }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GH_TOKEN: ${{ github.token }}
-          TEST_CMD: dotnet test -c Release
+          TEST_CMD: dotnet test -c Release --blame-hang-timeout 5m --blame-hang-dump-type none
           SRC_DIR: tools/Analyzers/Team.Analyzers/
           TEST_DIR: tools/Analyzers/Team.Analyzers.Tests/
           SRC_FILE_REGEX: '\.cs$'

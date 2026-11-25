@@ -10,15 +10,15 @@ The project description asks for a user interface that demonstrates the implemen
 
 ## Decision
 
-Each UI is a Blazor Web App in `src/<Name>.Web/` that uses **static server-side rendering by default** and the **Interactive Server** render mode only on components that need it. The UI keeps the JWT on the server, in the authentication cookie's properties. A `DelegatingHandler` adds it to the typed `HttpClient`s that call the services. The browser only holds an HTTP-only cookie.
+Each UI is a Blazor Web App in `src/<Name>.Web/` that uses **static server-side rendering by default** and the **Interactive Server** render mode only on components that need it. The UI saves the JWT in the authentication cookie's properties. ASP.NET Core serializes those properties into the cookie, so the token does travel to the browser inside it, encrypted and signed by Data Protection. The cookie is HttpOnly, Secure and SameSite, so browser script can't read it. A `DelegatingHandler` adds the token to the typed `HttpClient`s that call the services. A server-side ticket store, which would keep the token off the browser, is not part of this decision.
 
 ## Alternatives considered
 
-- **WebAssembly (or Interactive Auto).** Runs in the browser, works offline after download, and takes load off the server. Rejected: a larger first download, CORS on every service, and the JWT in browser storage, where a script can read it. It also needs either a separate API host for the UI or the services exposed directly to the browser.
+- **WebAssembly (or Interactive Auto).** Runs in the browser, works offline after download, and takes load off the server. Rejected: a larger first download and the JWT in browser storage, where a script can read it. It also needs either a separate API host for the UI or the services exposed directly to the browser. CORS is not a reason: Caddy and Nginx serve the UIs and the services from one origin, so `/api/...` needs no CORS.
 - **Interactive Server everywhere.** Simplest to write. Rejected: every page holds a SignalR circuit and server memory for each user, and Interactive Server components have no `HttpContext`, which makes the token handling harder on every page instead of only where interactivity is needed.
 
 ## Consequences
 
-- Easier: one container per UI with no separate API host. The token never reaches the browser. The UI calls services the same way any other consumer of the contracts does.
+- Easier: one container per UI with no separate API host. The browser script never sees the token, which stays inside the encrypted HttpOnly cookie. The UI calls services the same way any other consumer of the contracts does.
 - Harder: interactive components need a SignalR connection to the server, so they stop working if the connection drops. Interactive Server components can't read `HttpContext`, so a token-using component copies the token into a scoped holder when the circuit starts, or the page stays static (section 6a).
 - Must do: default to static rendering and choose Interactive Server per component, with a reason in the PR. Keep logic in `.razor.cs` code-behind or small services, so the TDD check and the analyzers cover it.

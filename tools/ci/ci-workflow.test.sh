@@ -38,6 +38,9 @@ for job in format test; do
   expect "$job runs only after build" grep -qE '^    needs: \[?build\]?$' <<<"$(job_block "$job")"
 done
 
+# contract compiles the services too: one compile error fails build only (issue #322)
+expect "contract runs only after build" grep -qE '^    needs: \[?build\]?( #.*)?$' <<<"$(job_block contract)"
+
 build_rules=$(job_block build-rules)
 
 expect "ci.yml runs on pull requests" grep -qE '^  pull_request:' "$ci"

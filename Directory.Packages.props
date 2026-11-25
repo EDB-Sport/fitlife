@@ -28,6 +28,11 @@
     <PackageVersion Include="NLog.Targets.Loki" Version="2.7.1" />
   </ItemGroup>
 
+  <!-- RabbitMQ events, used only by libs/FitLife.Messaging (#190) -->
+  <ItemGroup Label="Messaging">
+    <PackageVersion Include="RabbitMQ.Client" Version="7.2.2" />
+  </ItemGroup>
+
   <!-- Added to every test project automatically by tests/Directory.Build.props. -->
   <ItemGroup Label="Test framework">
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />

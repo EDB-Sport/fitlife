@@ -83,6 +83,9 @@
           "NLog": "6.2.2"
         }
       },
+      "fitlife.configuration": {
+        "type": "Project"
+      },
       "fitlife.correlation": {
         "type": "Project"
       }

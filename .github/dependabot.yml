@@ -1,0 +1,45 @@
+# Dependabot version updates for GitHub Actions and Docker images (issue #281, ADR 004).
+# One grouped PR per ecosystem per month. Check with tools/ci/dependabot.test.sh.
+#
+# Not covered: NuGet. Whether Dependabot regenerates packages.lock.json on a version bump is unconfirmed,
+# so NuGet updates stay manual until that is checked (docs/CSHARP_SETUP_TODO.md section 1).
+#
+# Not covered: the .NET SDK image (mcr.microsoft.com/dotnet/sdk) in the Dockerfiles. It has to move together
+# with global.json and the Web SDK lock files (ADR 004), so it is a reviewed change, not a Dependabot PR.
+#
+# Three ecosystems instead of two: most image pins are in deploy/compose/*.yml, which Dependabot's `docker`
+# ecosystem does not read. `docker-compose` covers those files (owner decision on #281, option B).
+#
+# Dependabot PRs have no issue link and no template. The PR description check exempts them (tools/ci/check-pr-body.sh).
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      github-actions:
+        patterns: ["*"]
+    open-pull-requests-limit: 1
+
+  - package-ecosystem: "docker"
+    directories:
+      - "/src/*"
+    schedule:
+      interval: "monthly"
+    groups:
+      docker:
+        patterns: ["*"]
+    ignore:
+      # The .NET SDK image moves with global.json and the lock files (ADR 004), not with Dependabot.
+      - dependency-name: "mcr.microsoft.com/dotnet/sdk"
+    open-pull-requests-limit: 1
+
+  - package-ecosystem: "docker-compose"
+    directory: "/deploy/compose"
+    schedule:
+      interval: "monthly"
+    groups:
+      docker-compose:
+        patterns: ["*"]
+    open-pull-requests-limit: 1

@@ -40,9 +40,9 @@ public sealed class ClassSessionSeederTests
         {
             Assert.That(_referenceData.Centers.Values.Select(center => center.Name).Order(StringComparer.Ordinal), Is.EqualTo(Enumerable.Range(1, 6).Select(number => $"FitLife Center {number}")));
             Assert.That(_referenceData.ClassTypes, Has.Count.GreaterThanOrEqualTo(2));
-            Assert.That(_referenceData.Centers.Keys, Is.SubsetOf(_classSessions.All.Select(classSession => classSession.CenterId)));
-            Assert.That(_referenceData.Centers.Keys, Is.SupersetOf(_classSessions.All.Select(classSession => classSession.CenterId)));
-            Assert.That(_classSessions.All.Select(classSession => classSession.ClassTypeId), Is.SubsetOf(_referenceData.ClassTypes.Keys));
+            Assert.That(_referenceData.Centers.Keys, Is.SubsetOf(_classSessions.All.Select(classSession => classSession.CenterId).Distinct()));
+            Assert.That(_referenceData.Centers.Keys, Is.SupersetOf(_classSessions.All.Select(classSession => classSession.CenterId).Distinct()));
+            Assert.That(_classSessions.All.Select(classSession => classSession.ClassTypeId).Distinct(), Is.SubsetOf(_referenceData.ClassTypes.Keys));
         });
     }
 

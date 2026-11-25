@@ -79,6 +79,20 @@ public sealed class ReservationMadeSchemaTests
     {
         // Arrange
         JsonObject sample = ParseSample();
+        sample["startTime"] = "2026-12-01T17:00:00";
+
+        // Act
+        IReadOnlyList<string> errors = EventSchemas.Validate(EventName, sample.ToJsonString());
+
+        // Assert
+        Assert.That(errors, Is.Not.Empty);
+    }
+
+    [Test]
+    public void Validate_StartTimeThatIsNotADate_IsInvalid()
+    {
+        // Arrange
+        JsonObject sample = ParseSample();
         sample["startTime"] = "1 December, 18:00";
 
         // Act

@@ -52,6 +52,26 @@ public sealed class ReservationMadeContractTests
     }
 
     [Test]
+    public void Deserialize_AMemberIdThatIsNull_Throws()
+    {
+        // Arrange
+        byte[] body = Encoding.UTF8.GetBytes("""{"reservationId":"r","classSessionId":"c","memberId":null,"startTime":"2026-12-01T17:00:00+00:00"}""");
+
+        // Act and assert
+        Assert.Throws<JsonException>(() => EventJson.Deserialize<ReservationMade>(body));
+    }
+
+    [Test]
+    public void Deserialize_JsonNull_Throws()
+    {
+        // Arrange
+        byte[] body = Encoding.UTF8.GetBytes("null");
+
+        // Act and assert
+        Assert.Throws<JsonException>(() => EventJson.Deserialize<ReservationMade>(body));
+    }
+
+    [Test]
     public void RoutingKey_IsTheSchemasFileName()
     {
         // Act

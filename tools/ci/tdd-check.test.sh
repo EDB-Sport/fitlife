@@ -176,6 +176,37 @@ echo "${runner//echo \"red: \$word\"/echo \"Calc.cs(1,1): error CS0103: The name
 git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
 expect "compile error from missing production code is red" pass "$repo"
 
+# 4c. Annotations (issue #133). setup-dotnet's csc problem matcher turns a line like
+# "File.cs(1,1): error CS0103: ..." into an ##[error] annotation. The base run is expected to fail to
+# compile, so its output must not match; the head run's must, and the real failure goes to the summary.
+csc_line='^[^[:space:]].*\([0-9]+(,[0-9]+)*\): +(error|warning) +[A-Za-z]+[0-9]+:'
+run_check() { # run_check <repo> [summary file]: the check's output in $out
+  out=$(cd "$1" && BASE_SHA=$(git rev-parse HEAD^) TEST_CMD="bash run-tests.sh" GITHUB_STEP_SUMMARY="${2:-}" "$check" 2>&1)
+}
+annotation() { # annotation <description> <command...>
+  if "${@:2}"; then echo "PASS  $1"; else echo "FAIL  $1"; echo "$out" | sed 's/^/      /'; failures=$((failures + 1)); fi
+}
+compile_error_runner() { # the fixture's runner, printing a compiler error for each missing word
+  local runner; runner=$(cat "$1/run-tests.sh")
+  echo "${runner//echo \"red: \$word\"/echo \"Calc.cs(1,1): error CS0103: The name '\$word' does not exist [/repo/Calc.csproj]\"}" > "$1/run-tests.sh"
+}
+
+repo=$(feature_pr)
+compile_error_runner "$repo"
+git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+run_check "$repo"
+annotation "expected compile errors of the base run are not annotations" bash -c '! grep -qE "$1" <<<"$2"' _ "$csc_line" "$out"
+annotation "the base run's output is still in the log" grep -qF "| Calc.cs(1,1): error CS0103: The name" <<<"$out"
+
+repo=$(feature_pr)
+compile_error_runner "$repo"
+echo 'public static class Minus { }' > "$repo/src/Subtractor.cs" # head still lacks Subtract
+git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+summary="$tmp_root/summary.md"
+run_check "$repo" "$summary"
+annotation "compile errors of the head run stay annotations" grep -qE "$csc_line" <<<"$out"
+annotation "the real failure goes to the job summary" grep -qF "the tests fail with the change" "$summary"
+
 # 4d. Label events (issue #136). A label other than "refactor" doesn't change what tdd-check checks, so the
 # check reports the last completed tdd-check result on the PR's head commit again, read with `gh api`, and
 # doesn't run the suite. Without such a result, or while another tdd-check run is still going, it runs in full.

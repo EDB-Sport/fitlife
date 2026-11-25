@@ -43,7 +43,12 @@ TEST_MARKERS="${TEST_MARKERS:-[[,][[:space:]]*(Test|TestCase|TestCaseSource|Theo
 PR_LABELS="${PR_LABELS:-}"
 
 failed=0
-fail() { echo "::error::tdd-check: $1"; failed=1; }
+# The failure is an annotation and the first line of the job summary, ahead of any compiler output (#133)
+fail() {
+  echo "::error::tdd-check: $1"
+  failed=1
+  if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then echo "- **tdd-check:** $1" >> "$GITHUB_STEP_SUMMARY"; fi
+}
 
 # A label event other than "refactor" (issue #136). Labels don't change what tdd-check checks, except refactor,
 # so the result of the last completed tdd-check run on the PR's head commit stands: report it again instead of
@@ -144,7 +149,10 @@ if [[ -n "$src_changes" ]]; then
       # Restore the base branch's production code, if it had any. Tests and everything else stay as in the PR.
       if git cat-file -e "$BASE_SHA:$SRC_DIR" 2>/dev/null; then git checkout --quiet "$BASE_SHA" -- "$SRC_DIR" || exit 1; fi
       echo "::group::Tests without the change (must fail)"
-      $TEST_CMD 2>&1 | tee "$worktree/.tdd-check-output"; echo "${PIPESTATUS[0]}" > "$worktree/.tdd-check-exit"
+      # This run is meant to fail, often to compile. Its output is indented, so setup-dotnet's csc problem
+      # matcher (lines that start with a file name) doesn't make its errors annotations (#133). The file keeps
+      # the raw output for the setup-error check below.
+      $TEST_CMD 2>&1 | tee "$worktree/.tdd-check-output" | sed 's/^/  | /'; echo "${PIPESTATUS[0]}" > "$worktree/.tdd-check-exit"
       echo "::endgroup::"
     )
     red=$(cat "$worktree/.tdd-check-exit" 2>/dev/null || echo missing)

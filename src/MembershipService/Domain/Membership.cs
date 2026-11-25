@@ -48,12 +48,6 @@ public sealed class Membership
         Status = MembershipStatus.Active;
     }
 
-    /// <summary>The membership fee was not paid: the membership no longer gives access or the right to book.</summary>
-    public void MarkPaymentMissing()
-    {
-        Status = MembershipStatus.PaymentMissing;
-    }
-
     /// <summary>Rebuilds a stored membership.</summary>
     /// <param name="id">The membership id.</param>
     /// <param name="memberId">The member id.</param>

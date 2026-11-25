@@ -46,7 +46,7 @@ People and agents use these words, and only these words, in code, tests, issues,
 | Ventelisteplads udløbet | The waitlist closed 2 hours before start, and a member's waitlist entry was removed without a seat | `WaitlistEntryExpired` | – | Booking | Domain event | WaitlistEntryRemoved, WaitlistEntryDeleted, QueueExpired |
 | Hold aflyst | A class session will not take place | `ClassSessionCancelled` | – | Booking | Domain event | ClassDeleted, SessionRemoved |
 | Hold ændret | A class session got a new time or place | `ClassSessionChanged` | – | Booking | Domain event | ClassUpdated, SessionEdited |
-| Indmeldelse | A person with an account joins FitLife with their token and gets a member with an active membership (UC5) | `JoinMembershipCommand` | JoinAction | Membership | Command | Signup, Registration, Subscribe, Enroll |
+| Indmeldelse | A person with an account joins FitLife with their token and gets a member and a membership (UC5). The membership starts as Betaling mangler (`PaymentMissing`) and becomes Aktiv when the first fee is paid | `JoinMembershipCommand` | JoinAction | Membership | Command | Signup, Registration, Subscribe, Enroll |
 | Betalingsudbyder | The external payment provider that charges the membership fee. Outside FitLife Digital, behind an anticorruption layer; a Postman Mock Server in the PoC | `IPaymentProvider` | – | Membership | Domain service | Payment gateway, PSP, Acquirer |
 | Medlemskab pauset | A membership is on pause for a period | `MembershipPaused` | – | Membership | Domain event | MembershipFrozen, Suspended |
 | Medlemskab opsagt | A member has given notice; the membership ends after the notice period | `MembershipCancelled` | – | Membership | Domain event | MembershipDeleted, Unsubscribed |

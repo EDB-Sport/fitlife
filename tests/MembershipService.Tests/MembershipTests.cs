@@ -49,19 +49,4 @@ public sealed class MembershipTests
         Assert.That(membership.StartDate, Is.EqualTo(Today));
         Assert.That(membership.MemberId, Is.EqualTo(memberId));
     }
-
-    [Test]
-    public void MarkPaymentMissing_ActiveMembership_IsPaymentMissingAndNotActive()
-    {
-        // Arrange
-        var membership = Membership.Start(Guid.NewGuid(), Today);
-        membership.MarkPaid();
-
-        // Act
-        membership.MarkPaymentMissing();
-
-        // Assert
-        Assert.That(membership.Status, Is.EqualTo(MembershipStatus.PaymentMissing));
-        Assert.That(membership.IsActive, Is.False);
-    }
 }

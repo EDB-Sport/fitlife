@@ -18,10 +18,48 @@ public sealed class LogInHandlerTests
 
     private LogInHandler Handler(Mock<IAccountRepository> repository)
     {
+        return Handler(repository, _hasher);
+    }
+
+    private static LogInHandler Handler(Mock<IAccountRepository> repository, IPasswordHasher<Account> hasher)
+    {
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal) { ["Jwt:SigningKey"] = SigningKey })
             .Build();
-        return new LogInHandler(repository.Object, _hasher, new TokenWriter(configuration, new FakeTimeProvider()));
+        return new LogInHandler(repository.Object, hasher, new TokenWriter(configuration, new FakeTimeProvider()));
+    }
+
+    [Test]
+    public async Task Handle_WithAnUnknownEmail_StillVerifiesAPassword()
+    {
+        // Arrange: the response time mustn't tell whether an account has the e-mail address
+        var repository = new Mock<IAccountRepository>();
+        repository.Setup(accounts => accounts.FindByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Account?)null);
+        var hasher = new Mock<IPasswordHasher<Account>>();
+        hasher.Setup(passwords => passwords.VerifyHashedPassword(It.IsAny<Account>(), It.IsAny<string>(), Password)).Returns(PasswordVerificationResult.Failed);
+
+        // Act
+        LogInResult? result = await Handler(repository, hasher.Object).HandleAsync(new LogInCommand(Email, Password), CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(result, Is.Null);
+        hasher.Verify(passwords => passwords.VerifyHashedPassword(It.IsAny<Account>(), It.IsAny<string>(), Password), Times.Once);
+    }
+
+    [Test]
+    public async Task Handle_WithAnUnknownEmail_IsRejectedEvenIfTheDummyHashMatches()
+    {
+        // Arrange
+        var repository = new Mock<IAccountRepository>();
+        repository.Setup(accounts => accounts.FindByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((Account?)null);
+        var hasher = new Mock<IPasswordHasher<Account>>();
+        hasher.Setup(passwords => passwords.VerifyHashedPassword(It.IsAny<Account>(), It.IsAny<string>(), It.IsAny<string>())).Returns(PasswordVerificationResult.Success);
+
+        // Act
+        LogInResult? result = await Handler(repository, hasher.Object).HandleAsync(new LogInCommand(Email, Password), CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(result, Is.Null);
     }
 
     private Account StoredAccount()

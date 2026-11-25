@@ -1,6 +1,7 @@
 using IdentityService.Application;
 using IdentityService.Domain;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 namespace IdentityService.Tests.Application;
@@ -20,7 +21,7 @@ public sealed class CreateAccountHandlerTests
         var repository = new Mock<IAccountRepository>();
         repository.Setup(accounts => accounts.FindByEmailAsync(Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Account.Create(Email, "AQAAAAIAAYagAAAAEhash"));
-        var handler = new CreateAccountHandler(repository.Object, _hasher);
+        var handler = new CreateAccountHandler(repository.Object, _hasher, NullLogger<CreateAccountHandler>.Instance);
 
         // Act
         CreateAccountOutcome outcome = await handler.HandleAsync(new CreateAccountCommand(Email, Password), CancellationToken.None).ConfigureAwait(false);
@@ -38,7 +39,7 @@ public sealed class CreateAccountHandlerTests
         var repository = new Mock<IAccountRepository>();
         repository.Setup(accounts => accounts.FindByEmailAsync(Email, It.IsAny<CancellationToken>())).ReturnsAsync((Account?)null);
         repository.Setup(accounts => accounts.AddAsync(It.IsAny<Account>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
-        var handler = new CreateAccountHandler(repository.Object, _hasher);
+        var handler = new CreateAccountHandler(repository.Object, _hasher, NullLogger<CreateAccountHandler>.Instance);
 
         // Act
         CreateAccountOutcome outcome = await handler.HandleAsync(new CreateAccountCommand(Email, Password), CancellationToken.None).ConfigureAwait(false);
@@ -58,7 +59,7 @@ public sealed class CreateAccountHandlerTests
         repository.Setup(accounts => accounts.AddAsync(It.IsAny<Account>(), It.IsAny<CancellationToken>()))
             .Callback<Account, CancellationToken>((account, _) => stored = account)
             .ReturnsAsync(true);
-        var handler = new CreateAccountHandler(repository.Object, _hasher);
+        var handler = new CreateAccountHandler(repository.Object, _hasher, NullLogger<CreateAccountHandler>.Instance);
 
         // Act
         CreateAccountOutcome outcome = await handler.HandleAsync(new CreateAccountCommand(Email, Password), CancellationToken.None).ConfigureAwait(false);

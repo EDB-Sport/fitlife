@@ -62,14 +62,14 @@ public sealed class ClassSession
     public IReadOnlyList<DomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 
     /// <summary>
-    /// Reserves a seat for the member, unless the member already has one, the class session starts more than 4 weeks from
-    /// now, or every seat is taken.
+    /// Reserves a seat for the member, unless the member already has one, the class session has started or starts more than
+    /// 4 weeks from now, or every seat is taken.
     /// </summary>
     /// <param name="memberId">The member who wants a seat.</param>
     /// <param name="clock">Tells the time now.</param>
     /// <returns>
     /// <see cref="ReservationResult.ClassSessionCancelled"/>, <see cref="ReservationResult.MemberAlreadyHasReservation"/>,
-    /// <see cref="ReservationResult.TooFarAhead"/> or
+    /// <see cref="ReservationResult.ClassSessionStarted"/>, <see cref="ReservationResult.TooFarAhead"/> or
     /// <see cref="ReservationResult.ClassSessionFull"/> when no reservation is made; then nothing changes. A member who has a
     /// seat hears that first, also on a full class session.
     /// </returns>
@@ -85,6 +85,11 @@ public sealed class ClassSession
         if (_reservations.Exists(reservation => reservation.MemberId == memberId))
         {
             return ReservationResult.MemberAlreadyHasReservation;
+        }
+
+        if (clock.GetUtcNow() >= StartTime)
+        {
+            return ReservationResult.ClassSessionStarted;
         }
 
         if (StartTime - clock.GetUtcNow() > HowFarAheadMembersCanReserve)

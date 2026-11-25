@@ -9,7 +9,9 @@ namespace MembershipService.Api;
 /// <summary>Joining FitLife, and the lookup by account id other services use (CONTEXT-MAP section 4, Open Host Service).</summary>
 public static class MemberEndpoints
 {
-    /// <summary>Maps <c>POST /members</c> and <c>GET /members/by-account/{accountId}</c>. Both need a token from Identity.</summary>
+    /// <summary>
+    /// Maps <c>POST /members</c>, <c>GET /members/me</c> and <c>GET /members/by-account/{accountId}</c>. All need a token from Identity.
+    /// </summary>
     /// <param name="app">The routes.</param>
     /// <returns>The routes.</returns>
     public static IEndpointRouteBuilder MapMemberEndpoints(this IEndpointRouteBuilder app)
@@ -22,6 +24,9 @@ public static class MemberEndpoints
         members.MapGet("/by-account/{accountId}", GetByAccount)
             .WithName("GetMemberByAccount")
             .WithSummary("The member id of an account, and whether its membership is active");
+        members.MapGet("/me", GetMine)
+            .WithName("GetMyMembership")
+            .WithSummary("The membership of the account in the token: type, status and start date");
         return app;
     }
 
@@ -42,6 +47,31 @@ public static class MemberEndpoints
 
         var response = new MemberResponse(result.Member.Id, result.Membership.Status, result.Membership.IsActive);
         return TypedResults.Created(new Uri($"/members/by-account/{Uri.EscapeDataString(accountId)}", UriKind.Relative), response);
+    }
+
+    private static async Task<Results<Ok<MyMembershipResponse>, NotFound, UnauthorizedHttpResult>> GetMine(
+        ClaimsPrincipal user, IMemberRepository members, IMembershipRepository memberships, CancellationToken cancellationToken)
+    {
+        // The account comes from the token, never from the path, so a member only ever sees their own (ADR 007)
+        string? accountId = user.FindFirstValue(FitLifeJwt.AccountIdClaim);
+        if (string.IsNullOrWhiteSpace(accountId))
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        Member? member = await members.FindByAccountIdAsync(accountId, cancellationToken).ConfigureAwait(false);
+        if (member is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        Membership? membership = await memberships.FindByMemberIdAsync(member.Id, cancellationToken).ConfigureAwait(false);
+        if (membership is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        return TypedResults.Ok(new MyMembershipResponse(member.Id, membership.Type, membership.Status, membership.IsActive, membership.StartDate));
     }
 
     private static async Task<Results<Ok<MemberResponse>, NotFound>> GetByAccount(

@@ -25,6 +25,13 @@ public sealed class MongoMembershipRepository(IMongoDatabase database) : IMember
     }
 
     /// <inheritdoc />
+    public Task SaveAsync(Membership membership, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(membership);
+        return _memberships.ReplaceOneAsync(stored => stored.Id == membership.Id, MembershipDocument.From(membership), cancellationToken: cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<Membership?> FindByMemberIdAsync(Guid memberId, CancellationToken cancellationToken)
     {
         MembershipDocument? document = await _memberships.Find(membership => membership.MemberId == memberId)

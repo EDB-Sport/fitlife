@@ -258,6 +258,70 @@ public interface Sample
 }
 EOF
 
+# 6b. The same rules in a .razor @code block (#397): Razor's C# output counts as hand-written (.editorconfig)
+write_razor_project() {
+  rm -rf "$a"
+  mkdir -p "$a"
+  cat > "$a/StyleCheck.csproj" <<EOF
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+</Project>
+EOF
+  # The SDK finds .editorconfig files from the folders of the C# files, so a project needs one, as every real one has
+  cat > "$a/Names.cs" <<'EOF'
+namespace StyleCheck;
+
+/// <summary>A name for the sample component.</summary>
+public static class Names
+{
+    /// <summary>Gets the name.</summary>
+    public static string Sample { get; } = "sample";
+}
+EOF
+}
+
+# expect_razor <0 = builds | diagnostic id> <description> <Sample.razor content on stdin>
+expect_razor() {
+  local out status
+  write_razor_project
+  cat > "$a/Sample.razor"
+  out=$(dotnet build "$a" -v q -clp:NoSummary -tl:off 2>&1)
+  status=$?
+  if [ "$1" = 0 ] && [ "$status" -eq 0 ]; then
+    echo "PASS  $2"
+  elif [ "$1" != 0 ] && [ "$status" -ne 0 ] && grep -q "Sample.razor.*error $1" <<<"$out"; then
+    echo "PASS  $2"
+  else
+    echo "FAIL  $2 (wanted ${1/#0/a clean build})"
+    grep -E 'error|warning' <<<"$out" | head -5
+    failures=$((failures + 1))
+  fi
+}
+
+expect_razor 0 "a .razor component in the agreed style builds (the generator's own #nullable/#pragma lines aren't TEAM004)" <<'EOF'
+<p>@Text(1)</p>
+
+@code {
+    private static string Text(int number)
+    {
+        return number.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+}
+EOF
+
+expect_razor IDE0022 "an expression-bodied method in a .razor @code block fails (IDE0022)" <<'EOF'
+<p>@Text(1)</p>
+
+@code {
+    private static string Text(int number) => number.ToString(System.Globalization.CultureInfo.InvariantCulture);
+}
+EOF
+
 # 7. Repo-level criteria
 expect_text ".editorconfig has an empty Blazor section" .editorconfig '^\[src/\*\.Web/\*\*\.cs\]'
 expect_text ".editorconfig is code-owned" .github/CODEOWNERS '^/\.editorconfig[[:space:]]+@EDB-Sport/edb-team'

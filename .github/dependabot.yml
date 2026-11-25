@@ -31,8 +31,12 @@ updates:
       docker:
         patterns: ["*"]
     ignore:
+      # Dependabot names an MCR image without the registry host, so "dotnet/sdk", not mcr.microsoft.com/... (#295).
       # The .NET SDK image moves with global.json and the lock files (ADR 004), not with Dependabot.
-      - dependency-name: "mcr.microsoft.com/dotnet/sdk"
+      - dependency-name: "dotnet/sdk"
+      # The runtime may float within the app's .NET major (ADR 004). A new major goes with the target framework.
+      - dependency-name: "dotnet/aspnet"
+        update-types: ["version-update:semver-major"]
     open-pull-requests-limit: 1
 
   - package-ecosystem: "docker-compose"

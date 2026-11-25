@@ -1,8 +1,8 @@
 namespace BookingService.Domain;
 
 /// <summary>
-/// Hold: one scheduled run of a class (GLOSSARY.md). The aggregate root of Booking: reservations change only through it,
-/// so the number of reservations never exceeds the capacity, no one reserves more than 4 weeks ahead, a member has at most one, the waitlist keeps its order and closes 2 hours before start, and a freed seat goes to the first waitlist entry (src/BookingService/CONTEXT.md).
+/// Hold: one scheduled run of a class (GLOSSARY.md). The aggregate root of Booking: reservations and waitlist entries change
+/// only through it, so it guards every invariant in src/BookingService/CONTEXT.md.
 /// </summary>
 public sealed class ClassSession
 {
@@ -34,6 +34,9 @@ public sealed class ClassSession
     /// <summary>When the class session starts.</summary>
     public DateTimeOffset StartTime { get; }
 
+    /// <summary>The class session will not take place (Hold aflyst).</summary>
+    public bool IsCancelled { get; private set; }
+
     /// <summary>The members' seats, in the order they were reserved.</summary>
     public IReadOnlyList<Reservation> Reservations => _reservations.AsReadOnly();
 
@@ -50,13 +53,19 @@ public sealed class ClassSession
     /// <param name="memberId">The member who wants a seat.</param>
     /// <param name="clock">Tells the time now.</param>
     /// <returns>
-    /// <see cref="ReservationResult.MemberAlreadyHasReservation"/>, <see cref="ReservationResult.TooFarAhead"/> or
+    /// <see cref="ReservationResult.ClassSessionCancelled"/>, <see cref="ReservationResult.MemberAlreadyHasReservation"/>,
+    /// <see cref="ReservationResult.TooFarAhead"/> or
     /// <see cref="ReservationResult.ClassSessionFull"/> when no reservation is made; then nothing changes. A member who has a
     /// seat hears that first, also on a full class session.
     /// </returns>
     public ReservationResult Reserve(Guid memberId, TimeProvider clock)
     {
         ArgumentNullException.ThrowIfNull(clock);
+
+        if (IsCancelled)
+        {
+            return ReservationResult.ClassSessionCancelled;
+        }
 
         if (_reservations.Exists(reservation => reservation.MemberId == memberId))
         {
@@ -78,19 +87,25 @@ public sealed class ClassSession
     }
 
     /// <summary>
-    /// Puts the member at the end of the waitlist, if every seat is taken, the waitlist is still open, and the member has
+    /// Puts the member at the end of the waitlist, if the class session isn't cancelled, every seat is taken, the waitlist is still open, and the member has
     /// neither a seat nor a waitlist entry.
     /// </summary>
     /// <param name="memberId">The member who wants a seat.</param>
     /// <param name="clock">Tells the time now.</param>
     /// <returns>
-    /// <see cref="WaitlistResult.MemberAlreadyHasReservation"/>, <see cref="WaitlistResult.MemberAlreadyOnWaitlist"/>,
+    /// <see cref="WaitlistResult.ClassSessionCancelled"/>, <see cref="WaitlistResult.MemberAlreadyHasReservation"/>,
+    /// <see cref="WaitlistResult.MemberAlreadyOnWaitlist"/>,
     /// <see cref="WaitlistResult.ClassSessionNotFull"/> when a seat is free, or <see cref="WaitlistResult.WaitlistClosed"/>
     /// less than 2 hours before start; then nothing changes.
     /// </returns>
     public WaitlistResult JoinWaitlist(Guid memberId, TimeProvider clock)
     {
         ArgumentNullException.ThrowIfNull(clock);
+
+        if (IsCancelled)
+        {
+            return WaitlistResult.ClassSessionCancelled;
+        }
 
         if (_reservations.Exists(reservation => reservation.MemberId == memberId))
         {
@@ -171,5 +186,25 @@ public sealed class ClassSession
 
         _waitlist.Clear();
         return WaitlistClosingResult.Closed;
+    }
+
+    /// <summary>
+    /// Cancels the class session: every reservation and waitlist entry is removed, and <see cref="ClassSessionCancelled"/> names
+    /// their members. A cancelled class session can't be reserved. Cancelling it again changes nothing and raises no second event.
+    /// </summary>
+    public void Cancel()
+    {
+        if (IsCancelled)
+        {
+            return;
+        }
+
+        var memberIds = _reservations.Select(reservation => reservation.MemberId)
+            .Concat(_waitlist.Select(waitlistEntry => waitlistEntry.MemberId))
+            .ToList();
+        _reservations.Clear();
+        _waitlist.Clear();
+        IsCancelled = true;
+        _domainEvents.Add(new ClassSessionCancelled(Id, memberIds.AsReadOnly()));
     }
 }

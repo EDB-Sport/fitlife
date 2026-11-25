@@ -39,6 +39,7 @@ public sealed class PaymentProviderClient(HttpClient http) : IPaymentProvider
                 await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false),
                 cancellationToken: cancellationToken).ConfigureAwait(false);
             return result.RootElement.TryGetProperty("outcome", out JsonElement outcome)
+                && outcome.ValueKind == JsonValueKind.String
                 && string.Equals(outcome.GetString(), "approved", StringComparison.Ordinal);
         }
         catch (HttpRequestException)

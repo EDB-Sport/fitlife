@@ -74,9 +74,9 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 
 ### Storage and HTTP (#171)
 
-- **Repository:** `Repositories/IClassSessionRepository`, the only code that uses `MongoDB.Driver` (TEAM001). One document per class session in the `classSessions` collection, reservations and waitlist inside it. A `Version` field makes a save on a stale copy fail (optimistic concurrency), so two requests at once can't overbook.
+- **Repository:** `Application/IClassSessionRepository`; its MongoDB class `Repositories/ClassSessionRepository` is the only code that uses `MongoDB.Driver` (TEAM001). One document per class session in the `classSessions` collection, reservations and waitlist inside it. A `Version` field makes a save on a stale copy fail (optimistic concurrency), so two requests at once can't overbook.
 - **HTTP:** `Api/ClassSessionsController`. `GET /class-sessions?centerId=`, `POST /class-sessions/{id}/reservations`, `DELETE /class-sessions/{id}/reservations/{memberId}`, `POST /class-sessions/{id}/waitlist`. A rule the aggregate rejects is a problem-details 404, 409 or 422, never a 500: every `ReservationResult` and `WaitlistResult` value has its own case, and a value without one throws `UnreachableException` so a test catches it. `GET` keeps a cancelled class session in the list with `isCancelled: true` and `freeSeats: 0` (`ClassSession.FreeSeats`). Until #172 the member id comes in the request.
-- **Configuration:** `MongoDb:ConnectionString` (no password), `MongoDb:Password` (Vault, #17), `MongoDb:Database`. `Seed:Enabled` loads a demo class schedule into an empty database (`Seed/ClassSessionSeeder`): on in compose and in the `http` launch profile.
+- **Configuration:** `MongoDb:Host`, `MongoDb:Port`, `MongoDb:Database`, `MongoDb:Username`, `MongoDb:Password` (Vault, #17) and the optional `MongoDb:AuthSource` (default: the database), as IdentityService (#253). `Seed:Enabled` loads a demo class schedule into an empty database (`Seed/ClassSessionSeeder`): on in compose and in the `http` launch profile.
 - **Events:** the aggregate's `DomainEvents` are not published yet. That comes with the messaging issue.
 
 ## Talks to

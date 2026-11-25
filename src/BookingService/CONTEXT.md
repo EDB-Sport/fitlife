@@ -54,7 +54,7 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | 6 | The waitlist closes 2 hours before start | `ClassSessionTests.JoinWaitlist_LessThanTwoHoursBeforeStart_IsRejected`, `ClassSessionTests.CloseWaitlist_TwoHoursBeforeStart_RemovesTheWaitlistEntriesAndTellsEachMember`, `ClassSessionTests.CloseWaitlist_MoreThanTwoHoursBeforeStart_IsRejected` |
 | 7 | A cancellation under 2 hours before start is a late cancellation | `ClassSessionTests.CancelReservation_LessThanTwoHoursBeforeStart_IsALateCancellation`, `ClassSessionTests.CancelReservation_OfASeatFromTheWaitlist_IsNeverALateCancellation` |
 | 8 | A cancelled class session cancels every reservation and waitlist entry | `ClassSessionCancelTests.Cancel_RemovesEveryReservationAndWaitlistEntryAndNamesTheirMembers`, `ClassSessionCancelTests.Reserve_OnACancelledClassSession_IsRejected`, `ClassSessionCancelTests.Cancel_OnACancelledClassSession_RaisesNoSecondClassSessionCancelled`, `ClassSessionCancelTests.JoinWaitlist_OnACancelledClassSession_IsRejected` |
-| 9 | After a changed start, a member who already had a reservation cancels free: never a late cancellation | `ClassSessionTests.ChangeStart_ThenAMemberWhoHadAReservationCancelsUnderTwoHoursBeforeStart_IsNotALateCancellation`, `ClassSessionTests.ChangeStart_ThenAMemberWhoReservedAfterwardsCancelsUnderTwoHoursBeforeStart_IsALateCancellation` |
+| 9 | After a changed start, a member who already had a reservation cancels free: never a late cancellation | `ClassSessionChangeStartTests.ChangeStart_ThenAMemberWhoHadAReservationCancelsUnderTwoHoursBeforeStart_IsNotALateCancellation`, `ClassSessionChangeStartTests.ChangeStart_ThenAMemberWhoReservedAfterwardsCancelsUnderTwoHoursBeforeStart_IsALateCancellation` |
 
 ## Commands, queries and events
 

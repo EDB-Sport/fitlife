@@ -50,7 +50,7 @@ expect "ci.yml cancels in-progress runs for pull requests only" \
   grep -qF "cancel-in-progress: \${{ github.event_name == 'pull_request' }}" "$ci"
 expect "ci.yml has a build-rules job" test -n "$build_rules"
 expect "build-rules runs tools/ci/check-build-rules.sh" \
-  grep -qE 'run: tools/ci/check-build-rules\.sh$' <<<"$build_rules"
+  grep -qE 'run: (tools/ci/summarize\.sh .* -- )?tools/ci/check-build-rules\.sh$' <<<"$build_rules"
 expect "build-rules sets up the SDK pinned in global.json" \
   grep -qE 'global-json-file: global\.json' <<<"$build_rules"
 expect "build-rules has no continue-on-error" \
@@ -60,7 +60,7 @@ stack_check=$(job_block stack-check)
 
 expect "ci.yml has a stack-check job" test -n "$stack_check"
 expect "stack-check runs tools/ci/stack-check.sh" \
-  grep -qE 'run: tools/ci/stack-check\.sh$' <<<"$stack_check"
+  grep -qE 'run: (tools/ci/summarize\.sh .* -- )?tools/ci/stack-check\.sh$' <<<"$stack_check"
 expect "stack-check runs on pull requests only" \
   grep -qF "if: github.event_name == 'pull_request'" <<<"$stack_check"
 expect "stack-check checks out the full history" \

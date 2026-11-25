@@ -161,8 +161,8 @@ public sealed class AuthorizationTests
         };
         context.SetEndpoint(new Endpoint(endpoint, new EndpointMetadataCollection(metadata), "test endpoint"));
 
-        var authorization = ActivatorUtilities.CreateInstance<AuthorizationMiddleware>(services, endpoint);
-        var authentication = ActivatorUtilities.CreateInstance<AuthenticationMiddleware>(services, (RequestDelegate)authorization.Invoke);
+        AuthorizationMiddleware authorization = ActivatorUtilities.CreateInstance<AuthorizationMiddleware>(services, endpoint);
+        AuthenticationMiddleware authentication = ActivatorUtilities.CreateInstance<AuthenticationMiddleware>(services, (RequestDelegate)authorization.Invoke);
         await authentication.Invoke(context).ConfigureAwait(false);
         return context.Response.StatusCode;
     }

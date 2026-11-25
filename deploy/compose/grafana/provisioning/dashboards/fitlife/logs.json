@@ -240,6 +240,59 @@
       "description": "Error and Fatal log lines per minute from each service. The error-rate alerts fire at more than 5 in 5 minutes."
     },
     {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Rejected log-ins",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum by (Reason) (count_over_time({app=\"identity-svc\"} |= \"LogInRejected\" | json | __error__=\"\" | Reason!=\"\" [$__auto]))",
+          "legendFormat": "{{Reason}}",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Rejected log-ins (POST /api/identity/tokens) by reason: WrongPassword or UnknownEmail (#367). Identity logs them as LogInRejected, with no e-mail address or password. Not filtered by the app, level or correlation id variables."
+    },
+    {
       "id": 4,
       "type": "logs",
       "title": "Logs",
@@ -252,7 +305,7 @@
         "h": 16,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 24
       },
       "targets": [
         {

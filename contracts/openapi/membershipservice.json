@@ -69,6 +69,30 @@
           }
         }
       }
+    },
+    "/members/me": {
+      "get": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "The membership of the account in the token: type, status and start date",
+        "operationId": "GetMyMembership",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyMembershipResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -103,6 +127,47 @@
           "PaymentMissing"
         ],
         "description": "Medlemskabets tilstand: where a membership is in its life (TO-BE-kontekst §8). Only MembershipStatus.Active\ngives access and the right to book. The other states (Pause, Opsagt, Afsluttet) come with their issues."
+      },
+      "MembershipType": {
+        "enum": [
+          "Standard"
+        ],
+        "description": "Medlemstype: the kind of membership offered. The case has exactly one today [PB p. 3]."
+      },
+      "MyMembershipResponse": {
+        "required": [
+          "memberId",
+          "membershipType",
+          "membershipStatus",
+          "isActive",
+          "startDate"
+        ],
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "string",
+            "description": "The member id.",
+            "format": "uuid"
+          },
+          "membershipType": {
+            "description": "The kind of membership.",
+            "$ref": "#/components/schemas/MembershipType"
+          },
+          "membershipStatus": {
+            "description": "Where the membership is in its life.",
+            "$ref": "#/components/schemas/MembershipStatus"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Whether the member may book and enter."
+          },
+          "startDate": {
+            "type": "string",
+            "description": "The day the membership started.",
+            "format": "date"
+          }
+        },
+        "description": "The signed-in member's own membership, for the page \"Mit medlemskab\" (#210)."
       },
       "ProblemDetails": {
         "type": "object",

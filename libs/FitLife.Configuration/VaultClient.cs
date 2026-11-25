@@ -8,13 +8,16 @@ internal sealed class VaultClient(VaultSettings settings, HttpMessageHandler han
 {
     private static readonly TimeSpan Pause = TimeSpan.FromSeconds(1);
 
+    // One attempt that gets no answer in this time is cancelled, so Vault:WaitSeconds stays an upper bound
+    private static readonly TimeSpan AttemptTimeout = TimeSpan.FromSeconds(5);
+
     public async Task<IReadOnlyDictionary<string, string?>> ReadSecretAsync(CancellationToken cancellationToken)
     {
         using var invoker = new HttpMessageInvoker(handler, disposeHandler: false);
         DateTimeOffset giveUpAt = time.GetUtcNow() + settings.Wait;
         while (true)
         {
-            Attempt attempt = await TryReadAsync(invoker, cancellationToken).ConfigureAwait(false);
+            Attempt attempt = await TryReadWithTimeoutAsync(invoker, giveUpAt - time.GetUtcNow(), cancellationToken).ConfigureAwait(false);
             if (attempt.Secret is not null)
             {
                 return attempt.Secret;
@@ -27,25 +30,49 @@ internal sealed class VaultClient(VaultSettings settings, HttpMessageHandler han
 
             if (time.GetUtcNow() >= giveUpAt)
             {
-                throw new InvalidOperationException(
-                    $"Found {attempt.Problem} from Vault for the secret {settings.Mount}/{settings.Path} for {settings.Wait.TotalSeconds:0} s "
-                    + $"(Vault:WaitSeconds). {Advice}");
+                throw GaveUp(attempt);
             }
 
             await Task.Delay(Pause, time, cancellationToken).ConfigureAwait(false);
+            if (time.GetUtcNow() >= giveUpAt)
+            {
+                // The pause used up the time: another attempt would run past Vault:WaitSeconds
+                throw GaveUp(attempt);
+            }
         }
     }
 
     private const string Advice =
         "Do check Vault:Address, Vault:Token and that the seed job has written the secret (deploy/compose/vault/seed.sh).";
 
-    private async Task<Attempt> TryReadAsync(HttpMessageInvoker invoker, CancellationToken cancellationToken)
+    private InvalidOperationException GaveUp(Attempt attempt)
+    {
+        return new InvalidOperationException(
+            $"Found {attempt.Problem} from Vault for the secret {settings.Mount}/{settings.Path} for {settings.Wait.TotalSeconds:0} s "
+            + $"(Vault:WaitSeconds). {Advice}");
+    }
+
+    private async Task<Attempt> TryReadWithTimeoutAsync(HttpMessageInvoker invoker, TimeSpan remaining, CancellationToken cancellationToken)
+    {
+        TimeSpan timeout = AttemptTimeout;
+        if (remaining > TimeSpan.Zero && remaining < AttemptTimeout)
+        {
+            timeout = remaining;
+        }
+
+        using var attemptTimeout = new CancellationTokenSource(timeout, time);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, attemptTimeout.Token);
+        return await TryReadAsync(invoker, linked.Token, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<Attempt> TryReadAsync(
+        HttpMessageInvoker invoker, CancellationToken attemptToken, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, settings.SecretUrl);
         request.Headers.Add("X-Vault-Token", settings.Token);
         try
         {
-            using HttpResponseMessage response = await invoker.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            using HttpResponseMessage response = await invoker.SendAsync(request, attemptToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
                 // 404: not seeded yet. 5xx: starting, sealed or overloaded. Anything else won't change by waiting.
@@ -53,10 +80,10 @@ internal sealed class VaultClient(VaultSettings settings, HttpMessageHandler han
                 return new Attempt(null, $"HTTP {(int)response.StatusCode}", worthWaiting);
             }
 
-            Stream body = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            Stream body = await response.Content.ReadAsStreamAsync(attemptToken).ConfigureAwait(false);
             await using (body.ConfigureAwait(false))
             {
-                using JsonDocument document = await JsonDocument.ParseAsync(body, cancellationToken: cancellationToken).ConfigureAwait(false);
+                using JsonDocument document = await JsonDocument.ParseAsync(body, cancellationToken: attemptToken).ConfigureAwait(false);
                 return new Attempt(Values(document), string.Empty, WorthWaiting: false);
             }
         }
@@ -64,6 +91,11 @@ internal sealed class VaultClient(VaultSettings settings, HttpMessageHandler han
         {
             // No answer at all: Vault isn't up yet, or its name doesn't resolve yet
             return new Attempt(null, $"no answer ({exception.Message})", WorthWaiting: true);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // Only the attempt's own time-out fired: Vault accepted the connection and did not reply
+            return new Attempt(null, "no answer (time-out)", WorthWaiting: true);
         }
     }
 

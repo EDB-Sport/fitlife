@@ -69,6 +69,8 @@ Each service has one secret, `secret/<name>-svc`, for every name in `SERVICE_DAT
 | `RabbitMq:Username`, `RabbitMq:Password` | `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD` |
 | `Jwt:SigningKey` | `JWT_SIGNING_KEY` |
 
+**How a service reads it:** `await builder.Configuration.AddVaultAsync()` from `libs/FitLife.Configuration` loads the secret at startup, and the code reads `configuration["MongoDb:Password"]` like any other setting. The service's `appsettings.json` names its secret (`"Vault": { "Path": "booking-svc" }`), and compose gives it `Vault__Address: http://vault:8200` and `Vault__Token` from `VAULT_DEV_ROOT_TOKEN`. Vault and the service start together, so the service waits: while Vault doesn't answer, or answers 404 (not seeded yet) or 5xx, it tries again every second, for up to `Vault:WaitSeconds` (60). A wrong token (403) stops it at once. Either way the log has the HTTP status and the secret's path, never the token. Without `Vault:Address` (`dotnet run`, the tests) nothing is loaded.
+
 Read one by hand:
 
 ```bash

@@ -30,6 +30,10 @@ services:
     image: fitlife/bookingservice:local
     environment:
       Loki__Url: http://loki:3100 # monitoring.yml; Loki:App is booking-svc in appsettings.json
+      # Secrets from Vault (#17): secret/booking-svc (Vault:Path in appsettings.json), loaded at startup.
+      # The service waits for Vault and the seed job itself (Vault:WaitSeconds), so it needs no depends_on.
+      Vault__Address: http://vault:8200 # infrastructure.yml
+      Vault__Token: ${VAULT_DEV_ROOT_TOKEN:?set it in deploy/compose/.env}
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
       interval: 5s

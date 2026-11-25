@@ -14,7 +14,7 @@ Each UI is a Blazor Web App in `src/<Name>.Web/` that uses **static server-side 
 
 ## Alternatives considered
 
-- **WebAssembly (or Interactive Auto).** Runs in the browser, works offline after download, and takes load off the server. Rejected: a larger first download and the JWT in browser storage, where a script can read it. It also needs either a separate API host for the UI or the services exposed directly to the browser. CORS is not a reason: Caddy and Nginx serve the UIs and the services from one origin, so `/api/...` needs no CORS.
+- **WebAssembly (or Interactive Auto).** Runs in the browser, works offline after download, and takes load off the server. Rejected: a larger first download and the JWT in browser storage, where a script can read it.
 - **Interactive Server everywhere.** Simplest to write. Rejected: every page holds a SignalR circuit and server memory for each user, and Interactive Server components have no `HttpContext`, which makes the token handling harder on every page instead of only where interactivity is needed.
 
 ## Consequences

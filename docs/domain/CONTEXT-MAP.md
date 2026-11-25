@@ -63,7 +63,7 @@ One context = one service in `src/<Service>/` = one database. Each context gets 
 | Access | – | Access control | Key fobs, check-ins | Adgangsbrik, Check-in | NEXT |
 | Engagement | – | Engagement | Challenges, groups, points | – | LATER |
 
-**Not bounded contexts:** the member app and web, the trainer portal, the API gateway and the MCP server are channels or platform components. They hold no business rules and call the services above (principle PA3 in the TO-BE context document). The MCP server lets a member's AI assistant use our API. It is LATER in the target architecture; whether the PoC shows it is its own issue.
+**Not bounded contexts:** the member app and web, the trainer portal, the API gateway and the MCP server are channels or platform components. They hold no business rules and call the services above (principle PA3 in the TO-BE context document). The MCP server lets a member's AI assistant use our API. The PoC shows it as a small channel with fixed guardrails ([ADR 008](../adr/008-mcp-server-in-the-poc.md)).
 
 Other contexts refer to a member only by `MemberId`.
 
@@ -139,3 +139,4 @@ Each event gets a JSON Schema in `contracts/events/` and is tested against it in
 | Decision | ADR |
 |---|---|
 | Why these bounded contexts | [`docs/adr/007-bounded-contexts.md`](../adr/007-bounded-contexts.md) |
+| The PoC shows the MCP server | [`docs/adr/008-mcp-server-in-the-poc.md`](../adr/008-mcp-server-in-the-poc.md) |

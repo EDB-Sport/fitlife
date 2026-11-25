@@ -163,18 +163,18 @@ commit "AddAsync with its test"
 expect pass "a ConfigureAwait(false) mutant isn't counted" "final mutation score is 100"
 
 # 3c. The arithmetic mutant in Task.FromResult(left + right) must still be counted: a test that awaits AddAsync
-#     but asserts nothing leaves it alive. A wider ignore-methods (skipping the whole awaited expression) would
+#     with a weak assertion leaves it alive. A wider ignore-methods (skipping the whole awaited expression) would
 #     hide it and let this pass.
 add_async_untested_test='
     [Test]
-    public async Task AddAsync_TwoNumbers_Completes()
+    public async Task AddAsync_TwoNumbers_ReturnsNonZero()
     {
-        await Calculator.AddAsync(2, 3);
+        Assert.That(await Calculator.AddAsync(2, 3), Is.Not.EqualTo(0));
     }'
 setup_repo
 write_calculator "$add_async"
 write_tests "$add_async_untested_test"
-commit "AddAsync with a test that asserts nothing"
+commit "AddAsync with a weak test"
 expect fail "the arithmetic mutant inside Task.FromResult is still counted" "break threshold"
 
 # 4. Without a base to compare with, the script refuses to run

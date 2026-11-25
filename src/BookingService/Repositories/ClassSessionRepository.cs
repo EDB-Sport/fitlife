@@ -31,6 +31,7 @@ public sealed class ClassSessionRepository : IClassSessionRepository
         List<ClassSessionDocument> documents = await _collection.Find(filter)
             .SortBy(document => document.StartTime)
             .ToListAsync(cancellationToken)
+            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             .ConfigureAwait(false);
         return documents.ConvertAll(Read);
     }
@@ -40,6 +41,7 @@ public sealed class ClassSessionRepository : IClassSessionRepository
     {
         ClassSessionDocument? document = await _collection.Find(candidate => candidate.Id == id)
             .FirstOrDefaultAsync(cancellationToken)
+            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             .ConfigureAwait(false);
         if (document is null)
         {
@@ -53,6 +55,7 @@ public sealed class ClassSessionRepository : IClassSessionRepository
     public async Task AddAsync(ClassSession classSession, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(classSession);
+        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         await _collection.InsertOneAsync(Write(classSession, version: 1), cancellationToken: cancellationToken).ConfigureAwait(false);
         _versions[classSession.Id] = 1;
     }
@@ -66,6 +69,7 @@ public sealed class ClassSessionRepository : IClassSessionRepository
                 candidate => candidate.Id == classSession.Id && candidate.Version == version,
                 Write(classSession, version + 1),
                 cancellationToken: cancellationToken)
+            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             .ConfigureAwait(false);
         if (result.ModifiedCount == 0)
         {

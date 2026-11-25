@@ -14,6 +14,7 @@ internal sealed class VaultClient(VaultSettings settings, HttpMessageHandler han
         DateTimeOffset giveUpAt = time.GetUtcNow() + settings.Wait;
         while (true)
         {
+            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             Attempt attempt = await TryReadAsync(invoker, cancellationToken).ConfigureAwait(false);
             if (attempt.Secret is not null)
             {
@@ -32,6 +33,7 @@ internal sealed class VaultClient(VaultSettings settings, HttpMessageHandler han
                     + $"(Vault:WaitSeconds). {Advice}");
             }
 
+            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             await Task.Delay(Pause, time, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -45,6 +47,7 @@ internal sealed class VaultClient(VaultSettings settings, HttpMessageHandler han
         request.Headers.Add("X-Vault-Token", settings.Token);
         try
         {
+            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             using HttpResponseMessage response = await invoker.SendAsync(request, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
@@ -53,9 +56,12 @@ internal sealed class VaultClient(VaultSettings settings, HttpMessageHandler han
                 return new Attempt(null, $"HTTP {(int)response.StatusCode}", worthWaiting);
             }
 
+            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             Stream body = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             await using (body.ConfigureAwait(false))
             {
+                // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
                 using JsonDocument document = await JsonDocument.ParseAsync(body, cancellationToken: cancellationToken).ConfigureAwait(false);
                 return new Attempt(Values(document), string.Empty, WorthWaiting: false);
             }

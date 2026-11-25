@@ -29,6 +29,7 @@ public sealed class MongoAccountRepository : IAccountRepository, IDisposable
     public async Task<bool> AddAsync(Account account, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(account);
+        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         await EnsureIndexAsync(cancellationToken).ConfigureAwait(false);
         var document = new AccountDocument
         {
@@ -39,6 +40,7 @@ public sealed class MongoAccountRepository : IAccountRepository, IDisposable
         };
         try
         {
+            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             await _accounts.InsertOneAsync(document, options: null, cancellationToken).ConfigureAwait(false);
         }
         catch (MongoWriteException exception) when (exception.WriteError.Category == ServerErrorCategory.DuplicateKey)
@@ -52,10 +54,12 @@ public sealed class MongoAccountRepository : IAccountRepository, IDisposable
     /// <inheritdoc />
     public async Task<Account?> FindByEmailAsync(string email, CancellationToken cancellationToken)
     {
+        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         await EnsureIndexAsync(cancellationToken).ConfigureAwait(false);
         AccountDocument? document = await _accounts
             .Find(stored => stored.Email == email, new FindOptions { Collation = IgnoreLetterCase })
             .FirstOrDefaultAsync(cancellationToken)
+            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             .ConfigureAwait(false);
         if (document is null)
         {
@@ -78,6 +82,7 @@ public sealed class MongoAccountRepository : IAccountRepository, IDisposable
             return;
         }
 
+        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         await _indexLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -86,6 +91,7 @@ public sealed class MongoAccountRepository : IAccountRepository, IDisposable
                 var uniqueEmail = new CreateIndexModel<AccountDocument>(
                     Builders<AccountDocument>.IndexKeys.Ascending(stored => stored.Email),
                     new CreateIndexOptions { Name = "email_unique", Unique = true, Collation = IgnoreLetterCase });
+                // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
                 await _accounts.Indexes.CreateOneAsync(uniqueEmail, options: null, cancellationToken).ConfigureAwait(false);
                 _indexCreated = true;
             }

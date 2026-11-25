@@ -29,6 +29,7 @@ public sealed class CorrelationIdMiddleware(RequestDelegate next, ILogger<Correl
 
         using (CorrelationContext.Begin(logger, id))
         {
+            // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
             await next(context).ConfigureAwait(false);
         }
     }

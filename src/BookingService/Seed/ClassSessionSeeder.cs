@@ -53,12 +53,14 @@ public sealed partial class ClassSessionSeeder : IHostedService
         {
             try
             {
+                // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
                 await SeedAsync(cancellationToken).ConfigureAwait(false);
                 return;
             }
             catch (TimeoutException exception)
             {
                 LogMongoDbNotReady(exception, RetryAfter.TotalSeconds);
+                // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
                 await Task.Delay(RetryAfter, _clock, cancellationToken).ConfigureAwait(false);
             }
         }
@@ -74,6 +76,7 @@ public sealed partial class ClassSessionSeeder : IHostedService
     {
         using IServiceScope scope = _scopes.CreateScope();
         IClassSessionRepository repository = scope.ServiceProvider.GetRequiredService<IClassSessionRepository>();
+        // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
         if ((await repository.ListAsync(centerId: null, cancellationToken).ConfigureAwait(false)).Count > 0)
         {
             return;
@@ -90,6 +93,7 @@ public sealed partial class ClassSessionSeeder : IHostedService
                     Guid classTypeId = ClassTypeIds[(day + slot) % ClassTypeIds.Length];
                     DateTimeOffset startTime = today.AddDays(day).AddHours(17 + slot);
                     var classSession = new ClassSession(Guid.NewGuid(), centerId, classTypeId, new Capacity(20), startTime);
+                    // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
                     await repository.AddAsync(classSession, cancellationToken).ConfigureAwait(false);
                     count++;
                 }

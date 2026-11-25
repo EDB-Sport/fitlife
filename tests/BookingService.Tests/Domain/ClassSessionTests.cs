@@ -475,6 +475,24 @@ public sealed class ClassSessionTests
         Assert.That(classSession.DomainEvents.OfType<ClassSessionCancelled>().Count(), Is.EqualTo(1));
     }
 
+    [Test]
+    public void JoinWaitlist_OnACancelledClassSession_IsRejected()
+    {
+        // Arrange
+        ClassSession classSession = ClassSessionWithCapacity(1);
+        classSession.Cancel();
+
+        // Act
+        WaitlistResult result = classSession.JoinWaitlist(Guid.NewGuid(), _clock);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(WaitlistResult.ClassSessionCancelled));
+            Assert.That(classSession.Waitlist, Is.Empty);
+        });
+    }
+
     [TestCase(0)]
     [TestCase(-1)]
     public void Capacity_LessThanOne_IsRejected(int value)

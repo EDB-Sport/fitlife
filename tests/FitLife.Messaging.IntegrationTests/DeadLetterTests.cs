@@ -13,6 +13,9 @@ namespace FitLife.Messaging.IntegrationTests;
 /// <summary>A message the subscriber can't handle is tried again, and then kept in a dead-letter queue, never lost (#257).</summary>
 public sealed class DeadLetterTests
 {
+    // QueueTopology.DeliveryLimit, written out so that a changed limit fails here (#257)
+    private const int DeliveryLimit = 5;
+
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
 
     private static readonly ReservationMade Sample = new(
@@ -64,6 +67,22 @@ public sealed class DeadLetterTests
         // Assert
         string body = await deadLetter.WaitAsync(Timeout).ConfigureAwait(false);
         Assert.That(body, Does.Contain(Sample.ReservationId));
+    }
+
+    [Test]
+    public async Task Consume_SubscriberAlwaysFails_DeliversItOnceAndThenDeliveryLimitTimesMore()
+    {
+        // Arrange
+        var subscriber = new FailingSubscriber(failures: int.MaxValue);
+        using IHost host = await StartHostAsync(subscriber).ConfigureAwait(false);
+        Task<string> deadLetter = FirstDeadLetterAsync(ConsumerOf(host).Queue);
+
+        // Act
+        await host.Services.GetRequiredService<IEventPublisher>().PublishAsync(Sample, CancellationToken.None).ConfigureAwait(false);
+        await deadLetter.WaitAsync(Timeout).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(subscriber.Calls, Is.EqualTo(1 + DeliveryLimit));
     }
 
     [Test]
@@ -152,6 +171,8 @@ public sealed class DeadLetterTests
         private int _calls;
 
         public Task<ReservationMade> Handled => _handled.Task;
+
+        public int Calls => Volatile.Read(ref _calls);
 
         public Task HandleAsync(ReservationMade integrationEvent, CancellationToken cancellationToken)
         {

@@ -48,7 +48,8 @@ lib_dirs() {
 }
 
 # linked_files <csproj>: the libs/ files the project links in, an Include="$(RepoRoot)libs/..." on any item
-# but a ProjectReference (issue #182)
+# but a ProjectReference (issue #182); it sees one item per line, in the
+# $(RepoRoot)libs/ form only
 linked_files() {
   sed -n '/<ProjectReference/!s:.*<[A-Za-z]* [^>]*Include="\$(RepoRoot)\(libs/[^"]*\)".*:\1:p' "$1"
 }

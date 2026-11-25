@@ -39,6 +39,17 @@ lib() {
   mkdir -p "$repo/libs/$name"
   { printf '<Project Sdk="Microsoft.NET.Sdk">\n'; references "$@"; printf '</Project>\n'; } > "$repo/libs/$name/$name.csproj"
 }
+# link_nlog <Name>: adds an ItemGroup that links libs/nlog.config into src/<Name>/<Name>.csproj as Content
+# (portable: no sed -i, no \n in a replacement; tools/ci/tdd-check.test.sh)
+link_nlog() {
+  local csproj="$repo/src/$1/$1.csproj"
+  {
+    sed '$d' "$csproj"
+    printf '  <ItemGroup>\n'
+    printf '    <Content Include="$(RepoRoot)libs/nlog.config" Link="nlog.config" CopyToOutputDirectory="PreserveNewest" />\n'
+    printf '  </ItemGroup>\n</Project>\n'
+  } > "$csproj.tmp" && mv "$csproj.tmp" "$csproj"
+}
 # contract <file> <paths JSON>
 contract() {
   printf '{"openapi":"3.1.1","info":{"title":"t","version":"1.0.0"},"paths":%s}\n' "$2" > "$repo/contracts/openapi/$1.json"
@@ -153,7 +164,7 @@ git -C "$repo" tag membershipservice/v1.6.0
 git -C "$repo" tag memberportal/v1.6.0
 git -C "$repo" checkout -q -B release/1.7.0
 service BookingService 1.7.0 '$(RepoRoot)libs/FitLife.Shared/FitLife.Shared.csproj'
-sed -i 's:</Project>:  <ItemGroup>\n    <Content Include="$(RepoRoot)libs/nlog.config" Link="nlog.config" CopyToOutputDirectory="PreserveNewest" />\n  </ItemGroup>\n</Project>:' "$repo/src/BookingService/BookingService.csproj"
+link_nlog BookingService
 echo "<nlog />" > "$repo/libs/nlog.config"
 commit "booking links libs/nlog.config"
 git -C "$repo" tag bookingservice/v1.7.0
@@ -163,7 +174,7 @@ echo "<nlog><!-- change --></nlog>" > "$repo/libs/nlog.config"; commit "change l
 expect 1 release/1.7.0 "a changed libs/ file linked into a service without a raised version fails" "BookingService.*libs/nlog.config"
 expect 1 release/1.7.0 "a changed libs/ file doesn't count for a service that doesn't link it" "MembershipService: unchanged"
 service BookingService 1.8.0 '$(RepoRoot)libs/FitLife.Shared/FitLife.Shared.csproj'
-sed -i 's:</Project>:  <ItemGroup>\n    <Content Include="$(RepoRoot)libs/nlog.config" Link="nlog.config" CopyToOutputDirectory="PreserveNewest" />\n  </ItemGroup>\n</Project>:' "$repo/src/BookingService/BookingService.csproj"
+link_nlog BookingService
 commit "raise booking"
 expect 0 release/1.7.0 "a changed linked libs/ file with a raised version passes" "BookingService: 1.7.0 -> 1.8.0"
 

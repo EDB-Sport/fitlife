@@ -51,6 +51,20 @@ expect 0 "a service with no tag is skipped" "fresh: no fresh/v\* tag yet, skippe
 rm "$repo"/contracts/openapi/*.json
 expect 0 "no contracts passes"
 
+# A Docker error (pull failure, Docker missing: exit 125+) is not a break: it must not say "breaks its contract"
+fakebin=$(mktemp -d)
+printf '#!/bin/sh\nexit 125\n' > "$fakebin/docker" && chmod +x "$fakebin/docker"
+contract "{\"/members\":$get_op}" > "$repo/contracts/openapi/demo.json"
+out=$(cd "$repo" && PATH="$fakebin:$PATH" "$script" 2>&1)
+status=$?
+rm -rf "$fakebin"
+if [ "$status" -eq 1 ] && grep -q "did not run" <<<"$out" && ! grep -q "breaks its contract" <<<"$out"; then
+  echo "PASS  a Docker error fails without claiming a break"
+else
+  echo "FAIL  a Docker error fails without claiming a break (exit $status)"; echo "$out" | tail -10
+  failures=$((failures + 1))
+fi
+
 echo
 if [ "$failures" -eq 0 ]; then echo "oasdiff-breaking.sh works."; else echo "$failures check(s) failed."; fi
 exit "$failures"

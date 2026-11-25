@@ -37,6 +37,19 @@ public sealed class Account
     /// <exception cref="ArgumentException">The e-mail address or the hash is missing.</exception>
     public static Account Create(string email, string passwordHash)
     {
-        return new Account(Guid.NewGuid(), email, passwordHash, [Role.Medlem]);
+        return Create(email, passwordHash, Role.Medlem);
+    }
+
+    /// <summary>Creates a new account with the one role <paramref name="role"/>, e.g. a demo account for Træner or Admin.</summary>
+    /// <param name="email">The e-mail address the person logs in with.</param>
+    /// <param name="passwordHash">The hash of the password. The password itself never reaches the model.</param>
+    /// <param name="role">The account's role.</param>
+    /// <returns>The new account, with a new id.</returns>
+    /// <exception cref="ArgumentException">The e-mail address or the hash is missing.</exception>
+    /// <exception cref="ArgumentNullException">The role is missing.</exception>
+    public static Account Create(string email, string passwordHash, Role role)
+    {
+        ArgumentNullException.ThrowIfNull(role);
+        return new Account(Guid.NewGuid(), email, passwordHash, [role]);
     }
 }

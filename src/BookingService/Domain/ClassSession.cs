@@ -18,15 +18,27 @@ public sealed class ClassSession
     /// <param name="id">The class session's id.</param>
     /// <param name="capacity">How many members can have a reservation.</param>
     /// <param name="startTime">When the class session starts.</param>
-    public ClassSession(Guid id, Capacity capacity, DateTimeOffset startTime)
+    /// <param name="details">Its centre, class type, instructor and duration (Holdoplysninger).</param>
+    public ClassSession(Guid id, Capacity capacity, DateTimeOffset startTime, ClassSessionDetails details)
     {
+        ArgumentNullException.ThrowIfNull(details);
         Id = id;
         Capacity = capacity;
         StartTime = startTime;
+        Details = details;
     }
 
     /// <summary>The class session's id.</summary>
     public Guid Id { get; }
+
+    /// <summary>Its centre, class type, instructor and duration (Holdoplysninger).</summary>
+    public ClassSessionDetails Details { get; }
+
+    /// <summary>The centre the class session takes place in.</summary>
+    public Guid CenterId => Details.CenterId;
+
+    /// <summary>The kind of class (Holdtype) this is a run of.</summary>
+    public Guid ClassTypeId => Details.ClassTypeId;
 
     /// <summary>How many members can have a reservation.</summary>
     public Capacity Capacity { get; }
@@ -36,6 +48,9 @@ public sealed class ClassSession
 
     /// <summary>The class session will not take place (Hold aflyst).</summary>
     public bool IsCancelled { get; private set; }
+
+    /// <summary>How many seats are not reserved yet. A cancelled class session has none.</summary>
+    public int FreeSeats => IsCancelled ? 0 : Capacity.Value - _reservations.Count;
 
     /// <summary>The members' seats, in the order they were reserved.</summary>
     public IReadOnlyList<Reservation> Reservations => _reservations.AsReadOnly();
@@ -206,5 +221,19 @@ public sealed class ClassSession
         _waitlist.Clear();
         IsCancelled = true;
         _domainEvents.Add(new ClassSessionCancelled(Id, memberIds.AsReadOnly()));
+    }
+
+    /// <summary>
+    /// Puts back the state a repository stored. Only for a class session just created with the constructor; it raises no
+    /// events and checks no rule, because the stored state already passed them.
+    /// </summary>
+    /// <param name="isCancelled">Whether the class session was cancelled.</param>
+    /// <param name="reservations">The reservations, in the order they were made.</param>
+    /// <param name="waitlist">The waitlist entries, first come first served.</param>
+    internal void Restore(bool isCancelled, IEnumerable<Reservation> reservations, IEnumerable<WaitlistEntry> waitlist)
+    {
+        IsCancelled = isCancelled;
+        _reservations.AddRange(reservations);
+        _waitlist.AddRange(waitlist);
     }
 }

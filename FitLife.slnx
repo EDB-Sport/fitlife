@@ -9,6 +9,7 @@
     <Project Path="src/BookingService/BookingService.csproj" />
     <Project Path="src/MembershipService/MembershipService.csproj" />
     <Project Path="src/IdentityService/IdentityService.csproj" />
+    <Project Path="src/McpServer/McpServer.csproj" />
     <Project Path="src/MemberPortal.Web/MemberPortal.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
@@ -25,6 +26,8 @@
     <Project Path="tests/MembershipService.Tests/MembershipService.Tests.csproj" />
     <Project Path="tests/IdentityService.IntegrationTests/IdentityService.IntegrationTests.csproj" />
     <Project Path="tests/IdentityService.Tests/IdentityService.Tests.csproj" />
+    <Project Path="tests/McpServer.IntegrationTests/McpServer.IntegrationTests.csproj" />
+    <Project Path="tests/McpServer.Tests/McpServer.Tests.csproj" />
     <Project Path="tests/MemberPortal.Web.IntegrationTests/MemberPortal.Web.IntegrationTests.csproj" />
     <Project Path="tests/MemberPortal.Web.Tests/MemberPortal.Web.Tests.csproj" />
   </Folder>

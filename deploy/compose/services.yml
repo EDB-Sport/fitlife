@@ -10,6 +10,7 @@ services:
       BOOKING_URL: http://booking-svc:8080
       MEMBERSHIP_URL: http://membership-svc:8080
       IDENTITY_URL: http://identity-svc:8080
+      MCP_SERVER_URL: http://mcp-server:8080 # the MCP server (#213), on /mcp
       MEMBER_PORTAL_URL: http://member-portal:8080 # the Blazor UI (#8), on every path that isn't /api/ or /health
       GRAFANA_URL: http://grafana:3000 # monitoring.yml
     volumes:
@@ -23,8 +24,8 @@ services:
       retries: 10
 
   identity-svc:
-    # IdentityService, built from the repo root (src/IdentityService/Dockerfile, #232). Accounts and tokens come
-    # in #233 to #235; until then it answers /health only. The gateway routes /api/identity/ here (IDENTITY_URL).
+    # IdentityService, built from the repo root (src/IdentityService/Dockerfile, #232). POST /accounts (#234);
+    # tokens come in #235. The gateway routes /api/identity/ here (IDENTITY_URL).
     build:
       context: ../..
       dockerfile: src/IdentityService/Dockerfile
@@ -35,6 +36,31 @@ services:
       # The service waits for Vault and the seed job itself (Vault:WaitSeconds), so it needs no depends_on.
       Vault__Address: http://vault:8200 # infrastructure.yml
       Vault__Token: ${VAULT_DEV_ROOT_TOKEN:?set it in deploy/compose/.env}
+      # MongoDB (infrastructure.yml): the identity database and the identity-svc user are in appsettings.json, the
+      # password (MongoDb:Password) in secret/identity-svc. Nothing connects until the first request, so no depends_on.
+      MongoDb__Host: mongodb
+      MongoDb__Port: "27017"
+      # One demo account per role (#237), seeded after start-up; /health waits for it. Passwords from .env, not Vault.
+      Seed__DemoAccounts: "true"
+      Seed__MedlemPassword: ${DEMO_MEDLEM_PASSWORD:?set it in deploy/compose/.env}
+      Seed__TraenerPassword: ${DEMO_TRAENER_PASSWORD:?set it in deploy/compose/.env}
+      Seed__AdminPassword: ${DEMO_ADMIN_PASSWORD:?set it in deploy/compose/.env}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mcp-server:
+    # The MCP server (src/McpServer/Dockerfile, #213), a channel like the member portal: no database, no secret.
+    # Until #214 it answers /health only. The gateway routes /mcp here (MCP_SERVER_URL).
+    build:
+      context: ../..
+      dockerfile: src/McpServer/Dockerfile
+    image: fitlife/mcpserver:local
+    environment:
+      Loki__Url: http://loki:3100 # monitoring.yml; Loki:App is mcp-server in appsettings.json
+      Gateway__BaseUrl: http://gateway:80 # it reaches Booking through the gateway (#214)
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
       interval: 5s
@@ -53,6 +79,10 @@ services:
       # The service waits for Vault and the seed job itself (Vault:WaitSeconds), so it needs no depends_on.
       Vault__Address: http://vault:8200 # infrastructure.yml
       Vault__Token: ${VAULT_DEV_ROOT_TOKEN:?set it in deploy/compose/.env}
+      # infrastructure.yml; the user booking-svc reaches only the booking database (mongodb/init). No password in the URL:
+      # MongoDb:Password comes from secret/booking-svc in Vault.
+      MongoDb__ConnectionString: mongodb://booking-svc@mongodb:27017/booking
+      Seed__Enabled: "true" # the demo class schedule, loaded once into an empty database (#171)
       Membership__BaseUrl: http://membership-svc:8080 # who the member behind an account is (#256)
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]

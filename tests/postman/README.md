@@ -12,7 +12,7 @@ smoke/thin-slice.postman_collection.json            after each Azure deploy: HTT
 environments/local|ci|azure.postman_environment.json
 ```
 
-Secrets never go in an environment file. They go in GitHub Actions secrets.
+Secrets never go in an environment file. They go in GitHub Actions secrets. The demo accounts' passwords in `local` and `ci` are not secrets. They are made-up values, the same as in `deploy/compose/.env.example`, and they only open a stack that was seeded with them.
 
 ## Mock server: user registration
 

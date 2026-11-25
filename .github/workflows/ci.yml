@@ -107,7 +107,7 @@ jobs:
       - name: Regenerate the contracts and compare them with the commit
         run: tools/ci/summarize.sh contract "Run tools/ci/check-contracts.sh locally and commit the regenerated contracts." -- tools/ci/check-contracts.sh
       - name: No breaking change since each service's last release (oasdiff)
-        run: tools/ci/summarize.sh contract "A contract breaks its service's last release: keep the old shape, or release a new major version." -- tools/ci/oasdiff-breaking.sh
+        run: tools/ci/summarize.sh contract "A contract breaks its service's last release. Keep the old shape, or release a new major version." -- tools/ci/oasdiff-breaking.sh
 
   # Runs the tests of the CI scripts themselves, so a change to a script fails its own tests.
   ci-scripts:

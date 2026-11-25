@@ -36,4 +36,22 @@ public sealed class ClassSessionRepositoryTests
         // Assert
         Assert.That(saved, Is.False);
     }
+
+    [Test]
+    public async Task Get_AfterAdd_ReturnsTheDetails()
+    {
+        // Arrange
+        using var factory = new BookingApiFactory(MongoDbContainerSetUp.ConnectionString, $"booking-{Guid.NewGuid():N}", new FakeTimeProvider(Now));
+        var details = new ClassSessionDetails(Guid.NewGuid(), Guid.NewGuid(), new Instructor("Mette"), TimeSpan.FromMinutes(45));
+        var classSession = new ClassSession(Guid.NewGuid(), new Capacity(1), Now.AddDays(1), details);
+        await factory.AddAsync(classSession).ConfigureAwait(false);
+        using IServiceScope scope = factory.Services.CreateScope();
+        IClassSessionRepository repository = scope.ServiceProvider.GetRequiredService<IClassSessionRepository>();
+
+        // Act
+        ClassSession? stored = await repository.GetAsync(classSession.Id, CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(stored?.Details, Is.EqualTo(details));
+    }
 }

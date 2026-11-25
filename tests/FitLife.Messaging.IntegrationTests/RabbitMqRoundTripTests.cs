@@ -1,0 +1,247 @@
+using System.Collections.Concurrent;
+using System.Text;
+using FitLife.Correlation;
+using FitLife.Messaging.Events;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using RabbitMQ.Client;
+using Testcontainers.RabbitMq;
+
+namespace FitLife.Messaging.IntegrationTests;
+
+/// <summary>An event goes through a real RabbitMQ from the publisher to the consumer's handler, with its correlation ID (#190, #19).</summary>
+public sealed class RabbitMqRoundTripTests
+{
+    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
+
+    private static readonly ReservationMade Sample = new(
+        "6741f0c2a9e1b3d4c5f60718",
+        "6741f0c2a9e1b3d4c5f60719",
+        "6741f0c2a9e1b3d4c5f6071a",
+        new DateTimeOffset(2026, 12, 1, 17, 0, 0, TimeSpan.Zero));
+
+    // The image compose uses (deploy/compose/infrastructure.yml)
+    private readonly RabbitMqContainer _rabbitMq = new RabbitMqBuilder("rabbitmq:4.4.1-management").Build();
+
+    [OneTimeSetUp]
+    public async Task StartRabbitMq()
+    {
+        await _rabbitMq.StartAsync().ConfigureAwait(false);
+    }
+
+    [OneTimeTearDown]
+    public async Task StopRabbitMq()
+    {
+        await _rabbitMq.DisposeAsync().ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task Publish_ReservationMade_ReachesTheHandler()
+    {
+        // Arrange
+        var handler = new RecordingHandler();
+        using IHost host = await StartHostAsync(handler).ConfigureAwait(false);
+
+        // Act
+        await host.Services.GetRequiredService<IEventPublisher>().PublishAsync(Sample, CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Received received = await handler.First.WaitAsync(Timeout).ConfigureAwait(false);
+        Assert.That(received.Event, Is.EqualTo(Sample));
+    }
+
+    [Test]
+    public async Task Publish_InsideACorrelationId_TheHandlerRunsWithTheSameId()
+    {
+        // Arrange
+        var handler = new RecordingHandler();
+        using IHost host = await StartHostAsync(handler).ConfigureAwait(false);
+        IEventPublisher publisher = host.Services.GetRequiredService<IEventPublisher>();
+
+        // Act
+        using (CorrelationContext.Begin(NullLogger.Instance, "abc-123"))
+        {
+            await publisher.PublishAsync(Sample, CancellationToken.None).ConfigureAwait(false);
+        }
+
+        // Assert
+        Received received = await handler.First.WaitAsync(Timeout).ConfigureAwait(false);
+        Assert.That(received.CorrelationId, Is.EqualTo("abc-123"));
+    }
+
+    [Test]
+    public async Task Publish_WithoutACorrelationId_TheHandlerRunsWithANewId()
+    {
+        // Arrange
+        var handler = new RecordingHandler();
+        using IHost host = await StartHostAsync(handler).ConfigureAwait(false);
+
+        // Act
+        await host.Services.GetRequiredService<IEventPublisher>().PublishAsync(Sample, CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Received received = await handler.First.WaitAsync(Timeout).ConfigureAwait(false);
+        Assert.That(received.CorrelationId, Is.Not.Null.And.Not.Empty);
+    }
+
+    [Test]
+    public async Task Consume_AMessageThatIsNotTheEvent_SkipsItAndHandlesTheNext()
+    {
+        // Arrange
+        var handler = new RecordingHandler();
+        using IHost host = await StartHostAsync(handler).ConfigureAwait(false);
+        await PublishRawAsync("not json").ConfigureAwait(false);
+
+        // Act
+        await host.Services.GetRequiredService<IEventPublisher>().PublishAsync(Sample, CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Received received = await handler.First.WaitAsync(Timeout).ConfigureAwait(false);
+        Assert.That(received.Event, Is.EqualTo(Sample));
+    }
+
+    [Test]
+    public async Task Start_RabbitMqNotReachable_KeepsTryingInsteadOfStoppingTheService()
+    {
+        // Arrange
+        using var logs = new WaitingLoggerProvider();
+        using IHost host = BuildHost(new RecordingHandler(), new Uri("amqp://guest:guest@127.0.0.1:1"), logs);
+
+        // Act
+        await host.StartAsync().ConfigureAwait(false);
+
+        // Assert
+        await logs.WaitForAsync("not reachable", Timeout).ConfigureAwait(false);
+        Assert.That(ConsumerOf(host).Consuming.IsCompleted, Is.False);
+    }
+
+    [Test]
+    public async Task Stop_WhileTheConsumerIsStillConnecting_DoesNotThrow()
+    {
+        // Arrange: a service that is stopped right after it started, as a WebApplicationFactory test does
+        using IHost host = BuildHost(new RecordingHandler(), new Uri(_rabbitMq.GetConnectionString()), logs: null);
+        await host.StartAsync().ConfigureAwait(false);
+
+        // Act and assert
+        Assert.DoesNotThrowAsync(() => host.StopAsync());
+    }
+
+    /// <summary>A host with a publisher and a consumer on a queue of its own, so the tests don't share messages.</summary>
+    private async Task<IHost> StartHostAsync(RecordingHandler handler)
+    {
+        IHost host = BuildHost(handler, new Uri(_rabbitMq.GetConnectionString()), logs: null);
+        await host.StartAsync().ConfigureAwait(false);
+        await ConsumerOf(host).Consuming.WaitAsync(Timeout).ConfigureAwait(false);
+        return host;
+    }
+
+    private static IHost BuildHost(RecordingHandler handler, Uri broker, WaitingLoggerProvider? logs)
+    {
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder();
+        string[] credentials = broker.UserInfo.Split(':');
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["RabbitMq:HostName"] = broker.Host,
+            ["RabbitMq:Port"] = broker.Port.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["RabbitMq:UserName"] = credentials[0],
+            ["RabbitMq:Password"] = credentials[1],
+        });
+        if (logs is not null)
+        {
+            builder.Services.AddSingleton<ILoggerProvider>(logs);
+        }
+
+        builder.Services.AddRabbitMq(builder.Configuration);
+        builder.Services.AddEventPublisher();
+        builder.Services.AddSingleton<IEventSubscriber<ReservationMade>>(handler);
+        builder.Services.AddEventConsumer<ReservationMade>("test-" + Guid.NewGuid().ToString("N"));
+        return builder.Build();
+    }
+
+    private static RabbitMqEventConsumer<ReservationMade> ConsumerOf(IHost host)
+    {
+        return host.Services.GetServices<IHostedService>().OfType<RabbitMqEventConsumer<ReservationMade>>().Single();
+    }
+
+    /// <summary>A message straight on the exchange, bypassing the publisher, as a broken producer would send it.</summary>
+    private async Task PublishRawAsync(string body)
+    {
+        var factory = new ConnectionFactory { Uri = new Uri(_rabbitMq.GetConnectionString()) };
+        IConnection connection = await factory.CreateConnectionAsync().ConfigureAwait(false);
+        await using (connection.ConfigureAwait(false))
+        {
+            IChannel channel = await connection.CreateChannelAsync().ConfigureAwait(false);
+            await using (channel.ConfigureAwait(false))
+            {
+                await channel.BasicPublishAsync(RabbitMqEventPublisher.Exchange, ReservationMade.RoutingKey, Encoding.UTF8.GetBytes(body)).ConfigureAwait(false);
+            }
+        }
+    }
+
+    /// <summary>Captures every log line, and lets a test wait for the first line that contains some text.</summary>
+    private sealed class WaitingLoggerProvider : ILoggerProvider, ILogger
+    {
+        private readonly ConcurrentQueue<string> _lines = new();
+        private readonly SemaphoreSlim _logged = new(0);
+
+        public async Task<string> WaitForAsync(string text, TimeSpan timeout)
+        {
+            using var deadline = new CancellationTokenSource(timeout);
+            while (true)
+            {
+                string? line = _lines.FirstOrDefault(candidate => candidate.Contains(text, StringComparison.Ordinal));
+                if (line is not null)
+                {
+                    return line;
+                }
+
+                await _logged.WaitAsync(deadline.Token).ConfigureAwait(false);
+            }
+        }
+
+        public ILogger CreateLogger(string categoryName)
+        {
+            return this;
+        }
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull
+        {
+            return null;
+        }
+
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return true;
+        }
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            _lines.Enqueue(formatter(state, exception));
+            _logged.Release();
+        }
+
+        public void Dispose()
+        {
+            _logged.Dispose();
+        }
+    }
+
+    private sealed record Received(ReservationMade Event, string? CorrelationId);
+
+    private sealed class RecordingHandler : IEventSubscriber<ReservationMade>
+    {
+        private readonly TaskCompletionSource<Received> _first = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task<Received> First => _first.Task;
+
+        public Task HandleAsync(ReservationMade integrationEvent, CancellationToken cancellationToken)
+        {
+            _first.TrySetResult(new Received(integrationEvent, CorrelationContext.Current));
+            return Task.CompletedTask;
+        }
+    }
+}

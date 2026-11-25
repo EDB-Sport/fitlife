@@ -139,6 +139,29 @@ echo "Docs only." >> README.md
 commit "docs only"
 expect pass "a change without C# files passes" "nothing to mutate"
 
+# 3b. ConfigureAwait(false) -> true is an equivalent mutant: ASP.NET Core has no SynchronizationContext, so no
+#     test can kill it (issue #270). A tested async method must score 100, not lose a point to it.
+add_async='
+    /// <summary>Returns the sum of two numbers, asynchronously.</summary>
+    /// <param name="left">The first number.</param>
+    /// <param name="right">The second number.</param>
+    /// <returns>The sum.</returns>
+    public static async Task<int> AddAsync(int left, int right)
+    {
+        return await Task.FromResult(left + right).ConfigureAwait(false);
+    }'
+add_async_test='
+    [Test]
+    public async Task AddAsync_TwoNumbers_ReturnsSum()
+    {
+        Assert.That(await Calculator.AddAsync(2, 3), Is.EqualTo(5));
+    }'
+setup_repo
+write_calculator "$add_async"
+write_tests "$add_async_test"
+commit "AddAsync with its test"
+expect pass "a ConfigureAwait(false) mutant isn't counted" "final mutation score is 100"
+
 # 4. Without a base to compare with, the script refuses to run
 cd "$work" || exit 1
 if out=$(env -u SINCE "$script" 2>&1); then

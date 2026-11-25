@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
 # Executable acceptance check for a service's Dockerfile (issue #93, docs/CSHARP_SETUP_TODO.md section 8):
 # the image builds with the repo root as context, and the container answers /health with 200.
-# Usage: tools/ci/check-service-image.sh <Service> [KEY=VALUE ...]
+# Usage: tools/ci/check-service-image.sh [--build-only] <Service> [KEY=VALUE ...]
 #   e.g. tools/ci/check-service-image.sh BookingService
 #        tools/ci/check-service-image.sh MembershipService Jwt__SigningKey=image-check-key-at-least-32-bytes-long
 # Each KEY=VALUE is passed to the container with -e, for a service that needs a setting to start (#223).
 # Use made-up test values only: in compose and Azure the real ones come from Vault.
+# --build-only stops after the build and prints the tag as image=<tag>: the one build the PR image scan
+# scans (#280, .github/workflows/image-scan.yml). It starts no container, so settings aren't needed.
 set -uo pipefail
 
-usage="Usage: $0 <Service> [KEY=VALUE ...]"
+usage="Usage: $0 [--build-only] <Service> [KEY=VALUE ...]"
+build_only=false
+if [ "${1:-}" = --build-only ]; then
+  build_only=true
+  shift
+fi
 service=${1:?$usage}
 shift
 env_args=()
@@ -29,6 +36,10 @@ if ! docker build -q -f "$root/src/$service/Dockerfile" -t "$image" "$root" >/de
   exit 1
 fi
 echo "PASS  the image builds with the repo root as context"
+if $build_only; then
+  echo "image=$image"
+  exit 0
+fi
 
 # ${a[@]+"${a[@]}"}: an empty array under set -u, also in bash 3.2 (macOS)
 docker run -d --name "$container" ${env_args[@]+"${env_args[@]}"} -p 127.0.0.1::8080 "$image" >/dev/null

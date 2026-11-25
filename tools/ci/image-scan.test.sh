@@ -84,9 +84,10 @@ else
   check "the plan job runs tools/ci/image-scan-plan.sh" grep -qF 'tools/ci/image-scan-plan.sh' "$workflow"
   check "the scan job is skipped when the plan picks no service" \
     grep -qF "if: needs.image-scan-plan.outputs.services != '[]'" "$workflow"
+  steps=$(grep -vE '^\s*#' "$workflow") # the workflow without its comment lines
   check "the image is built once, by check-service-image.sh --build-only" \
-    test "$(grep -c 'docker build\|tools/ci/check-service-image.sh --build-only' "$workflow")" -eq 1 -a \
-    "$(grep -c 'tools/ci/check-service-image.sh --build-only' "$workflow")" -eq 1
+    test "$(grep -c 'docker build\|check-service-image.sh' <<<"$steps")" -eq 1 -a \
+    "$(grep -c 'tools/ci/check-service-image.sh --build-only' <<<"$steps")" -eq 1
   check "Trivy scans the image that build step tagged" grep -qF 'image-ref: ${{ steps.build.outputs.image }}' "$workflow"
   # trivy_with <file>: the uses: line of the Trivy step and its with: settings
   trivy_with() { grep -A5 'uses: aquasecurity/trivy-action@' "$1" | grep -E 'uses:|severity:|ignore-unfixed:|exit-code:' | sed 's/^ *//'; }

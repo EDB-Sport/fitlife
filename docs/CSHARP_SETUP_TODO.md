@@ -391,6 +391,12 @@ The project description asks for a user interface that demonstrates the implemen
   *Why:* with only the service folder as context, restore fails: central package versions and the lock-file settings would be missing, and the image would be built without the reviewed rules.
 - [ ] **hadolint** on every Dockerfile and **Trivy** on release images.
   *Why:* consistent, linted images, and known vulnerabilities in base images, which NuGet audit doesn't see. This covers **patching** in the course's security methods (M10).
+- [x] **Trivy on the images a PR changes** (`.github/workflows/image-scan.yml`, #280), with release.yml's settings, so a vulnerable base image fails the PR and not the release. `tools/ci/image-scan-plan.sh` picks each service whose Dockerfile copies a changed path. The image is built once, by `tools/ci/check-service-image.sh --build-only <Service>`, and Trivy scans that tag. A PR that changes no image skips the scan. To run it locally, with Docker and the [Trivy CLI](https://trivy.dev/latest/getting-started/installation/):
+  ```sh
+  git diff --name-only origin/develop... | tools/ci/image-scan-plan.sh   # e.g. ["BookingService"]
+  tools/ci/check-service-image.sh --build-only BookingService             # image=fitlife-check/bookingservice:local
+  trivy image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 fitlife-check/bookingservice:local
+  ```
 - [ ] **gitleaks** secret scan on every PR.
   *Why:* course rule #9, "secrets in Vault, never in code or committed files", checked by a tool instead of by hope.
 

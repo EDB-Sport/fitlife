@@ -87,19 +87,25 @@ public sealed class ClassSession
     }
 
     /// <summary>
-    /// Puts the member at the end of the waitlist, if every seat is taken, the waitlist is still open, and the member has
+    /// Puts the member at the end of the waitlist, if the class session isn't cancelled, every seat is taken, the waitlist is still open, and the member has
     /// neither a seat nor a waitlist entry.
     /// </summary>
     /// <param name="memberId">The member who wants a seat.</param>
     /// <param name="clock">Tells the time now.</param>
     /// <returns>
-    /// <see cref="WaitlistResult.MemberAlreadyHasReservation"/>, <see cref="WaitlistResult.MemberAlreadyOnWaitlist"/>,
+    /// <see cref="WaitlistResult.ClassSessionCancelled"/>, <see cref="WaitlistResult.MemberAlreadyHasReservation"/>,
+    /// <see cref="WaitlistResult.MemberAlreadyOnWaitlist"/>,
     /// <see cref="WaitlistResult.ClassSessionNotFull"/> when a seat is free, or <see cref="WaitlistResult.WaitlistClosed"/>
     /// less than 2 hours before start; then nothing changes.
     /// </returns>
     public WaitlistResult JoinWaitlist(Guid memberId, TimeProvider clock)
     {
         ArgumentNullException.ThrowIfNull(clock);
+
+        if (IsCancelled)
+        {
+            return WaitlistResult.ClassSessionCancelled;
+        }
 
         if (_reservations.Exists(reservation => reservation.MemberId == memberId))
         {

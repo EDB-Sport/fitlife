@@ -6,6 +6,9 @@ public enum WaitlistResult
     /// <summary>The member got a waitlist entry at the end of the waitlist.</summary>
     Joined,
 
+    /// <summary>The class session is cancelled, so no waitlist entry was made.</summary>
+    ClassSessionCancelled,
+
     /// <summary>A seat is free, so the member can reserve it instead; no waitlist entry was made.</summary>
     ClassSessionNotFull,
 

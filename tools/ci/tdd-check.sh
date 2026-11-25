@@ -25,6 +25,7 @@
 #     new project under src/ always passes check 4. Stryker (section 6) is meant to cover weak tests.
 #   - Merging several [TestCase] lines into one [TestCaseSource] lowers the count, so check 3 fails it.
 #
+#        SRC_DIR may list several production directories, separated by spaces (src/ libs/).
 # Usage: BASE_SHA=<base commit> [PR_LABELS=<label,label>] tools/ci/tdd-check.sh
 #        On a label event also EVENT_ACTION, EVENT_LABEL, PR_HEAD_SHA, GITHUB_REPOSITORY and GH_TOKEN (issue #136).
 #        (run from the repo root; compares BASE_SHA...HEAD)
@@ -33,7 +34,9 @@ set -uo pipefail
 : "${BASE_SHA:?Set BASE_SHA to the base branch commit}"
 HEAD_SHA="${HEAD_SHA:-HEAD}"
 TEST_CMD="${TEST_CMD:-dotnet test -c Release}"
+# SRC_DIR is one directory or several, separated by spaces (src/ libs/): all of them are production code.
 SRC_DIR="${SRC_DIR:-src/}"
+read -r -a src_dirs <<< "$SRC_DIR"
 TEST_DIR="${TEST_DIR:-tests/}"
 SRC_FILE_REGEX="${SRC_FILE_REGEX:-\.cs$}"
 TEST_FILE_REGEX="${TEST_FILE_REGEX:-\.cs$}"
@@ -81,8 +84,8 @@ if [[ $EVENT_ACTION == labeled || $EVENT_ACTION == unlabeled ]] && [[ $EVENT_LAB
   fi
 fi
 
-# Files added or modified by the PR under a directory, filtered by a regex. Renames count as delete + add.
-changed_files() { git diff --name-only --no-renames --diff-filter=AM "$BASE_SHA...$HEAD_SHA" -- "$1" | grep -E "$2" || true; }
+# Files added or modified by the PR under directories, filtered by a regex: changed_files <regex> <dir>... Renames count as delete + add.
+changed_files() { git diff --name-only --no-renames --diff-filter=AM "$BASE_SHA...$HEAD_SHA" -- "${@:2}" | grep -E "$1" || true; }
 
 # Number of test attributes in the test files of a commit. Comment lines (// ...) don't count.
 count_tests() {
@@ -106,8 +109,8 @@ if [[ ",$PR_LABELS," == *",refactor,"* ]]; then
   exit "$failed"
 fi
 
-src_changes=$(changed_files "$SRC_DIR" "$SRC_FILE_REGEX")
-test_changes=$(changed_files "$TEST_DIR" "$TEST_FILE_REGEX")
+src_changes=$(changed_files "$SRC_FILE_REGEX" "${src_dirs[@]}")
+test_changes=$(changed_files "$TEST_FILE_REGEX" "$TEST_DIR")
 
 echo "Production files changed:"; echo "${src_changes:-  (none)}"
 echo "Test files changed:";       echo "${test_changes:-  (none)}"
@@ -149,9 +152,12 @@ if [[ -n "$src_changes" ]]; then
   if git worktree add --quiet --detach "$worktree" "$HEAD_SHA"; then
     (
       cd "$worktree" || exit 1
-      rm -rf "$SRC_DIR"
-      # Restore the base branch's production code, if it had any. Tests and everything else stay as in the PR.
-      if git cat-file -e "$BASE_SHA:$SRC_DIR" 2>/dev/null; then git checkout --quiet "$BASE_SHA" -- "$SRC_DIR" || exit 1; fi
+      # Every production directory goes back to the base branch together (src/ and libs/), so a test that
+      # depends on a change in any of them is red. Tests and everything else stay as in the PR.
+      for dir in "${src_dirs[@]}"; do
+        rm -rf "$dir"
+        if git cat-file -e "$BASE_SHA:$dir" 2>/dev/null; then git checkout --quiet "$BASE_SHA" -- "$dir" || exit 1; fi
+      done
       echo "::group::Tests without the change (must fail)"
       # This run is meant to fail, often to compile. Its output is indented, so setup-dotnet's csc problem
       # matcher (lines that start with a file name) doesn't make its errors annotations (#133). The file keeps

@@ -2,7 +2,7 @@
 # Tests for tools/ci/tdd-check.sh and its workflow (issue #43).
 # Each case builds a small fixture repo (a base commit and a PR commit) and runs the check on it.
 # The fixture's test suite is a stand-in for `dotnet test`: every `// needs: <word>` line in
-# tests/ must appear somewhere under src/, so a test "fails on base" when its word isn't there yet.
+# tests/ must appear somewhere under src/ or libs/, so a test "fails on base" when its word isn't there yet.
 # Usage: tools/ci/tdd-check.test.sh   (exit code 0 = all cases pass)
 set -uo pipefail
 
@@ -20,12 +20,12 @@ fixture() {
   git -C "$repo" init --quiet --initial-branch=develop
   git -C "$repo" config user.email test@example.invalid
   git -C "$repo" config user.name tdd-check-test
-  mkdir -p "$repo/src" "$repo/tests"
+  mkdir -p "$repo/src" "$repo/libs" "$repo/tests"
   cat > "$repo/run-tests.sh" <<'EOF'
 #!/usr/bin/env bash
 status=0
 while read -r word; do
-  grep -rqF "$word" src/ 2>/dev/null || { echo "red: $word"; status=1; }
+  grep -rqF "$word" src/ libs/ 2>/dev/null || { echo "red: $word"; status=1; }
 done < <(grep -rhoE '// needs: [A-Za-z]+' tests/ | sed 's|// needs: ||')
 exit "$status"
 EOF
@@ -43,16 +43,17 @@ public class CalculatorTests
     public void Add_Cases_ReturnSum(int a, int b) { }
 }
 EOF
+  echo 'public static class Clock { public static int Ticks() => 1; }' > "$repo/libs/Clock.cs"
   commit "$repo" "base"
   echo "$repo"
 }
 
 commit() { git -C "$1" add -A && git -C "$1" commit --quiet -m "$2"; }
 
-# expect <description> <pass|fail> <repo> [text the output must contain] [labels]
+# expect <description> <pass|fail> <repo> [text the output must contain] [labels] [production dirs, default src/]
 expect() {
   local out status
-  out=$(cd "$3" && BASE_SHA=$(git rev-parse HEAD^) TEST_CMD="bash run-tests.sh" PR_LABELS="${5:-}" "$check" 2>&1)
+  out=$(cd "$3" && BASE_SHA=$(git rev-parse HEAD^) TEST_CMD="bash run-tests.sh" PR_LABELS="${5:-}" SRC_DIR="${6:-src/}" "$check" 2>&1)
   status=$?
   if [ "$2" = pass ] && [ "$status" -eq 0 ]; then
     echo "PASS  $1"
@@ -98,6 +99,35 @@ EOF
 # 1. Feature PRs
 expect "feature PR passes" pass "$(feature_pr)"
 expect "feature PR with a refactor label is still checked as a refactor" fail "$(feature_pr)" "changes files under tests/" refactor
+
+# 1b. libs/ is production code (issue #379): the workflow's SRC_DIR lists src/ and libs/ together.
+prod_dirs="src/ libs/"
+repo=$(fixture)
+echo 'public static class Clock { public static int Ticks() => 2; }' > "$repo/libs/Clock.cs"
+commit "$repo" "change libs without a test"
+expect "a libs/ change without a test fails check 1" fail "$repo" "no test under tests/ was added or changed" "" "$prod_dirs"
+
+# The tests depend on the libs/ change; src/ only has the wiring that uses it.
+repo=$(fixture)
+echo 'public static class Stopwatch { public static int Lap() => 3; }' > "$repo/libs/Stopwatch.cs"
+echo 'public static class Program { public static int Lap() => Stopwatch.Lap(); }' > "$repo/src/Program.cs"
+cat >> "$repo/tests/CalculatorTests.cs" <<'EOF'
+public class StopwatchTests
+{
+    [Test] // needs: Stopwatch
+    public void Lap_ReturnsThree() { }
+}
+EOF
+commit "$repo" "libs change, src wiring, and a test that depends on libs"
+expect "libs/ and src/ wiring with tests that depend on libs/ passes check 4" pass "$repo" "" "" "$prod_dirs"
+expect "the same PR fails when only src/ counts as production (the #98 case)" fail "$repo" "also pass without the production change"
+
+# A test that depends on neither directory's change is red on nothing: both are reset together.
+repo=$(fixture)
+echo 'public static class Clock { public static int Ticks() => 2; }' > "$repo/libs/Clock.cs"
+echo '// a test that passes on base' >> "$repo/tests/CalculatorTests.cs"
+commit "$repo" "libs change with a test that doesn't depend on it"
+expect "a libs/ change whose tests also pass on base fails check 4" fail "$repo" "also pass without the production change" "" "$prod_dirs"
 
 # 2. Refactor PRs (METHODOLOGY section 8)
 expect "refactor PR with the refactor label passes" pass "$(refactor_pr)" "" refactor
@@ -292,6 +322,7 @@ wf() { grep -qE "$2" "$workflow" && echo "PASS  $1" || { echo "FAIL  $1: '$2' no
 wf "workflow re-runs on label changes" 'types: \[opened, synchronize, reopened, labeled, unlabeled\]'
 wf "workflow takes BASE_SHA from the merge commit's first parent" 'BASE_SHA=\$\(git rev-parse HEAD\^1\)'
 wf "workflow passes the PR's labels" 'PR_LABELS: \$\{\{ join\(github\.event\.pull_request\.labels\.\*\.name, '"','"'\) \}\}'
+wf "workflow treats libs/ as production code (issue #379)" "SRC_DIR: 'src/ libs/'( #.*)?$"
 wf "workflow checks tools/Analyzers (issue #49): SRC_DIR" 'SRC_DIR: tools/Analyzers/Team\.Analyzers/$'
 wf "workflow checks tools/Analyzers (issue #49): TEST_DIR" 'TEST_DIR: tools/Analyzers/Team\.Analyzers\.Tests/$'
 wf "workflow passes the event and its label (issue #136)" 'EVENT_LABEL: \$\{\{ github\.event\.label\.name \}\}'

@@ -1,5 +1,5 @@
 using BookingService.Domain;
-using BookingService.Repositories;
+using BookingService.Application;
 
 namespace BookingService.Seed;
 

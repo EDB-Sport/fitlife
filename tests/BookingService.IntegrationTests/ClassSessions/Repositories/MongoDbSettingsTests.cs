@@ -33,7 +33,7 @@ public sealed class MongoDbSettingsTests
         // Arrange: a user that lives in the service's database, as deploy/compose/mongodb/init creates booking-svc
         string database = $"booking-{Guid.NewGuid():N}";
         string password = Guid.NewGuid().ToString("N");
-        var admin = new MongoClient(MongoDbContainerSetUp.ConnectionString);
+        using var admin = new MongoClient(MongoDbContainerSetUp.ConnectionString);
         await admin.GetDatabase(database).RunCommandAsync<BsonDocument>(new BsonDocument
         {
             { "createUser", "booking-svc" },

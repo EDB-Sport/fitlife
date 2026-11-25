@@ -1,0 +1,151 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "MembershipService | v1",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/members": {
+      "post": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "The account in the token joins FitLife and gets an active membership",
+        "operationId": "JoinMembership",
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/members/by-account/{accountId}": {
+      "get": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "The member id of an account, and whether its membership is active",
+        "operationId": "GetMemberByAccount",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "MemberResponse": {
+        "required": [
+          "memberId",
+          "membershipStatus",
+          "isActive"
+        ],
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "string",
+            "description": "The member id other contexts store.",
+            "format": "uuid"
+          },
+          "membershipStatus": {
+            "description": "Where the membership is in its life.",
+            "$ref": "#/components/schemas/MembershipStatus"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Whether the member may book and enter."
+          }
+        },
+        "description": "A member and whether the membership gives access and the right to book."
+      },
+      "MembershipStatus": {
+        "enum": [
+          "Active"
+        ],
+        "description": "Medlemskabets tilstand: where a membership is in its life (TO-BE-kontekst §8). Only MembershipStatus.Active\ngives access and the right to book. The other states (Pause, Betaling mangler, Opsagt, Afsluttet) come with their issues."
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Members"
+    }
+  ]
+}

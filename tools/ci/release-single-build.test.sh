@@ -12,6 +12,11 @@ if [ ! -f "$file" ]; then
   exit 1
 fi
 
+if ! python3 -I -c 'import yaml' 2>/dev/null; then
+  echo "SKIP: PyYAML not installed (pip install pyyaml)"
+  exit 0
+fi
+
 python3 -I - "$file" <<'PY'
 import sys
 import yaml

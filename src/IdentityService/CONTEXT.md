@@ -1,7 +1,7 @@
 # Identity (`src/IdentityService/`)
 
 > From `docs/templates/CONTEXT.md`. Keep it under about 80 lines, and update it in the same PR that changes the model.
-> **Status: the `Account` model and its repository (#233).** Nothing is reachable over HTTP yet: the service answers `/health` only. `POST /accounts` is #234, `POST /tokens` is #235. The context map (`docs/domain/CONTEXT-MAP.md`) is decided in ADR 007.
+> **Status: accounts and tokens (#233, #234, #235).** `POST /accounts` creates an account with the role Medlem. `POST /tokens` logs in and gives a JWT with the account's id and roles. The context map (`docs/domain/CONTEXT-MAP.md`) is decided in ADR 007.
 
 ## Purpose
 
@@ -33,7 +33,12 @@ Words from other contexts that we do **not** use here:
 
 ## Commands, queries and events
 
-None yet. Creating an account (#234) and issuing a token (#235) come next. Identity publishes no events: Membership reads the account's id from the token.
+| Kind | Name | Endpoint | What it does |
+|---|---|---|---|
+| Command | `CreateAccountCommand` (`CreateAccountHandler`) | `POST /accounts` | Hashes the password with `PasswordHasher<Account>` and stores a new account with the role Medlem. `EmailAlreadyTaken` (409) when another account has the e-mail address in any letter case. The password and the hash are never in a response or a log line |
+| Command | `LogInCommand` (`LogInHandler`) | `POST /tokens` | Checks the password against the stored hash and, with `TokenWriter`, signs a JWT with the `FitLifeJwt` values: `sub` = the account's id, one `role` claim per role, valid for 60 minutes from `TimeProvider`'s now. An unknown e-mail address and a wrong password give the same 401. The key is read from `Jwt:SigningKey` when a token is written, so the service starts without one |
+
+Identity publishes no events: Membership reads the account's id from the token.
 
 ## Talks to
 

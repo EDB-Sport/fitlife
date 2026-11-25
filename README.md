@@ -2,6 +2,8 @@
 
 Proof of concept for FitLife Digital: .NET 10 microservices with lightweight Blazor user interfaces, run in Docker (Compose locally and in CI, Azure Container Instances in production).
 
+**Running:** https://edb-fitlife.switzerlandnorth.azurecontainer.io (production on Azure Container Instances, deployed by `deploy.yml`, see [`deploy/azure/README.md`](deploy/azure/README.md)).
+
 ## Start here
 
 | Document | What it is |

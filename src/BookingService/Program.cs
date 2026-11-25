@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Reflection;
 using BookingService.Clients;
+using BookingService.Repositories;
+using BookingService.Seed;
 using FitLife.Configuration;
 using FitLife.Correlation;
 using NLog;
@@ -20,6 +22,14 @@ try
 
     builder.Services.AddOpenApi();
     builder.Services.AddHealthChecks();
+    builder.Services.AddControllers();
+    builder.Services.AddProblemDetails();
+    builder.Services.AddSingleton(TimeProvider.System);
+    builder.Services.AddRepositories();
+    if (builder.Configuration.GetValue<bool>("Seed:Enabled"))
+    {
+        builder.Services.AddHostedService<ClassSessionSeeder>();
+    }
 
     // Who the member behind an account is, from Membership (#256). The reservation endpoints use it (#260)
     builder.Services.AddMembershipClient();
@@ -36,7 +46,9 @@ try
         app.MapScalarApiReference();
     }
 
+    app.UseExceptionHandler(); // an unexpected error is a problem-details 500, without the exception's text
     app.MapHealthChecks("/health");
+    app.MapControllers();
 
     // The startup line: which service and which release is running (the version is also a Loki label)
     if (app.Logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information))

@@ -58,12 +58,21 @@ public sealed class TestHasAssertionAnalyzerTests
                 public void VerifyNoOtherCalls() { }
             }
         }
+        namespace Moq.Protected
+        {
+            public interface IProtectedMock<T> where T : class { void Verify(string methodName); }
+            public static class ProtectedExtension
+            {
+                public static IProtectedMock<T> Protected<T>(this Moq.Mock<T> mock) where T : class => null!;
+            }
+        }
         """;
 
     private const string Usings = """
         using System;
         using System.Threading.Tasks;
         using Moq;
+        using Moq.Protected;
         using NUnit.Framework;
         using NUnit.Framework.Legacy;
 
@@ -173,7 +182,7 @@ public sealed class TestHasAssertionAnalyzerTests
             }
             """;
         DiagnosticResult expected = new DiagnosticResult(TestHasAssertionAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
-            .WithSpan(11, 17, 11, 24)
+            .WithSpan(12, 17, 12, 24)
             .WithMessage("Found test 'Reserve' without an assertion. Do add an Assert.That(...) (or a Moq Verify) that fails when the behaviour is wrong, in ReservationTests.");
         return VerifyAsync(source, expected);
     }
@@ -229,6 +238,23 @@ public sealed class TestHasAssertionAnalyzerTests
                     var repository = new Mock<IClassSessionRepository>();
                     repository.Object.Save();
                     {{verify}}
+                }
+            }
+            """;
+        return VerifyAsync(source);
+    }
+
+    [Test]
+    public Task TestWithMoqProtectedVerify_ReportsNothing()
+    {
+        const string source = """
+            public class ReservationTests
+            {
+                [Test]
+                public void Reserve_SavesTheSession()
+                {
+                    var repository = new Mock<IClassSessionRepository>();
+                    repository.Protected().Verify("Save");
                 }
             }
             """;

@@ -1,10 +1,24 @@
 #!/usr/bin/env bash
 # Executable acceptance check for a service's Dockerfile (issue #93, docs/CSHARP_SETUP_TODO.md section 8):
 # the image builds with the repo root as context, and the container answers /health with 200.
-# Usage: tools/ci/check-service-image.sh <Service>   e.g. tools/ci/check-service-image.sh BookingService
+# Usage: tools/ci/check-service-image.sh <Service> [KEY=VALUE ...]
+#   e.g. tools/ci/check-service-image.sh BookingService
+#        tools/ci/check-service-image.sh MembershipService Jwt__SigningKey=image-check-key-at-least-32-bytes-long
+# Each KEY=VALUE is passed to the container with -e, for a service that needs a setting to start (#223).
+# Use made-up test values only: in compose and Azure the real ones come from Vault.
 set -uo pipefail
 
-service=${1:?Usage: $0 <Service>}
+usage="Usage: $0 <Service> [KEY=VALUE ...]"
+service=${1:?$usage}
+shift
+env_args=()
+for setting in "$@"; do
+  if [[ "$setting" != ?*=* ]]; then
+    echo "FAIL  '$setting' is not KEY=VALUE. $usage"
+    exit 2
+  fi
+  env_args+=(-e "$setting")
+done
 root=$(cd "$(dirname "$0")/../.." && pwd)
 image="fitlife-check/$(tr '[:upper:]' '[:lower:]' <<<"$service"):local"
 container="fitlife-check-$$"
@@ -16,7 +30,8 @@ if ! docker build -q -f "$root/src/$service/Dockerfile" -t "$image" "$root" >/de
 fi
 echo "PASS  the image builds with the repo root as context"
 
-docker run -d --name "$container" -p 127.0.0.1::8080 "$image" >/dev/null
+# ${a[@]+"${a[@]}"}: an empty array under set -u, also in bash 3.2 (macOS)
+docker run -d --name "$container" ${env_args[@]+"${env_args[@]}"} -p 127.0.0.1::8080 "$image" >/dev/null
 port=$(docker port "$container" 8080/tcp | head -1 | sed 's/.*://')
 status=000
 for _ in $(seq 1 30); do

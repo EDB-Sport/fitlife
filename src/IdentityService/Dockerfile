@@ -6,16 +6,22 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0.203-alpine3.23 AS build
 WORKDIR /app
 
-# The reviewed rule files, so the image is built with the same rules, package versions and analyzers as CI
+# Restore first, from the project files only, so a code change keeps this layer cached (#357; tools/ci/check-dockerfile-restore-order.sh).
+# The build props and the analyzer project come first because every project imports them.
 COPY global.json Directory.Build.props Directory.Build.targets Directory.Packages.props ./
+COPY tools/Analyzers/Team.Analyzers/Team.Analyzers.csproj tools/Analyzers/Team.Analyzers/packages.lock.json tools/Analyzers/Team.Analyzers/
+COPY libs/FitLife.Configuration/FitLife.Configuration.csproj libs/FitLife.Configuration/packages.lock.json libs/FitLife.Configuration/
+COPY libs/FitLife.Correlation/FitLife.Correlation.csproj libs/FitLife.Correlation/packages.lock.json libs/FitLife.Correlation/
+COPY src/IdentityService/IdentityService.csproj src/IdentityService/packages.lock.json src/IdentityService/
+RUN dotnet restore src/IdentityService/IdentityService.csproj --locked-mode
+
+# The reviewed rule files, so the image is built with the same rules, package versions and analyzers as CI,
+# then the shared code (correlation ID, nlog.config) and the service
 COPY .editorconfig .globalconfig BannedSymbols.txt SonarLint.xml GLOSSARY.md ./
 COPY tools/Analyzers/ tools/Analyzers/
-
-# Shared code (correlation ID, nlog.config), then the service
 COPY libs/ libs/
 COPY src/IdentityService/ src/IdentityService/
 
-RUN dotnet restore src/IdentityService/IdentityService.csproj --locked-mode
 RUN dotnet publish src/IdentityService/IdentityService.csproj -c Release -o /app/publish --no-restore
 
 # The runtime from the pinned SDK

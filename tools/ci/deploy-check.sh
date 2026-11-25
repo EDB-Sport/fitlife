@@ -300,10 +300,18 @@ fi
 step "6. Acceptance checks: deploy/**/*.test.sh"
 # Each check prints its own ok/FAIL lines and exits non-zero on failure. The checks that compile Bicep
 # call $BICEP, which runs the pinned Bicep CLI in the Azure CLI image with deploy/ mounted read-only.
+# The variables main.bicepparam reads go through when they are set (docker -e NAME), so a check can run
+# build-params with and without one of them (topology.test.sh, #198).
+bicepparam_env=""
+if [[ -f $BICEPPARAM_FILE ]]; then
+  for name in $(grep -oE "readEnvironmentVariable\('[A-Za-z0-9_]+'" "$BICEPPARAM_FILE" | cut -d"'" -f2 | sort -u); do
+    bicepparam_env+=" -e $name"
+  done
+fi
 cat >"$WORK/bicep" <<WRAPPER
 #!/usr/bin/env bash
 # Pinned Bicep CLI ($BICEP_VERSION) in $AZ_CLI_IMAGE. Paths are relative to the repo root.
-exec docker run --rm -v "$ROOT/deploy:/src/deploy:ro" -w /src \\
+exec docker run --rm -v "$ROOT/deploy:/src/deploy:ro" -w /src$bicepparam_env \\
   -e AZURE_CORE_COLLECT_TELEMETRY=false -e AZURE_BICEP_CHECK_VERSION=false \\
   -e AZURE_BICEP_USE_BINARY_FROM_PATH=false -e BICEP_VERSION="$BICEP_VERSION" \\
   -e DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 \\

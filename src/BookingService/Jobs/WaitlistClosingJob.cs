@@ -4,7 +4,7 @@ using BookingService.Domain;
 namespace BookingService.Jobs;
 
 /// <summary>
-/// Closes the waitlist of every class session that starts within 2 hours, once a minute (#314). It runs when
+/// Closes the waitlist of every upcoming class session that starts within 2 hours, once a minute (#314). It runs when
 /// <c>WaitlistClosing:Enabled</c> is true. A save that loses to another request is not lost: the next run reads the class
 /// session again and closes it then.
 /// </summary>
@@ -34,7 +34,7 @@ public sealed partial class WaitlistClosingJob : BackgroundService
     {
         using IServiceScope scope = _scopes.CreateScope();
         IClassSessionRepository repository = scope.ServiceProvider.GetRequiredService<IClassSessionRepository>();
-        foreach (ClassSession classSession in await repository.ListAsync(centerId: null, cancellationToken).ConfigureAwait(false))
+        foreach (ClassSession classSession in await repository.ListAsync(centerId: null, startsAfter: _clock.GetUtcNow(), cancellationToken).ConfigureAwait(false))
         {
             if (classSession.Waitlist.Count == 0 || classSession.CloseWaitlist(_clock) != WaitlistClosingResult.Closed)
             {

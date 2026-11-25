@@ -15,6 +15,12 @@ public interface IMembershipRepository
     /// <returns>A task.</returns>
     Task RemoveAsync(Guid membershipId, CancellationToken cancellationToken);
 
+    /// <summary>Stores a changed membership.</summary>
+    /// <param name="membership">The membership.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>A task.</returns>
+    Task SaveAsync(Membership membership, CancellationToken cancellationToken);
+
     /// <summary>Finds the member's membership.</summary>
     /// <param name="memberId">The member id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>

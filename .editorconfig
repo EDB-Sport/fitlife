@@ -29,5 +29,10 @@ csharp_indent_case_contents = true
 csharp_indent_switch_labels = true
 dotnet_sort_system_directives_first = true
 
+# Razor's C# output is checked like hand-written code, so the style rules also apply in .razor @code blocks (#397).
+# Without this the IDE rules skip it as generated code. TEAM004 skips the generator's own #pragma/#nullable lines.
+[*_razor.g.cs]
+generated_code = false
+
 # Blazor-only rule exceptions go here. Every exception needs a reason on the line above it.
 [src/*.Web/**.cs]

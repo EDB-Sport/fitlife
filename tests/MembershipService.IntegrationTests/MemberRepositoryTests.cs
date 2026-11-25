@@ -89,6 +89,23 @@ public sealed class MemberRepositoryTests
     }
 
     [Test]
+    public async Task Save_AMembershipThatWasPaid_StoresItsNewStatus()
+    {
+        // Arrange
+        IMembershipRepository memberships = _factory.Services.GetRequiredService<IMembershipRepository>();
+        var membership = Membership.Start(Guid.NewGuid(), new DateOnly(2026, 11, 24));
+        await memberships.AddAsync(membership, CancellationToken.None).ConfigureAwait(false);
+        membership.MarkPaid();
+
+        // Act
+        await memberships.SaveAsync(membership, CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Membership? found = await memberships.FindByMemberIdAsync(membership.MemberId, CancellationToken.None).ConfigureAwait(false);
+        Assert.That(found?.Status, Is.EqualTo(MembershipStatus.Active));
+    }
+
+    [Test]
     public async Task Remove_AMembership_IsNotFoundAgain()
     {
         // Arrange

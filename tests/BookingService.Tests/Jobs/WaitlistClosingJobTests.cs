@@ -162,7 +162,7 @@ public sealed class WaitlistClosingJobTests
 
         public ClassSession? Saved { get; private set; }
 
-        public Task<IReadOnlyList<ClassSession>> ListAsync(Guid? centerId, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<ClassSession>> ListAsync(Guid? centerId, DateTimeOffset startsAfter, CancellationToken cancellationToken)
         {
             _reads++;
             _firstRead.TrySetResult();

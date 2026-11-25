@@ -15,7 +15,6 @@ public sealed class CreateAccountRequestTests
         string text = request.ToString();
 
         // Assert
-        Assert.That(text, Does.Contain("anna@fitlife.example"));
-        Assert.That(text, Does.Not.Contain("made-up-password-1"));
+        Assert.That(text, Is.EqualTo("CreateAccountRequest { Email = anna@fitlife.example }"));
     }
 }

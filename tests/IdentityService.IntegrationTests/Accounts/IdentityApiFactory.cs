@@ -11,6 +11,20 @@ namespace IdentityService.IntegrationTests.Accounts;
 /// <summary>The app with an in-memory <see cref="IAccountRepository"/>, and every log line of every level captured.</summary>
 internal sealed class IdentityApiFactory : WebApplicationFactory<Program>
 {
+    private readonly IAccountRepository? _replacement;
+
+    /// <summary>The app with an empty <see cref="InMemoryAccountRepository"/>.</summary>
+    public IdentityApiFactory()
+    {
+    }
+
+    /// <summary>The app with <paramref name="replacement"/> as its repository, e.g. one that fails.</summary>
+    /// <param name="replacement">The repository the app uses instead of <see cref="Repository"/>.</param>
+    public IdentityApiFactory(IAccountRepository replacement)
+    {
+        _replacement = replacement;
+    }
+
     /// <summary>The accounts the app has stored.</summary>
     public InMemoryAccountRepository Repository { get; } = new();
 
@@ -22,7 +36,7 @@ internal sealed class IdentityApiFactory : WebApplicationFactory<Program>
         builder.ConfigureLogging(logging => logging.AddFilter<CapturingLoggerProvider>(null, LogLevel.Trace));
         builder.ConfigureTestServices(services =>
         {
-            services.AddSingleton<IAccountRepository>(Repository);
+            services.AddSingleton(_replacement ?? Repository);
             services.AddSingleton<ILoggerProvider>(Logs);
         });
     }

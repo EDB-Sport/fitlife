@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using IdentityService.Application;
 using IdentityService.Domain;
 
 namespace IdentityService.IntegrationTests.Accounts;
@@ -88,6 +89,7 @@ public sealed class AccountsApiTests
         Assert.That(response.Content.Headers.ContentType?.MediaType, Is.EqualTo("application/problem+json"));
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
         Assert.That(body.RootElement.GetProperty("code").GetString(), Is.EqualTo("EmailAlreadyTaken"));
+        Assert.That(body.RootElement.GetProperty("title").GetString(), Is.EqualTo("The e-mail address is taken."));
         Assert.That(factory.Repository.Accounts, Has.Count.EqualTo(1));
     }
 
@@ -124,5 +126,51 @@ public sealed class AccountsApiTests
         Assert.That(factory.Logs.Lines, Is.Not.Empty);
         Assert.That(factory.Logs.Lines, Has.None.Contains(Password));
         Assert.That(factory.Logs.Lines, Has.None.Contains(hash));
+    }
+
+    [Test]
+    public async Task PostAccounts_WithANewEmail_LogsTheNewAccountsId()
+    {
+        // Arrange
+        using var factory = new IdentityApiFactory();
+        using HttpClient client = factory.CreateClient();
+
+        // Act
+        using HttpResponseMessage response = await PostAsync(client, Email, Password).ConfigureAwait(false);
+
+        // Assert
+        Guid id = factory.Repository.Accounts.Single().Id;
+        Assert.That(factory.Logs.Lines, Has.Some.StartsWith($"Account {id} created"));
+    }
+
+    [Test]
+    public async Task PostAccounts_WhenTheRepositoryFails_Returns500ProblemWithoutTheExceptionText()
+    {
+        // Arrange
+        using var factory = new IdentityApiFactory(new FailingAccountRepository());
+        using HttpClient client = factory.CreateClient();
+
+        // Act
+        using HttpResponseMessage response = await PostAsync(client, Email, Password).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.InternalServerError));
+        Assert.That(response.Content.Headers.ContentType?.MediaType, Is.EqualTo("application/problem+json"));
+        Assert.That(await response.Content.ReadAsStringAsync().ConfigureAwait(false), Does.Not.Contain(FailingAccountRepository.Message));
+    }
+
+    private sealed class FailingAccountRepository : IAccountRepository
+    {
+        public const string Message = "the database is on fire";
+
+        public Task<bool> AddAsync(Account account, CancellationToken cancellationToken)
+        {
+            throw new InvalidOperationException(Message);
+        }
+
+        public Task<Account?> FindByEmailAsync(string email, CancellationToken cancellationToken)
+        {
+            throw new InvalidOperationException(Message);
+        }
     }
 }

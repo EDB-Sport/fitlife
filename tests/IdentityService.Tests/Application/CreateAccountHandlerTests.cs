@@ -72,4 +72,15 @@ public sealed class CreateAccountHandlerTests
         Assert.That(account.PasswordHash, Does.Not.Contain(Password));
         Assert.That(_hasher.VerifyHashedPassword(account, account.PasswordHash, Password), Is.EqualTo(PasswordVerificationResult.Success));
     }
+
+    [Test]
+    public void Handle_WithoutACommand_Throws()
+    {
+        // Arrange
+        var handler = new CreateAccountHandler(new Mock<IAccountRepository>().Object, _hasher, NullLogger<CreateAccountHandler>.Instance);
+
+        // Act & Assert
+        // ! The test passes null on purpose, to check the guard.
+        Assert.That(() => handler.HandleAsync(null!, CancellationToken.None), Throws.ArgumentNullException);
+    }
 }

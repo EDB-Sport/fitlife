@@ -24,7 +24,7 @@ public sealed class RoleTests
     public void FromName_WithAGlossaryName_ReturnsTheRoleWithThatName(string name)
     {
         // Arrange & Act
-        Role role = Role.FromName(name);
+        var role = Role.FromName(name);
 
         // Assert
         Assert.That(role.Name, Is.EqualTo(name));

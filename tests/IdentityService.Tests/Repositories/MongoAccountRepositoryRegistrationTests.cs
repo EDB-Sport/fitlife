@@ -8,14 +8,17 @@ namespace IdentityService.Tests.Repositories;
 /// <summary>The repository is built from the MongoDb:* settings. Registering it connects to nothing (#233).</summary>
 public sealed class MongoAccountRepositoryRegistrationTests
 {
-    private static Dictionary<string, string?> AllSettings() => new(StringComparer.Ordinal)
+    private static Dictionary<string, string?> AllSettings()
     {
-        ["MongoDb:Host"] = "mongodb",
-        ["MongoDb:Port"] = "27017",
-        ["MongoDb:Database"] = "identity",
-        ["MongoDb:Username"] = "identity-svc",
-        ["MongoDb:Password"] = "made-up",
-    };
+        return new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["MongoDb:Host"] = "mongodb",
+            ["MongoDb:Port"] = "27017",
+            ["MongoDb:Database"] = "identity",
+            ["MongoDb:Username"] = "identity-svc",
+            ["MongoDb:Password"] = "made-up",
+        };
+    }
 
     private static ServiceProvider Provider(Dictionary<string, string?> settings)
     {

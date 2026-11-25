@@ -28,6 +28,7 @@ try
         app.Logger.LogInformation("Starting {Service} {Version}", app.Environment.ApplicationName, version);
     }
 
+    // Stryker disable once Boolean : ConfigureAwait(false) -> true is an equivalent mutant (#270)
     await app.RunAsync().ConfigureAwait(false);
 }
 catch (Exception exception) when (exception is not HostAbortedException) // WebApplicationFactory stops the host with HostAbortedException

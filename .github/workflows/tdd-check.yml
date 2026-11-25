@@ -22,12 +22,13 @@ concurrency:
 jobs:
   tdd-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # the base commit is needed for the diff and the red-on-base run
 
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
 
@@ -41,7 +42,7 @@ jobs:
           EVENT_LABEL: ${{ github.event.label.name }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GH_TOKEN: ${{ github.token }}
-          TEST_CMD: dotnet test -c Release
+          TEST_CMD: dotnet test -c Release --blame-hang-timeout 5m --blame-hang-dump-type none
           SRC_DIR: src/
           TEST_DIR: tests/
           SRC_FILE_REGEX: '\.cs$'
@@ -58,7 +59,7 @@ jobs:
           EVENT_LABEL: ${{ github.event.label.name }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GH_TOKEN: ${{ github.token }}
-          TEST_CMD: dotnet test -c Release
+          TEST_CMD: dotnet test -c Release --blame-hang-timeout 5m --blame-hang-dump-type none
           SRC_DIR: tools/Analyzers/Team.Analyzers/
           TEST_DIR: tools/Analyzers/Team.Analyzers.Tests/
           SRC_FILE_REGEX: '\.cs$'

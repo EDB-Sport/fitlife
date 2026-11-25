@@ -90,7 +90,7 @@ public sealed class ClassSessionsController : ControllerBase
             return ChangedMeanwhile();
         }
 
-        return Created(new Uri($"/class-sessions/{id}/reservations/{request.MemberId}", UriKind.Relative), new ReservationResponse(id, request.MemberId));
+        return StatusCode(StatusCodes.Status201Created, new ReservationResponse(id, request.MemberId));
     }
 
     /// <summary>Cancels the member's reservation. When someone is on the waitlist, the first waitlist entry gets the seat.</summary>
@@ -166,7 +166,7 @@ public sealed class ClassSessionsController : ControllerBase
             return ChangedMeanwhile();
         }
 
-        return Created(new Uri($"/class-sessions/{id}/waitlist/{request.MemberId}", UriKind.Relative), new WaitlistEntryResponse(id, request.MemberId));
+        return StatusCode(StatusCodes.Status201Created, new WaitlistEntryResponse(id, request.MemberId));
     }
 
     private ObjectResult ClassSessionNotFound(Guid id)

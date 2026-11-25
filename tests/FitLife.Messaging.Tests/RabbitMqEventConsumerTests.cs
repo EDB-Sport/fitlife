@@ -196,7 +196,7 @@ public sealed class RabbitMqEventConsumerTests
     }
 
     [Test]
-    public async Task Deliver_SubscriberThrows_NacksItWithoutRequeue()
+    public async Task Deliver_SubscriberThrows_RejectsItWithRequeue()
     {
         // Arrange
         using var rabbitMq = new FakeRabbitMq();
@@ -207,7 +207,7 @@ public sealed class RabbitMqEventConsumerTests
         await rabbitMq.DeliverAsync(7, EventJson.Serialize(Sample)).ConfigureAwait(false);
 
         // Assert
-        rabbitMq.Channel.Verify(channel => channel.BasicNackAsync(7, false, false, It.IsAny<CancellationToken>()));
+        rabbitMq.Channel.Verify(channel => channel.BasicRejectAsync(7, true, It.IsAny<CancellationToken>()));
     }
 
     [Test]

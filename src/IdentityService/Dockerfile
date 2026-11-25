@@ -19,7 +19,7 @@ RUN dotnet restore src/IdentityService/IdentityService.csproj --locked-mode
 RUN dotnet publish src/IdentityService/IdentityService.csproj -c Release -o /app/publish --no-restore
 
 # The runtime from the pinned SDK
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.7-alpine3.23 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.12-alpine3.23 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
 

@@ -26,9 +26,9 @@ node "Docker host: compose project fitlife" {
   package "services.yml" {
     rectangle "booking-svc\nBookingService" as booking
     rectangle "membership-svc\nMembershipService\n(#170)" <<planned>> as membership
-    rectangle "identity-svc\nIdentityService\n(#232)" <<planned>> as identity
+    rectangle "identity-svc\nIdentityService\nanswers /health only" as identity
     rectangle "notification-svc\nNotificationService\n(#191)" <<planned>> as notification
-    rectangle "member-portal\nBlazor UI\n(#204)" <<planned>> as portal
+    rectangle "member-portal\nBlazor UI" as portal
   }
 
   package "infrastructure.yml" {
@@ -49,11 +49,11 @@ person --> gateway : HTTP, the only entry point
 
 gateway --> booking : HTTP /api/booking/
 gateway ..> membership : HTTP /api/membership/
-gateway ..> identity : HTTP /api/identity/
-gateway ..> portal : HTTP every other path\n(WebSocket for Blazor)
+gateway --> identity : HTTP /api/identity/
+gateway --> portal : HTTP every other path\n(WebSocket for Blazor)
 gateway --> grafana : HTTP /grafana/
 
-portal ..> gateway : HTTP to the services' APIs\n(Gateway:BaseUrl)
+portal ..> gateway : HTTP to the services' APIs\n(Gateway:BaseUrl, #205)
 booking ..> membership : HTTP: is the member active?\n(account id → MemberId, #256)
 membership ..> payment : HTTPS: charge the fee\n(anticorruption layer)
 
@@ -69,11 +69,11 @@ notification ..> mongodb : MongoDB: database notification
 
 booking --> vault : secret read at start-up\n(secret/booking-svc)
 membership ..> vault : secret read at start-up
-identity ..> vault : secret read at start-up
+identity --> vault : secret read at start-up\n(secret/identity-svc)
 notification ..> vault : secret read at start-up
 
 booking --> loki : log lines (NLog, app label)
-portal ..> loki : log lines
+portal --> loki : log lines
 grafana --> loki : log queries
 @enduml
 ```

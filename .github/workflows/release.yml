@@ -101,14 +101,9 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Push
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          file: src/${{ matrix.service.name }}/Dockerfile
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          push: true
+      # Pushes the loaded, scanned image under every tag: no second build, so what Trivy scanned is what ships
+      - name: Push the scanned image
+        run: docker push --all-tags "$IMAGE"
 
   # Tagged last, so a failed build, scan or push leaves no tag and a re-run releases the same versions
   tags:

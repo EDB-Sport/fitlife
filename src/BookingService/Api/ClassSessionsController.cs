@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace BookingService.Api;
 
 /// <summary>
-/// The class schedule, reservations and waitlist over HTTP (#171). The rules live in <see cref="ClassSession"/>; this class only
+/// Reservations and the waitlist over HTTP (#171); the class schedule is <see cref="ClassScheduleController"/>. The rules live in <see cref="ClassSession"/>; this class only
 /// loads it, calls it, saves it and turns its answer into a status code.
 /// </summary>
 [ApiController]
@@ -27,24 +27,6 @@ public sealed class ClassSessionsController : ControllerBase
     {
         _repository = repository;
         _clock = clock;
-    }
-
-    /// <summary>Lists the class sessions of a centre, or of every centre, with their free seats; a cancelled one has none. No login needed.</summary>
-    /// <param name="centerId">The centre; leave it out for every centre.</param>
-    /// <param name="cancellationToken">Stops the request.</param>
-    [HttpGet]
-    [ProducesResponseType<IReadOnlyList<ClassSessionResponse>>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<ClassSessionResponse>>> GetClassSessions([FromQuery] Guid? centerId, CancellationToken cancellationToken)
-    {
-        IReadOnlyList<ClassSession> classSessions = await _repository.ListAsync(centerId, cancellationToken).ConfigureAwait(false);
-        return Ok(classSessions.Select(classSession => new ClassSessionResponse(
-            classSession.Id,
-            classSession.CenterId,
-            classSession.ClassTypeId,
-            classSession.StartTime,
-            classSession.Capacity.Value,
-            classSession.FreeSeats,
-            classSession.IsCancelled)).ToList());
     }
 
     /// <summary>Reserves a seat for the member.</summary>

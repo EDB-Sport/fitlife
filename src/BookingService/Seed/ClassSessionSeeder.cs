@@ -77,7 +77,7 @@ public sealed partial class ClassSessionSeeder : IHostedService
     {
         using IServiceScope scope = _scopes.CreateScope();
         IClassSessionRepository repository = scope.ServiceProvider.GetRequiredService<IClassSessionRepository>();
-        if ((await repository.ListAsync(centerId: null, cancellationToken).ConfigureAwait(false)).Count > 0)
+        if ((await repository.ListAsync(centerId: null, startsAfter: DateTimeOffset.MinValue, cancellationToken).ConfigureAwait(false)).Count > 0)
         {
             return;
         }

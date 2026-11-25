@@ -21,12 +21,12 @@ public sealed class ClassSessionRepository : IClassSessionRepository
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<ClassSession>> ListAsync(Guid? centerId, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<ClassSession>> ListAsync(Guid? centerId, DateTimeOffset startsAfter, CancellationToken cancellationToken)
     {
-        FilterDefinition<ClassSessionDocument> filter = Builders<ClassSessionDocument>.Filter.Empty;
+        FilterDefinition<ClassSessionDocument> filter = Builders<ClassSessionDocument>.Filter.Gt(document => document.StartTime, startsAfter.UtcDateTime);
         if (centerId is { } id)
         {
-            filter = Builders<ClassSessionDocument>.Filter.Eq(document => document.CenterId, id);
+            filter &= Builders<ClassSessionDocument>.Filter.Eq(document => document.CenterId, id);
         }
 
         List<ClassSessionDocument> documents = await _collection.Find(filter)

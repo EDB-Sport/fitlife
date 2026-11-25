@@ -8,9 +8,9 @@
     "/class-sessions": {
       "get": {
         "tags": [
-          "ClassSessions"
+          "ClassSchedule"
         ],
-        "summary": "Lists the class sessions of a centre, or of every centre, with their free seats; a cancelled one has none. No login needed.",
+        "summary": "Lists the class sessions that start after now, by start, of a centre or of every centre, with their free seats (a cancelled\r\none has none) and the names of their centre and class type. No login needed.",
         "parameters": [
           {
             "name": "centerId",
@@ -283,8 +283,12 @@
         "required": [
           "id",
           "centerId",
+          "centerName",
           "classTypeId",
-          "startTime",
+          "classTypeName",
+          "instructorName",
+          "startsAt",
+          "durationMinutes",
           "capacity",
           "freeSeats",
           "isCancelled"
@@ -301,15 +305,36 @@
             "description": "The centre it takes place in.",
             "format": "uuid"
           },
+          "centerName": {
+            "type": "string",
+            "description": "The centre's name; empty when Booking doesn't know the centre."
+          },
           "classTypeId": {
             "type": "string",
             "description": "The kind of class it is a run of.",
             "format": "uuid"
           },
-          "startTime": {
+          "classTypeName": {
+            "type": "string",
+            "description": "The class type's name; empty when Booking doesn't know the class type."
+          },
+          "instructorName": {
+            "type": "string",
+            "description": "Who teaches it."
+          },
+          "startsAt": {
             "type": "string",
             "description": "When it starts.",
             "format": "date-time"
+          },
+          "durationMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "How long it lasts, in minutes.",
+            "format": "int32"
           },
           "capacity": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -445,6 +470,9 @@
     }
   },
   "tags": [
+    {
+      "name": "ClassSchedule"
+    },
     {
       "name": "ClassSessions"
     }

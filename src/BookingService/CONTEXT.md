@@ -18,8 +18,8 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | Booking | A member's seat on one class session | `Reservation` |
 | Ventelisteplads | A member's place in the queue for a full class session | `WaitlistEntry` |
 | Medlem | Booking only knows the member's id | `MemberId` (a `Guid`) |
-| Center | One of the six centres. Booking only knows its id | `CenterId` (a `Guid`) |
-| Holdtype | The kind of class a class session is a run of. Booking only knows its id | `ClassTypeId` (a `Guid`) |
+| Center | One of the six centres. A class session knows its id; the class schedule shows its name (reference data, read-only) | `CenterId` (a `Guid`), `Models/Center` |
+| Holdtype | The kind of class a class session is a run of. A class session knows its id; the class schedule shows its name (reference data, read-only) | `ClassTypeId` (a `Guid`), `Models/ClassType` |
 | Instruktør | The trainer who leads a class session. Booking only knows the name | `Instructor` |
 | Holdoplysninger | A class session's centre, class type, instructor and duration | `ClassSessionDetails` |
 | Booking oprettet | A member got a seat, directly or from the waitlist | `ReservationMade` |
@@ -71,7 +71,7 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 ### Storage and HTTP (#171)
 
 - **Repository:** `Application/IClassSessionRepository`; its MongoDB class `Repositories/ClassSessionRepository` is the only code that uses `MongoDB.Driver` (TEAM001). One document per class session in the `classSessions` collection, reservations and waitlist inside it. A `Version` field makes a save on a stale copy fail (optimistic concurrency), so two requests at once can't overbook.
-- **HTTP:** `Api/ClassSessionsController`. `GET /class-sessions?centerId=`, `POST /class-sessions/{id}/reservations`, `DELETE /class-sessions/{id}/reservations/{memberId}`, `POST /class-sessions/{id}/waitlist`. A rule the aggregate rejects is a problem-details 404, 409 or 422, never a 500: every `ReservationResult` and `WaitlistResult` value has its own case, and a value without one throws `UnreachableException` so a test catches it. `GET` keeps a cancelled class session in the list with `isCancelled: true` and `freeSeats: 0` (`ClassSession.FreeSeats`). Until #172 the member id comes in the request.
+- **HTTP:** `Api/ClassSessionsController`. `GET /class-sessions?centerId=`, `POST /class-sessions/{id}/reservations`, `DELETE /class-sessions/{id}/reservations/{memberId}`, `POST /class-sessions/{id}/waitlist`. A rule the aggregate rejects is a problem-details 404, 409 or 422, never a 500: every `ReservationResult` and `WaitlistResult` value has its own case, and a value without one throws `UnreachableException` so a test catches it. `GET` is answered by `Application/GetClassSessionsQuery` and its handler (#254): only class sessions that start after now, by start, with `centerName` and `classTypeName` from `Application/IReferenceDataRepository` (the `centers` and `classTypes` collections; an unknown id gives an empty name). It keeps a cancelled class session in the list with `isCancelled: true` and `freeSeats: 0` (`ClassSession.FreeSeats`). Until #172 the member id comes in the request.
 - **Configuration:** `MongoDb:Host`, `MongoDb:Port`, `MongoDb:Database`, `MongoDb:Username`, `MongoDb:Password` (Vault, #17) and the optional `MongoDb:AuthSource` (default: the database), as IdentityService (#253). `Seed:Enabled` loads a demo class schedule into an empty database (`Seed/ClassSessionSeeder`): on in compose and in the `http` launch profile.
 - **Events:** the aggregate's `DomainEvents` are not published yet. That comes with the messaging issue.
 

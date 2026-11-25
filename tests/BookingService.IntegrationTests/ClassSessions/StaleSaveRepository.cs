@@ -7,9 +7,9 @@ namespace BookingService.IntegrationTests.ClassSessions;
 /// <summary>Reads and adds through the real repository, but every save loses to a save another request made first.</summary>
 internal sealed class StaleSaveRepository(IClassSessionRepository inner) : IClassSessionRepository
 {
-    public Task<IReadOnlyList<ClassSession>> ListAsync(Guid? centerId, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<ClassSession>> ListAsync(Guid? centerId, DateTimeOffset startsAfter, CancellationToken cancellationToken)
     {
-        return inner.ListAsync(centerId, cancellationToken);
+        return inner.ListAsync(centerId, startsAfter, cancellationToken);
     }
 
     public Task<ClassSession?> GetByIdAsync(Guid id, CancellationToken cancellationToken)

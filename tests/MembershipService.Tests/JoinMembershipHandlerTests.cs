@@ -16,7 +16,7 @@ public sealed class JoinMembershipHandlerTests
 
     private JoinMembershipHandler Handler()
     {
-        return new JoinMembershipHandler(_members, _memberships, _payments, Options.Create(new MembershipFeeSettings { MonthlyFeeDkk = 299m }), _clock);
+        return new JoinMembershipHandler(_members, _memberships, _payments, Options.Create(new MembershipFeeSettings { MonthlyFeeDkk = 350m }), _clock);
     }
 
     [Test]
@@ -132,7 +132,7 @@ public sealed class JoinMembershipHandlerTests
         JoinResult result = await handler.HandleAsync(new JoinMembershipCommand("account-1"), CancellationToken.None);
 
         // Assert
-        Assert.That(_payments.Charges, Is.EqualTo(new[] { (result.Member?.Id ?? Guid.Empty, 299m) }));
+        Assert.That(_payments.Charges, Is.EqualTo(new[] { (result.Member?.Id ?? Guid.Empty, 350m) }));
     }
 
     [Test]

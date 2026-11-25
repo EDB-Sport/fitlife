@@ -28,7 +28,7 @@
         },
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"customer_reference\": \"7d0f6c1a-2b3c-4d5e-8f90-a1b2c3d4e5f6\",\n  \"amount_minor\": 29900,\n  \"currency\": \"DKK\",\n  \"description\": \"FitLife membership fee\"\n}"
+          "raw": "{\n  \"customer_reference\": \"7d0f6c1a-2b3c-4d5e-8f90-a1b2c3d4e5f6\",\n  \"amount_minor\": 35000,\n  \"currency\": \"DKK\",\n  \"description\": \"FitLife membership fee\"\n}"
         }
       },
       "response": [
@@ -58,7 +58,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customer_reference\": \"7d0f6c1a-2b3c-4d5e-8f90-a1b2c3d4e5f6\",\n  \"amount_minor\": 29900,\n  \"currency\": \"DKK\",\n  \"description\": \"FitLife membership fee\"\n}"
+              "raw": "{\n  \"customer_reference\": \"7d0f6c1a-2b3c-4d5e-8f90-a1b2c3d4e5f6\",\n  \"amount_minor\": 35000,\n  \"currency\": \"DKK\",\n  \"description\": \"FitLife membership fee\"\n}"
             }
           },
           "status": "Created",
@@ -70,7 +70,7 @@
               "value": "application/json"
             }
           ],
-          "body": "{\n  \"charge_id\": \"ch_1001\",\n  \"outcome\": \"approved\",\n  \"amount_minor\": 29900,\n  \"currency\": \"DKK\",\n  \"created\": \"2026-11-24T09:00:00Z\"\n}"
+          "body": "{\n  \"charge_id\": \"ch_1001\",\n  \"outcome\": \"approved\",\n  \"amount_minor\": 35000,\n  \"currency\": \"DKK\",\n  \"created\": \"2026-11-24T09:00:00Z\"\n}"
         },
         {
           "name": "charge-declined",
@@ -98,7 +98,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customer_reference\": \"7d0f6c1a-2b3c-4d5e-8f90-a1b2c3d4e5f6\",\n  \"amount_minor\": 29900,\n  \"currency\": \"DKK\",\n  \"description\": \"FitLife membership fee\"\n}"
+              "raw": "{\n  \"customer_reference\": \"7d0f6c1a-2b3c-4d5e-8f90-a1b2c3d4e5f6\",\n  \"amount_minor\": 35000,\n  \"currency\": \"DKK\",\n  \"description\": \"FitLife membership fee\"\n}"
             }
           },
           "status": "Payment Required",
@@ -110,7 +110,7 @@
               "value": "application/json"
             }
           ],
-          "body": "{\n  \"charge_id\": \"ch_1002\",\n  \"outcome\": \"declined\",\n  \"decline_code\": \"insufficient_funds\",\n  \"amount_minor\": 29900,\n  \"currency\": \"DKK\",\n  \"created\": \"2026-11-24T09:00:00Z\"\n}"
+          "body": "{\n  \"charge_id\": \"ch_1002\",\n  \"outcome\": \"declined\",\n  \"decline_code\": \"insufficient_funds\",\n  \"amount_minor\": 35000,\n  \"currency\": \"DKK\",\n  \"created\": \"2026-11-24T09:00:00Z\"\n}"
         },
         {
           "name": "provider-error",
@@ -138,7 +138,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customer_reference\": \"7d0f6c1a-2b3c-4d5e-8f90-a1b2c3d4e5f6\",\n  \"amount_minor\": 29900,\n  \"currency\": \"DKK\",\n  \"description\": \"FitLife membership fee\"\n}"
+              "raw": "{\n  \"customer_reference\": \"7d0f6c1a-2b3c-4d5e-8f90-a1b2c3d4e5f6\",\n  \"amount_minor\": 35000,\n  \"currency\": \"DKK\",\n  \"description\": \"FitLife membership fee\"\n}"
             }
           },
           "status": "Service Unavailable",

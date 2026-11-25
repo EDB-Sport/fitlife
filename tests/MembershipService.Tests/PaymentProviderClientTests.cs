@@ -167,7 +167,7 @@ public sealed class PaymentProviderClientTests
         Assert.That(provider.Path, Is.EqualTo("/v1/charges"));
         using var body = JsonDocument.Parse(provider.Body);
         Assert.That(body.RootElement.GetProperty("customer_reference").GetString(), Is.EqualTo(MemberId.ToString()));
-        Assert.That(body.RootElement.GetProperty("amount_minor").GetInt64(), Is.EqualTo(29900));
+        Assert.That(body.RootElement.GetProperty("amount_minor").GetInt64(), Is.EqualTo(35000));
         Assert.That(body.RootElement.GetProperty("currency").GetString(), Is.EqualTo("DKK"));
         Assert.That(body.RootElement.GetProperty("description").GetString(), Is.EqualTo("FitLife membership fee"));
     }
@@ -175,7 +175,7 @@ public sealed class PaymentProviderClientTests
     private static async Task<bool> Charge(StubProvider provider, CancellationToken cancellationToken = default)
     {
         using var http = new HttpClient(provider, disposeHandler: false) { BaseAddress = new Uri("https://payment-provider.test") };
-        return await new PaymentProviderClient(http).ChargeMembershipFeeAsync(MemberId, 299m, cancellationToken).ConfigureAwait(false);
+        return await new PaymentProviderClient(http).ChargeMembershipFeeAsync(MemberId, 350m, cancellationToken).ConfigureAwait(false);
     }
 
     private sealed class StubProvider : HttpMessageHandler

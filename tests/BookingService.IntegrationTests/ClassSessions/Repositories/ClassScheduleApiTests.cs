@@ -50,6 +50,21 @@ public sealed class ClassScheduleApiTests
     }
 
     [Test]
+    public async Task GetClassSessions_WithAClassSessionStartingNow_LeavesItOut()
+    {
+        // Arrange: "after now" is strict, so the class session that starts this instant is not upcoming
+        using var factory = new BookingApiFactory(MongoDbContainerSetUp.ConnectionString, _database, new FakeTimeProvider(Now));
+        await factory.AddAsync(ClassSessionAt(CenterId, Now)).ConfigureAwait(false);
+        using HttpClient client = factory.CreateClient();
+
+        // Act
+        ClassSessionResponse[]? schedule = await client.GetFromJsonAsync<ClassSessionResponse[]>(new Uri("/class-sessions", UriKind.Relative)).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(schedule, Is.Empty);
+    }
+
+    [Test]
     public async Task GetClassSessions_WithACenterId_ReturnsOnlyThatCentre()
     {
         // Arrange

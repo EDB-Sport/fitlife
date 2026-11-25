@@ -7,7 +7,7 @@ namespace BookingService.Api;
 /// <param name="ClassTypeId">The kind of class it is a run of.</param>
 /// <param name="ClassTypeName">The class type's name; empty when Booking doesn't know the class type.</param>
 /// <param name="InstructorName">Who teaches it.</param>
-/// <param name="StartsAt">When it starts.</param>
+/// <param name="StartTime">When it starts.</param>
 /// <param name="DurationMinutes">How long it lasts, in minutes.</param>
 /// <param name="Capacity">How many members can have a reservation.</param>
 /// <param name="FreeSeats">How many seats are not reserved yet; 0 when the class session is cancelled.</param>
@@ -19,7 +19,7 @@ public sealed record ClassSessionResponse(
     Guid ClassTypeId,
     string ClassTypeName,
     string InstructorName,
-    DateTimeOffset StartsAt,
+    DateTimeOffset StartTime,
     int DurationMinutes,
     int Capacity,
     int FreeSeats,

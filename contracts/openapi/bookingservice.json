@@ -10,7 +10,8 @@
         "tags": [
           "ClassSchedule"
         ],
-        "summary": "Lists the class sessions that start after now, by start, of a centre or of every centre, with their free seats (a cancelled\r\none has none) and the names of their centre and class type. No login needed.",
+        "summary": "Lists the upcoming class sessions of a centre, or of every centre, by start, with names and free seats. No login needed.",
+        "description": "Only class sessions that start after now. A cancelled one has no free seats. An unknown centre or class type has an empty name.",
         "parameters": [
           {
             "name": "centerId",
@@ -287,7 +288,7 @@
           "classTypeId",
           "classTypeName",
           "instructorName",
-          "startsAt",
+          "startTime",
           "durationMinutes",
           "capacity",
           "freeSeats",
@@ -322,7 +323,7 @@
             "type": "string",
             "description": "Who teaches it."
           },
-          "startsAt": {
+          "startTime": {
             "type": "string",
             "description": "When it starts.",
             "format": "date-time"

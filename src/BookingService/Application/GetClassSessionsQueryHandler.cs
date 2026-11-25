@@ -27,9 +27,9 @@ public sealed class GetClassSessionsQueryHandler
     {
         ArgumentNullException.ThrowIfNull(query);
         IReadOnlyList<ClassSession> classSessions = await _classSessions.ListAsync(query.CenterId, _clock.GetUtcNow(), cancellationToken).ConfigureAwait(false);
-        Dictionary<Guid, string> centers = (await _referenceData.ListCentersAsync(cancellationToken).ConfigureAwait(false))
+        var centers = (await _referenceData.ListCentersAsync(cancellationToken).ConfigureAwait(false))
             .ToDictionary(center => center.Id, center => center.Name);
-        Dictionary<Guid, string> classTypes = (await _referenceData.ListClassTypesAsync(cancellationToken).ConfigureAwait(false))
+        var classTypes = (await _referenceData.ListClassTypesAsync(cancellationToken).ConfigureAwait(false))
             .ToDictionary(classType => classType.Id, classType => classType.Name);
         return classSessions.Select(classSession => new ClassSessionSummary(
             classSession.Id,

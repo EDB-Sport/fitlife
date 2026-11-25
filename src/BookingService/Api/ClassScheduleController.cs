@@ -17,10 +17,8 @@ public sealed class ClassScheduleController : ControllerBase
         _classSchedule = classSchedule;
     }
 
-    /// <summary>
-    /// Lists the class sessions that start after now, by start, of a centre or of every centre, with their free seats (a cancelled
-    /// one has none) and the names of their centre and class type. No login needed.
-    /// </summary>
+    /// <summary>Lists the upcoming class sessions of a centre, or of every centre, by start, with names and free seats. No login needed.</summary>
+    /// <remarks>Only class sessions that start after now. A cancelled one has no free seats. An unknown centre or class type has an empty name.</remarks>
     /// <param name="centerId">The centre; leave it out for every centre.</param>
     /// <param name="cancellationToken">Stops the request.</param>
     [HttpGet]
@@ -35,7 +33,7 @@ public sealed class ClassScheduleController : ControllerBase
             summary.ClassTypeId,
             summary.ClassTypeName,
             summary.InstructorName,
-            summary.StartsAt,
+            summary.StartTime,
             summary.DurationMinutes,
             summary.Capacity,
             summary.FreeSeats,

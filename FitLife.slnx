@@ -5,6 +5,7 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/BookingService/BookingService.csproj" />
+    <Project Path="src/IdentityService/IdentityService.csproj" />
     <Project Path="src/MemberPortal.Web/MemberPortal.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">

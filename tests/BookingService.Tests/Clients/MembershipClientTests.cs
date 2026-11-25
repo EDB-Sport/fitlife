@@ -31,7 +31,7 @@ public sealed class MembershipClientTests
         MemberLookup result = await Find(services);
 
         // Assert
-        Assert.That(result, Is.EqualTo(MemberLookup.Found(MemberId, isActive: true)));
+        Assert.That(result, Is.EqualTo(new MemberLookup(MemberLookupOutcome.Found, MemberId, IsActive: true)));
     }
 
     [Test]
@@ -45,7 +45,7 @@ public sealed class MembershipClientTests
         MemberLookup result = await Find(services);
 
         // Assert
-        Assert.That(result, Is.EqualTo(MemberLookup.NotAMember));
+        Assert.That(result, Is.EqualTo(new MemberLookup(MemberLookupOutcome.NotAMember, Guid.Empty, IsActive: false)));
     }
 
     [Test]
@@ -105,6 +105,78 @@ public sealed class MembershipClientTests
     }
 
     [Test]
+    public async Task FindMemberAsync_WhenTheAnswerCannotBeRead_ReturnsUnavailable()
+    {
+        // Arrange
+        using var membership = new StubMembership(HttpStatusCode.OK) { Body = "not json" };
+        using ServiceProvider services = Services(membership);
+
+        // Act
+        MemberLookup result = await Find(services);
+
+        // Assert
+        Assert.That(result, Is.EqualTo(new MemberLookup(MemberLookupOutcome.Unavailable, Guid.Empty, IsActive: false)));
+    }
+
+    [Test]
+    public async Task FindMemberAsync_WhenTheAnswerIsEmpty_ReturnsUnavailable()
+    {
+        // Arrange
+        using var membership = new StubMembership(HttpStatusCode.OK) { Body = "null" };
+        using ServiceProvider services = Services(membership);
+
+        // Act
+        MemberLookup result = await Find(services);
+
+        // Assert
+        Assert.That(result, Is.EqualTo(MemberLookup.Unavailable));
+    }
+
+    [Test]
+    public async Task FindMemberAsync_WhenTheCircuitIsOpen_ReturnsUnavailableWithoutAskingMembership()
+    {
+        // Arrange: two failed attempts open the circuit
+        using var membership = new StubMembership(HttpStatusCode.InternalServerError);
+        using ServiceProvider services = Services(membership, configure: options =>
+        {
+            options.Retry.MaxRetryAttempts = 1;
+            options.CircuitBreaker.MinimumThroughput = 2;
+            options.CircuitBreaker.FailureRatio = 0.5;
+        });
+        await Find(services);
+        int askedBefore = membership.Requests;
+
+        // Act
+        MemberLookup result = await Find(services);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(MemberLookup.Unavailable));
+            Assert.That(membership.Requests, Is.EqualTo(askedBefore));
+        });
+    }
+
+    [Test]
+    public void AddMembershipClient_WithItsDefaults_GivesTheMembershipClient()
+    {
+        // Arrange
+        IConfiguration configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal) { [MembershipClient.BaseUrlConfigurationKey] = "https://membership.test" })
+            .Build();
+        var services = new ServiceCollection();
+        services.AddSingleton(configuration);
+        services.AddMembershipClient();
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        // Act
+        IMembershipClient client = provider.GetRequiredService<IMembershipClient>();
+
+        // Assert
+        Assert.That(client, Is.InstanceOf<MembershipClient>());
+    }
+
+    [Test]
     public async Task FindMemberAsync_SendsTheBearerTokenAndTheCorrelationId()
     {
         // Arrange
@@ -153,14 +225,19 @@ public sealed class MembershipClientTests
         return services.GetRequiredService<IMembershipClient>().FindMemberAsync(AccountId, BearerToken, CancellationToken.None);
     }
 
-    private static ServiceProvider Services(StubMembership membership, string? baseUrl = "https://membership.test")
+    private static ServiceProvider Services(
+        StubMembership membership, string? baseUrl = "https://membership.test", Action<HttpStandardResilienceOptions>? configure = null)
     {
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal) { [MembershipClient.BaseUrlConfigurationKey] = baseUrl })
             .Build();
         var services = new ServiceCollection();
         services.AddSingleton(configuration);
-        services.AddMembershipClient(ShortDelays);
+        services.AddMembershipClient(options =>
+        {
+            ShortDelays(options);
+            configure?.Invoke(options);
+        });
         services.ConfigureHttpClientDefaults(client => client.ConfigurePrimaryHttpMessageHandler(() => membership));
         return services.BuildServiceProvider();
     }
@@ -199,6 +276,10 @@ public sealed class MembershipClientTests
 
         public string? CorrelationId { get; private set; }
 
+        public string Body { get; init; } = $$"""{ "memberId": "{{MemberId}}", "membershipStatus": "Active", "isActive": true }""";
+
+        public int Requests { get; private set; }
+
         public static StubMembership ThatNeverAnswers()
         {
             return new StubMembership([], neverAnswers: true, cannotBeReached: false);
@@ -211,6 +292,7 @@ public sealed class MembershipClientTests
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            Requests++;
             Path = request.RequestUri?.AbsolutePath;
             Authorization = request.Headers.Authorization?.ToString();
             if (request.Headers.TryGetValues(CorrelationContext.HeaderName, out IEnumerable<string>? ids))
@@ -236,8 +318,7 @@ public sealed class MembershipClientTests
             {
                 _statuses.Dequeue();
             }
-            string body = $$"""{ "memberId": "{{MemberId}}", "membershipStatus": "Active", "isActive": true }""";
-            return new HttpResponseMessage(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+            return new HttpResponseMessage(status) { Content = new StringContent(Body, Encoding.UTF8, "application/json") };
         }
     }
 }

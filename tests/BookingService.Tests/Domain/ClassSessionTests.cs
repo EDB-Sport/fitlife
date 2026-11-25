@@ -115,10 +115,10 @@ public sealed class ClassSessionTests
         classSession.Reserve(Guid.NewGuid(), _clock);
         var firstMemberId = Guid.NewGuid();
         var secondMemberId = Guid.NewGuid();
-        classSession.JoinWaitlist(firstMemberId);
+        classSession.JoinWaitlist(firstMemberId, _clock);
 
         // Act
-        WaitlistResult result = classSession.JoinWaitlist(secondMemberId);
+        WaitlistResult result = classSession.JoinWaitlist(secondMemberId, _clock);
 
         // Assert
         Assert.Multiple(() =>
@@ -135,7 +135,7 @@ public sealed class ClassSessionTests
         ClassSession classSession = ClassSessionWithCapacity(1);
 
         // Act
-        WaitlistResult result = classSession.JoinWaitlist(Guid.NewGuid());
+        WaitlistResult result = classSession.JoinWaitlist(Guid.NewGuid(), _clock);
 
         // Assert
         Assert.Multiple(() =>
@@ -154,7 +154,7 @@ public sealed class ClassSessionTests
         classSession.Reserve(memberId, _clock);
 
         // Act
-        WaitlistResult result = classSession.JoinWaitlist(memberId);
+        WaitlistResult result = classSession.JoinWaitlist(memberId, _clock);
 
         // Assert
         Assert.Multiple(() =>
@@ -171,10 +171,10 @@ public sealed class ClassSessionTests
         ClassSession classSession = ClassSessionWithCapacity(1);
         classSession.Reserve(Guid.NewGuid(), _clock);
         var memberId = Guid.NewGuid();
-        classSession.JoinWaitlist(memberId);
+        classSession.JoinWaitlist(memberId, _clock);
 
         // Act
-        WaitlistResult result = classSession.JoinWaitlist(memberId);
+        WaitlistResult result = classSession.JoinWaitlist(memberId, _clock);
 
         // Assert
         Assert.Multiple(() =>
@@ -193,8 +193,8 @@ public sealed class ClassSessionTests
         var firstWaitingMemberId = Guid.NewGuid();
         var secondWaitingMemberId = Guid.NewGuid();
         classSession.Reserve(memberId, _clock);
-        classSession.JoinWaitlist(firstWaitingMemberId);
-        classSession.JoinWaitlist(secondWaitingMemberId);
+        classSession.JoinWaitlist(firstWaitingMemberId, _clock);
+        classSession.JoinWaitlist(secondWaitingMemberId, _clock);
 
         // Act
         CancellationResult result = classSession.CancelReservation(memberId);
@@ -282,6 +282,89 @@ public sealed class ClassSessionTests
 
         // Assert
         Assert.That(result, Is.EqualTo(ReservationResult.Made));
+    }
+
+    [Test]
+    public void JoinWaitlist_LessThanTwoHoursBeforeStart_IsRejected()
+    {
+        // Arrange
+        ClassSession classSession = ClassSessionStartingAt(Now.AddHours(2).AddMinutes(-1));
+        classSession.Reserve(Guid.NewGuid(), _clock);
+
+        // Act
+        WaitlistResult result = classSession.JoinWaitlist(Guid.NewGuid(), _clock);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(WaitlistResult.WaitlistClosed));
+            Assert.That(classSession.Waitlist, Is.Empty);
+        });
+    }
+
+    [Test]
+    public void JoinWaitlist_ExactlyTwoHoursBeforeStart_IsJoined()
+    {
+        // Arrange
+        ClassSession classSession = ClassSessionStartingAt(Now.AddHours(2));
+        classSession.Reserve(Guid.NewGuid(), _clock);
+
+        // Act
+        WaitlistResult result = classSession.JoinWaitlist(Guid.NewGuid(), _clock);
+
+        // Assert
+        Assert.That(result, Is.EqualTo(WaitlistResult.Joined));
+    }
+
+    [Test]
+    public void CloseWaitlist_TwoHoursBeforeStart_RemovesTheWaitlistEntriesAndTellsEachMember()
+    {
+        // Arrange
+        var clock = new FakeTimeProvider(Now);
+        ClassSession classSession = ClassSessionStartingAt(Now.AddHours(3));
+        var firstWaitingMemberId = Guid.NewGuid();
+        var secondWaitingMemberId = Guid.NewGuid();
+        classSession.Reserve(Guid.NewGuid(), clock);
+        classSession.JoinWaitlist(firstWaitingMemberId, clock);
+        classSession.JoinWaitlist(secondWaitingMemberId, clock);
+        clock.Advance(TimeSpan.FromHours(1));
+
+        // Act
+        WaitlistClosingResult result = classSession.CloseWaitlist(clock);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(WaitlistClosingResult.Closed));
+            Assert.That(classSession.Waitlist, Is.Empty);
+            Assert.That(
+                classSession.DomainEvents,
+                Is.EqualTo(new DomainEvent[]
+                {
+                    new WaitlistEntryExpired(classSession.Id, firstWaitingMemberId),
+                    new WaitlistEntryExpired(classSession.Id, secondWaitingMemberId),
+                }));
+        });
+    }
+
+    [Test]
+    public void CloseWaitlist_MoreThanTwoHoursBeforeStart_IsRejected()
+    {
+        // Arrange
+        ClassSession classSession = ClassSessionStartingAt(Now.AddHours(3));
+        classSession.Reserve(Guid.NewGuid(), _clock);
+        classSession.JoinWaitlist(Guid.NewGuid(), _clock);
+
+        // Act
+        WaitlistClosingResult result = classSession.CloseWaitlist(_clock);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(WaitlistClosingResult.TooEarly));
+            Assert.That(classSession.Waitlist, Has.Count.EqualTo(1));
+            Assert.That(classSession.DomainEvents, Is.Empty);
+        });
     }
 
     [TestCase(0)]

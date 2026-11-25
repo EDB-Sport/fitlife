@@ -14,4 +14,7 @@ public enum WaitlistResult
 
     /// <summary>The member already has a waitlist entry on this class session, so no second one was made.</summary>
     MemberAlreadyOnWaitlist,
+
+    /// <summary>The class session starts in less than 2 hours, so the waitlist is closed; no waitlist entry was made.</summary>
+    WaitlistClosed,
 }

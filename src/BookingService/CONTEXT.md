@@ -1,7 +1,7 @@
 # Booking (`src/BookingService/`)
 
 > From `docs/templates/CONTEXT.md`. Keep it under about 80 lines, and update it in the same PR that changes the model.
-> **Status: invariants 1–5 modelled (#155–#159).** The context map (`docs/domain/CONTEXT-MAP.md`) is decided in ADR 007. The tactical model below is DDD_PLAN step 4; the rules come from the TO-BE-kontekst §8 (Booking). Each further invariant is its own issue.
+> **Status: invariants 1–6 modelled (#155–#160).** The context map (`docs/domain/CONTEXT-MAP.md`) is decided in ADR 007. The tactical model below is DDD_PLAN step 4; the rules come from the TO-BE-kontekst §8 (Booking). Each further invariant is its own issue.
 
 ## Purpose
 
@@ -20,6 +20,7 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | Medlem | Booking only knows the member's id | `MemberId` (a `Guid`) |
 | Booking oprettet | A member got a seat, directly or from the waitlist | `ReservationMade` |
 | Booking afmeldt | A member gave up their seat | `ReservationCancelled` |
+| Ventelisteplads udløbet | The waitlist closed and a member's waitlist entry was removed without a seat | `WaitlistEntryExpired` |
 
 ## Aggregates
 
@@ -41,7 +42,7 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | 3 | A full class session offers a waitlist entry, first come first served | `ClassSessionTests.JoinWaitlist_WhenClassSessionIsFull_AddsWaitlistEntriesInTheOrderTheyWereMade`, `ClassSessionTests.JoinWaitlist_WithFreeSeats_IsRejected` |
 | 4 | A freed seat goes to the first waitlist entry | `ClassSessionTests.CancelReservation_OnAFullClassSession_GivesTheSeatToTheFirstWaitlistEntry`, `ClassSessionTests.CancelReservation_WithAnEmptyWaitlist_FreesTheSeat` |
 | 5 | Class sessions can be reserved at most 4 weeks ahead | `ClassSessionTests.Reserve_MoreThanFourWeeksAhead_IsRejected`, `ClassSessionTests.Reserve_ExactlyFourWeeksAhead_IsReserved` |
-| 6 | The waitlist closes 2 hours before start | #160 |
+| 6 | The waitlist closes 2 hours before start | `ClassSessionTests.JoinWaitlist_LessThanTwoHoursBeforeStart_IsRejected`, `ClassSessionTests.CloseWaitlist_TwoHoursBeforeStart_RemovesTheWaitlistEntriesAndTellsEachMember`, `ClassSessionTests.CloseWaitlist_MoreThanTwoHoursBeforeStart_IsRejected` |
 | 7 | A cancellation under 2 hours before start is a late cancellation | #161 |
 | 8 | A cancelled class session cancels every reservation and waitlist entry | #162 |
 
@@ -50,10 +51,12 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | Kind | Name | Notes |
 |---|---|---|
 | Command | `ClassSession.Reserve(memberId, clock)` | Returns `ReservationResult.Made`, `MemberAlreadyHasReservation`, `TooFarAhead` or `ClassSessionFull`. The clock is a `TimeProvider` |
-| Command | `ClassSession.JoinWaitlist(memberId)` | Returns `WaitlistResult.Joined`, `MemberAlreadyHasReservation`, `MemberAlreadyOnWaitlist` or `ClassSessionNotFull` |
+| Command | `ClassSession.JoinWaitlist(memberId, clock)` | Returns `WaitlistResult.Joined`, `MemberAlreadyHasReservation`, `MemberAlreadyOnWaitlist`, `ClassSessionNotFull` or `WaitlistClosed` |
 | Command | `ClassSession.CancelReservation(memberId)` | Returns `CancellationResult.Cancelled` or `NoReservation` |
+| Command | `ClassSession.CloseWaitlist(clock)` | Returns `WaitlistClosingResult.Closed` or `TooEarly`. Nothing calls it yet: a scheduled job does, in a later issue. Until it has run, `CancelReservation` still gives a freed seat to the first waitlist entry, also in the last 2 hours |
 | Event | `ReservationCancelled` | Raised when a member gives up their seat |
 | Event | `ReservationMade` | Raised when the first waitlist entry gets the freed seat. Published later (#171 and after); the events wait in `ClassSession.DomainEvents` |
+| Event | `WaitlistEntryExpired` | Raised for each waitlist entry removed when the waitlist closes |
 
 ## Talks to
 

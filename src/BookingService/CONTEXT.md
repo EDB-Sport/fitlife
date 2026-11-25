@@ -55,12 +55,13 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | 7 | A cancellation under 2 hours before start is a late cancellation | `ClassSessionTests.CancelReservation_LessThanTwoHoursBeforeStart_IsALateCancellation`, `ClassSessionTests.CancelReservation_OfASeatFromTheWaitlist_IsNeverALateCancellation` |
 | 8 | A cancelled class session cancels every reservation and waitlist entry | `ClassSessionCancelTests.Cancel_RemovesEveryReservationAndWaitlistEntryAndNamesTheirMembers`, `ClassSessionCancelTests.Reserve_OnACancelledClassSession_IsRejected`, `ClassSessionCancelTests.Cancel_OnACancelledClassSession_RaisesNoSecondClassSessionCancelled`, `ClassSessionCancelTests.JoinWaitlist_OnACancelledClassSession_IsRejected` |
 | 9 | After a changed start, a member who already had a reservation cancels free: never a late cancellation | `ClassSessionChangeStartTests.ChangeStart_ThenAMemberWhoHadAReservationCancelsUnderTwoHoursBeforeStart_IsNotALateCancellation`, `ClassSessionChangeStartTests.ChangeStart_ThenAMemberWhoReservedAfterwardsCancelsUnderTwoHoursBeforeStart_IsALateCancellation` |
+| 10 | A class session that has started can't be reserved; a free seat can be taken until the start time (#312's safe default) | `ClassSessionStartedTests.Reserve_AfterTheClassSessionHasStarted_IsRejected`, `ClassSessionStartedTests.Reserve_JustBeforeStart_IsReserved` |
 
 ## Commands, queries and events
 
 | Kind | Name | Notes |
 |---|---|---|
-| Command | `ClassSession.Reserve(memberId, clock)` | Returns `ReservationResult.Made`, `ClassSessionCancelled`, `MemberAlreadyHasReservation`, `TooFarAhead` or `ClassSessionFull`. The clock is a `TimeProvider` |
+| Command | `ClassSession.Reserve(memberId, clock)` | Returns `ReservationResult.Made`, `ClassSessionCancelled`, `MemberAlreadyHasReservation`, `ClassSessionStarted`, `TooFarAhead` or `ClassSessionFull`. The clock is a `TimeProvider` |
 | Command | `ClassSession.JoinWaitlist(memberId, clock)` | Returns `WaitlistResult.Joined`, `ClassSessionCancelled`, `MemberAlreadyHasReservation`, `MemberAlreadyOnWaitlist`, `ClassSessionNotFull` or `WaitlistClosed` |
 | Command | `ClassSession.CancelReservation(memberId, clock)` | Returns `CancellationResult.Cancelled` or `NoReservation` |
 | Command | `ClassSession.CloseWaitlist(clock)` | Returns `WaitlistClosingResult.Closed` or `TooEarly`. Nothing calls it yet: a scheduled job does, in a later issue. Until it has run, `CancelReservation` still gives a freed seat to the first waitlist entry, also in the last 2 hours |

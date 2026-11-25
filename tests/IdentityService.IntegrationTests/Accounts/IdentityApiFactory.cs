@@ -38,9 +38,17 @@ internal sealed class IdentityApiFactory : WebApplicationFactory<Program>
     /// <summary>Every log line the app wrote, with its exception.</summary>
     public CapturingLoggerProvider Logs { get; } = new();
 
+    /// <summary>More settings for the app, e.g. <c>Seed:DemoAccounts</c>. Set them before the first client is created.</summary>
+    public Dictionary<string, string> Settings { get; } = new(StringComparer.Ordinal);
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("Jwt:SigningKey", SigningKey);
+        foreach ((string key, string value) in Settings)
+        {
+            builder.UseSetting(key, value);
+        }
+
         builder.ConfigureLogging(logging => logging.AddFilter<CapturingLoggerProvider>(null, LogLevel.Trace));
         builder.ConfigureTestServices(services =>
         {

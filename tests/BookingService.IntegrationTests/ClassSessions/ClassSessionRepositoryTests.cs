@@ -69,7 +69,7 @@ public sealed class ClassSessionRepositoryTests
         using (IServiceScope changing = factory.Services.CreateScope())
         {
             IClassSessionRepository repository = changing.ServiceProvider.GetRequiredService<IClassSessionRepository>();
-            ClassSession stored = await repository.GetAsync(classSession.Id, CancellationToken.None).ConfigureAwait(false)
+            ClassSession stored = await repository.GetByIdAsync(classSession.Id, CancellationToken.None).ConfigureAwait(false)
                 ?? throw new InvalidOperationException("The class session wasn't stored.");
             stored.ChangeStart(Now.AddHours(1), clock);
             await repository.SaveAsync(stored, CancellationToken.None).ConfigureAwait(false);
@@ -79,7 +79,7 @@ public sealed class ClassSessionRepositoryTests
         IClassSessionRepository readingRepository = reading.ServiceProvider.GetRequiredService<IClassSessionRepository>();
 
         // Act
-        ClassSession? changed = await readingRepository.GetAsync(classSession.Id, CancellationToken.None).ConfigureAwait(false);
+        ClassSession? changed = await readingRepository.GetByIdAsync(classSession.Id, CancellationToken.None).ConfigureAwait(false);
 
         // Assert
         Assert.Multiple(() =>

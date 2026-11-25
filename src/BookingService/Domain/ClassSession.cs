@@ -184,10 +184,15 @@ public sealed class ClassSession
 
     /// <summary>
     /// Cancels the class session: every reservation and waitlist entry is removed, and <see cref="ClassSessionCancelled"/> names
-    /// their members. A cancelled class session can't be reserved.
+    /// their members. A cancelled class session can't be reserved. Cancelling it again changes nothing and raises no second event.
     /// </summary>
     public void Cancel()
     {
+        if (IsCancelled)
+        {
+            return;
+        }
+
         var memberIds = _reservations.Select(reservation => reservation.MemberId)
             .Concat(_waitlist.Select(waitlistEntry => waitlistEntry.MemberId))
             .ToList();

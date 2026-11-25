@@ -46,7 +46,7 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | 5 | Class sessions can be reserved at most 4 weeks ahead | `ClassSessionTests.Reserve_MoreThanFourWeeksAhead_IsRejected`, `ClassSessionTests.Reserve_ExactlyFourWeeksAhead_IsReserved` |
 | 6 | The waitlist closes 2 hours before start | `ClassSessionTests.JoinWaitlist_LessThanTwoHoursBeforeStart_IsRejected`, `ClassSessionTests.CloseWaitlist_TwoHoursBeforeStart_RemovesTheWaitlistEntriesAndTellsEachMember`, `ClassSessionTests.CloseWaitlist_MoreThanTwoHoursBeforeStart_IsRejected` |
 | 7 | A cancellation under 2 hours before start is a late cancellation | `ClassSessionTests.CancelReservation_LessThanTwoHoursBeforeStart_IsALateCancellation`, `ClassSessionTests.CancelReservation_OfASeatFromTheWaitlist_IsNeverALateCancellation` |
-| 8 | A cancelled class session cancels every reservation and waitlist entry | `ClassSessionTests.Cancel_RemovesEveryReservationAndWaitlistEntryAndNamesTheirMembers`, `ClassSessionTests.Reserve_OnACancelledClassSession_IsRejected` |
+| 8 | A cancelled class session cancels every reservation and waitlist entry | `ClassSessionTests.Cancel_RemovesEveryReservationAndWaitlistEntryAndNamesTheirMembers`, `ClassSessionTests.Reserve_OnACancelledClassSession_IsRejected`, `ClassSessionTests.Cancel_OnACancelledClassSession_RaisesNoSecondClassSessionCancelled` |
 
 ## Commands, queries and events
 
@@ -56,7 +56,7 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | Command | `ClassSession.JoinWaitlist(memberId, clock)` | Returns `WaitlistResult.Joined`, `MemberAlreadyHasReservation`, `MemberAlreadyOnWaitlist`, `ClassSessionNotFull` or `WaitlistClosed` |
 | Command | `ClassSession.CancelReservation(memberId, clock)` | Returns `CancellationResult.Cancelled` or `NoReservation` |
 | Command | `ClassSession.CloseWaitlist(clock)` | Returns `WaitlistClosingResult.Closed` or `TooEarly`. Nothing calls it yet: a scheduled job does, in a later issue. Until it has run, `CancelReservation` still gives a freed seat to the first waitlist entry, also in the last 2 hours |
-| Command | `ClassSession.Cancel()` | Empties the reservations and the waitlist; `IsCancelled` becomes true |
+| Command | `ClassSession.Cancel()` | Empties the reservations and the waitlist; `IsCancelled` becomes true. On a cancelled class session it changes nothing and raises no second `ClassSessionCancelled` |
 | Event | `ReservationCancelled` | Raised when a member gives up their seat. `IsLateCancellation` says whether it was a late cancellation |
 | Event | `ReservationMade` | Raised when the first waitlist entry gets the freed seat. Published later (#171 and after); the events wait in `ClassSession.DomainEvents` |
 | Event | `WaitlistEntryExpired` | Raised for each waitlist entry removed when the waitlist closes |

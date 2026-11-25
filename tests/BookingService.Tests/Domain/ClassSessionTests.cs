@@ -460,6 +460,21 @@ public sealed class ClassSessionTests
         });
     }
 
+    [Test]
+    public void Cancel_OnACancelledClassSession_RaisesNoSecondClassSessionCancelled()
+    {
+        // Arrange
+        ClassSession classSession = ClassSessionWithCapacity(1);
+        classSession.Reserve(Guid.NewGuid(), _clock);
+        classSession.Cancel();
+
+        // Act
+        classSession.Cancel();
+
+        // Assert
+        Assert.That(classSession.DomainEvents.OfType<ClassSessionCancelled>().Count(), Is.EqualTo(1));
+    }
+
     [TestCase(0)]
     [TestCase(-1)]
     public void Capacity_LessThanOne_IsRejected(int value)

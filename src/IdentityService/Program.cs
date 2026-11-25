@@ -2,6 +2,10 @@ using System.Globalization;
 using System.Reflection;
 using FitLife.Configuration;
 using FitLife.Correlation;
+using IdentityService.Application;
+using IdentityService.Domain;
+using IdentityService.Repositories;
+using Microsoft.AspNetCore.Identity;
 using NLog;
 using NLog.Web;
 using Scalar.AspNetCore;
@@ -20,6 +24,11 @@ try
 
     builder.Services.AddOpenApi();
     builder.Services.AddHealthChecks();
+    builder.Services.AddControllers();
+    builder.Services.AddProblemDetails();
+    builder.Services.AddMongoAccountRepository(); // nothing connects until the first request
+    builder.Services.AddSingleton<IPasswordHasher<Account>, PasswordHasher<Account>>();
+    builder.Services.AddScoped<CreateAccountHandler>();
 
     WebApplication app = builder.Build();
 
@@ -33,7 +42,9 @@ try
         app.MapScalarApiReference();
     }
 
+    app.UseExceptionHandler(); // an unexpected error is a problem-details 500, without the exception's text
     app.MapHealthChecks("/health");
+    app.MapControllers();
 
     // The startup line: which service and which release is running (the version is also a Loki label)
     if (app.Logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information))

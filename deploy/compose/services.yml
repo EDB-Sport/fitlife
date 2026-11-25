@@ -24,8 +24,8 @@ services:
       retries: 10
 
   identity-svc:
-    # IdentityService, built from the repo root (src/IdentityService/Dockerfile, #232). Accounts and tokens come
-    # in #233 to #235; until then it answers /health only. The gateway routes /api/identity/ here (IDENTITY_URL).
+    # IdentityService, built from the repo root (src/IdentityService/Dockerfile, #232). POST /accounts (#234);
+    # tokens come in #235. The gateway routes /api/identity/ here (IDENTITY_URL).
     build:
       context: ../..
       dockerfile: src/IdentityService/Dockerfile
@@ -36,6 +36,10 @@ services:
       # The service waits for Vault and the seed job itself (Vault:WaitSeconds), so it needs no depends_on.
       Vault__Address: http://vault:8200 # infrastructure.yml
       Vault__Token: ${VAULT_DEV_ROOT_TOKEN:?set it in deploy/compose/.env}
+      # MongoDB (infrastructure.yml): the identity database and the identity-svc user are in appsettings.json, the
+      # password (MongoDb:Password) in secret/identity-svc. Nothing connects until the first request, so no depends_on.
+      MongoDb__Host: mongodb
+      MongoDb__Port: "27017"
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
       interval: 5s

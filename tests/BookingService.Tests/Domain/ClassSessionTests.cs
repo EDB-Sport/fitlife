@@ -493,6 +493,32 @@ public sealed class ClassSessionTests
         });
     }
 
+    [Test]
+    public void FreeSeats_AreTheSeatsNotReservedYet()
+    {
+        // Arrange
+        ClassSession classSession = ClassSessionWithCapacity(2);
+
+        // Act
+        classSession.Reserve(Guid.NewGuid(), _clock);
+
+        // Assert
+        Assert.That(classSession.FreeSeats, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void FreeSeats_OfACancelledClassSession_AreZero()
+    {
+        // Arrange
+        ClassSession classSession = ClassSessionWithCapacity(2);
+
+        // Act
+        classSession.Cancel();
+
+        // Assert
+        Assert.That(classSession.FreeSeats, Is.Zero);
+    }
+
     [TestCase(0)]
     [TestCase(-1)]
     public void Capacity_LessThanOne_IsRejected(int value)

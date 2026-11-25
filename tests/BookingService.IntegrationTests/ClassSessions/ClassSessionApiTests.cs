@@ -35,7 +35,25 @@ public sealed class ClassSessionApiTests
         ClassSessionResponse[]? classSessions = await client.GetFromJsonAsync<ClassSessionResponse[]>(new Uri($"/class-sessions?centerId={centerId}", UriKind.Relative)).ConfigureAwait(false);
 
         // Assert
-        Assert.That(classSessions, Is.EqualTo(new[] { new ClassSessionResponse(halfFull.Id, centerId, halfFull.ClassTypeId, halfFull.StartTime, Capacity: 2, FreeSeats: 1) }));
+        Assert.That(classSessions, Is.EqualTo(new[] { new ClassSessionResponse(halfFull.Id, centerId, halfFull.ClassTypeId, halfFull.StartTime, Capacity: 2, FreeSeats: 1, IsCancelled: false) }));
+    }
+
+    [Test]
+    public async Task GetClassSessions_WithACancelledClassSession_ListsItAsCancelledWithNoFreeSeats()
+    {
+        // Arrange
+        using BookingApiFactory factory = Factory();
+        var centerId = Guid.NewGuid();
+        ClassSession cancelled = ClassSessionAt(centerId, capacity: 2, Now.AddDays(1));
+        cancelled.Cancel();
+        await factory.AddAsync(cancelled).ConfigureAwait(false);
+        using HttpClient client = factory.CreateClient();
+
+        // Act
+        ClassSessionResponse[]? classSessions = await client.GetFromJsonAsync<ClassSessionResponse[]>(new Uri($"/class-sessions?centerId={centerId}", UriKind.Relative)).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(classSessions, Is.EqualTo(new[] { new ClassSessionResponse(cancelled.Id, centerId, cancelled.ClassTypeId, cancelled.StartTime, Capacity: 2, FreeSeats: 0, IsCancelled: true) }));
     }
 
     [Test]

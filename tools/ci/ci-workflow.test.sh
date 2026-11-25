@@ -75,6 +75,8 @@ jobs_without_timeout() {
     in_jobs && /^[^ #]/ { in_jobs = 0 }
     in_jobs && /^  [A-Za-z0-9_-]+:/ { if (job != "" && !has) print job; job = $1; sub(/:$/, "", job); has = 0; next }
     in_jobs && /^    timeout-minutes: [0-9]+$/ { has = 1 }
+    # A job that calls a reusable workflow (uses:) cannot set timeout-minutes; the called job sets it (#319)
+    in_jobs && /^    uses: \.\/\.github\/workflows\/[A-Za-z0-9_-]+\.ya?ml$/ { has = 1 }
     END { if (job != "" && !has) print job }
   ' "$1"
 }

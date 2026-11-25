@@ -28,6 +28,9 @@ try
     builder.Services.AddMongoAccountRepository(); // nothing connects until the first request
     builder.Services.AddSingleton<IPasswordHasher<Account>, PasswordHasher<Account>>();
     builder.Services.AddScoped<CreateAccountHandler>();
+    builder.Services.AddSingleton(TimeProvider.System);
+    builder.Services.AddSingleton<TokenWriter>(); // reads Jwt:SigningKey when it writes a token, so the app starts without one
+    builder.Services.AddScoped<LogInHandler>();
 
     WebApplication app = builder.Build();
 

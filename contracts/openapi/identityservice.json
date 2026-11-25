@@ -70,6 +70,72 @@
           }
         }
       }
+    },
+    "/tokens": {
+      "post": {
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "Logs in with an e-mail address and a password, and gives a token with the account's id and roles. No token needed.",
+        "requestBody": {
+          "description": "Stops the request.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogInRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogInRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The token, valid for 60 minutes.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The e-mail address or the password is missing.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No account has the e-mail address, or the password is wrong. Both give the same answer.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -119,6 +185,24 @@
         },
         "description": "A person asks for an account."
       },
+      "LogInRequest": {
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "The e-mail address of the account, in any letter case."
+          },
+          "password": {
+            "type": "string",
+            "description": "The password of the account."
+          }
+        },
+        "description": "A person logs in."
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -156,6 +240,25 @@
             ]
           }
         }
+      },
+      "TokenResponse": {
+        "required": [
+          "accessToken",
+          "expiresAt"
+        ],
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "The JWT to send as `Authorization: Bearer` to the other services."
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "When the token stops being accepted: 60 minutes after it was written.",
+            "format": "date-time"
+          }
+        },
+        "description": "The token for a logged-in account."
       },
       "ValidationProblemDetails": {
         "type": "object",
@@ -209,6 +312,9 @@
   "tags": [
     {
       "name": "Accounts"
+    },
+    {
+      "name": "Tokens"
     }
   ]
 }

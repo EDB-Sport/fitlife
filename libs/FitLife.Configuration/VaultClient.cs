@@ -30,17 +30,27 @@ internal sealed class VaultClient(VaultSettings settings, HttpMessageHandler han
 
             if (time.GetUtcNow() >= giveUpAt)
             {
-                throw new InvalidOperationException(
-                    $"Found {attempt.Problem} from Vault for the secret {settings.Mount}/{settings.Path} for {settings.Wait.TotalSeconds:0} s "
-                    + $"(Vault:WaitSeconds). {Advice}");
+                throw GaveUp(attempt);
             }
 
             await Task.Delay(Pause, time, cancellationToken).ConfigureAwait(false);
+            if (time.GetUtcNow() >= giveUpAt)
+            {
+                // The pause used up the time: another attempt would run past Vault:WaitSeconds
+                throw GaveUp(attempt);
+            }
         }
     }
 
     private const string Advice =
         "Do check Vault:Address, Vault:Token and that the seed job has written the secret (deploy/compose/vault/seed.sh).";
+
+    private InvalidOperationException GaveUp(Attempt attempt)
+    {
+        return new InvalidOperationException(
+            $"Found {attempt.Problem} from Vault for the secret {settings.Mount}/{settings.Path} for {settings.Wait.TotalSeconds:0} s "
+            + $"(Vault:WaitSeconds). {Advice}");
+    }
 
     private async Task<Attempt> TryReadWithTimeoutAsync(HttpMessageInvoker invoker, TimeSpan remaining, CancellationToken cancellationToken)
     {

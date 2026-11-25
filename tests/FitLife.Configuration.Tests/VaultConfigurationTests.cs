@@ -232,7 +232,7 @@ public sealed class VaultConfigurationTests
     public void AddVaultAsync_WhenVaultAcceptsButNeverAnswers_GivesUpAfterVaultWaitSeconds()
     {
         // Arrange
-        using var vault = new FakeVault(_ => Answer(HttpStatusCode.OK, SecretJson), hang: true);
+        using var vault = new FakeVault(_ => Answer(HttpStatusCode.OK, SecretJson), hangFrom: 1);
         using ConfigurationManager configuration = VaultSettings();
         configuration["Vault:WaitSeconds"] = "7";
         var time = new FakeTimeProvider();
@@ -249,10 +249,30 @@ public sealed class VaultConfigurationTests
         Assert.That(vault.Requests, Has.Count.GreaterThan(1));
     }
 
+    [Test]
+    public void AddVaultAsync_WhenTheTimeRunsOutDuringThePause_DoesNotStartAnotherAttempt()
+    {
+        // Arrange: the first answer is fast (503), and Vault would hang on any later request
+        using var vault = new FakeVault(_ => Answer(HttpStatusCode.ServiceUnavailable), hangFrom: 2);
+        using ConfigurationManager configuration = VaultSettings();
+        configuration["Vault:WaitSeconds"] = "1";
+        var time = new FakeTimeProvider();
+        DateTimeOffset start = time.GetUtcNow();
+
+        // Act
+        InvalidOperationException? exception = Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await RunWithClockAsync(configuration.AddVaultAsync(vault, time), time, vault).ConfigureAwait(false));
+
+        // Assert
+        Assert.That(exception?.Message, Does.Contain("503").And.Contain("1 s"));
+        Assert.That(vault.Requests, Has.Count.EqualTo(1));
+        Assert.That(time.GetUtcNow() - start, Is.LessThanOrEqualTo(TimeSpan.FromSeconds(1)));
+    }
+
     private sealed record SentRequest(HttpMethod Method, Uri? Uri, string? Token);
 
     // Answers each request with the response the test gives, and keeps what was sent
-    private sealed class FakeVault(Func<int, HttpResponseMessage> answer, bool hang = false) : HttpMessageHandler
+    private sealed class FakeVault(Func<int, HttpResponseMessage> answer, int hangFrom = int.MaxValue) : HttpMessageHandler
     {
         public ConcurrentQueue<SentRequest> Requests { get; } = new();
 
@@ -265,7 +285,7 @@ public sealed class VaultConfigurationTests
             }
 
             Requests.Enqueue(new SentRequest(request.Method, request.RequestUri, token));
-            if (hang)
+            if (Requests.Count >= hangFrom)
             {
                 // Accepts the request and never replies: only the caller's cancellation ends it
                 var never = new TaskCompletionSource<HttpResponseMessage>();

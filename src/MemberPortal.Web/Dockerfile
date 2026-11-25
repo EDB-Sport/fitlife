@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for MemberPortal.Web (.NET 10 on Alpine)
 # SDK patch pinned to match global.json (#47); MCR has no 10.0.203-alpine tag, so the Alpine version is in the tag
-FROM mcr.microsoft.com/dotnet/sdk:10.0.203-alpine3.23 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.401-alpine3.23 AS build
 WORKDIR /app
 
 # Copy root configuration, analyzers and build rules
@@ -26,7 +26,7 @@ WORKDIR /app/src/MemberPortal.Web
 RUN dotnet publish -c Release -o /app/publish --no-restore
 
 # Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:11.0-alpine AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
 

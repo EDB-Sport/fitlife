@@ -3,7 +3,7 @@
 # A new service copies this file and replaces BookingService (docs/ADDING_A_SERVICE.md).
 
 # SDK patch pinned to match global.json (#47); MCR has no 10.0.203-alpine tag, so the Alpine version is in the tag
-FROM mcr.microsoft.com/dotnet/sdk:10.0.203-alpine3.23 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.401-alpine3.23 AS build
 WORKDIR /app
 
 # The reviewed rule files, so the image is built with the same rules, package versions and analyzers as CI
@@ -19,7 +19,7 @@ RUN dotnet restore src/BookingService/BookingService.csproj --locked-mode
 RUN dotnet publish src/BookingService/BookingService.csproj -c Release -o /app/publish --no-restore
 
 # The runtime from the pinned SDK
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.7-alpine3.23 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.12-alpine3.23 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
 

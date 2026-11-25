@@ -25,7 +25,7 @@ COPY src/BookingService/ src/BookingService/
 RUN dotnet publish src/BookingService/BookingService.csproj -c Release -o /app/publish --no-restore
 
 # The newest 10.0 runtime patch, not the pinned SDK's 10.0.7: Trivy fails the release on 10.0.7's CVEs (#25)
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.7-alpine3.23 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.15-alpine3.24 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
 

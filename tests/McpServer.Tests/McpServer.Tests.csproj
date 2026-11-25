@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\IdentityService\IdentityService.csproj" />
+    <ProjectReference Include="..\..\src\McpServer\McpServer.csproj" />
   </ItemGroup>
 
 </Project>

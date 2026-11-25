@@ -104,9 +104,18 @@ expect 1 "an env override default on the line after the builder call is checked 
 fresh; csharp_override 'mongo:8'
 expect 1 "an env override default is held to rule 1 (full version) (#315)" 'SetUp.cs:1.*mongo:8'
 
-fresh; printf 'var name = settings["Name"] ?? "mongo:7";
-' > "$root/tests/Svc.IntegrationTests/Other.cs"
+fresh; printf 'var name = settings["Name"] ?? "mongo:7";\n' > "$root/tests/Svc.IntegrationTests/Other.cs"
 expect 0 "a ?? default outside a builder call is not an image"
+
+# Builders that aren't Testcontainers: WebApplicationFactory's WithWebHostBuilder, StringBuilder (review on PR #426)
+fresh; printf '%s\n' \
+  'using var f = app.WithWebHostBuilder(host => host' \
+  '    .UseSetting("Vault:Address", url ?? "http://vault.test"));' \
+  'var n = new StringBuilder(64);' \
+  '    var s = name ?? "localhost:5000");' \
+  'var c = new ConfigurationBuilder(' \
+  '    ).Build()["X"] ?? "x:y");' > "$root/tests/Svc.IntegrationTests/Other.cs"
+expect 0 "a ?? default in WithWebHostBuilder, StringBuilder or ConfigurationBuilder is not an image" 'image-versions: 0 image reference'
 
 fresh; compose 'mongo:8.0.38'; bicep mongoImage 'mongo:8.0.39'
 expect 1 "compose against Bicep on different versions fails" '8\.0\.38.*8\.0\.39|8\.0\.39.*8\.0\.38'

@@ -29,7 +29,9 @@ try
 
     // The token from Identity, checked the same way in every service (#183)
     builder.Services.AddFitLifeJwtAuthentication();
-    builder.Services.AddAuthorization();
+
+    // Closed by default (#368): an endpoint needs a token unless it is marked AllowAnonymous()
+    builder.Services.AddFitLifeAuthorization();
 
     // Statuses as names in the API ("Active"), not numbers
     builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
@@ -48,15 +50,19 @@ try
     // Course rule #7: the OpenAPI document and Scalar only in Development
     if (app.Environment.IsDevelopment())
     {
-        app.MapOpenApi();
-        app.MapScalarApiReference();
+        app.MapOpenApi().AllowAnonymous();
+        app.MapScalarApiReference().AllowAnonymous();
     }
 
     app.UseAuthentication();
     app.UseAuthorization();
 
-    app.MapHealthChecks("/health");
+    app.MapHealthChecks("/health").AllowAnonymous();
     app.MapMemberEndpoints();
+
+    // A path with no endpoint answers 404, not 401: the fallback policy of AddFitLifeAuthorization() also covers
+    // requests that match no endpoint, e.g. /openapi/v1.json outside Development
+    app.MapFallback("{*path}", NotFound).AllowAnonymous();
 
     // The startup line: which service and which release is running (the version is also a Loki label)
     if (app.Logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information))
@@ -83,4 +89,9 @@ public partial class Program
 {
     /// <summary>Only the top-level statements create the app.</summary>
     protected Program() { }
+
+    private static IResult NotFound()
+    {
+        return Results.NotFound();
+    }
 }

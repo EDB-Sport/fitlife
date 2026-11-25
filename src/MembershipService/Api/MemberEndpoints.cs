@@ -16,7 +16,8 @@ public static class MemberEndpoints
     /// <returns>The routes.</returns>
     public static IEndpointRouteBuilder MapMemberEndpoints(this IEndpointRouteBuilder app)
     {
-        RouteGroupBuilder members = app.MapGroup("/members").RequireAuthorization().WithTags("Members");
+        RouteGroupBuilder members = app.MapGroup("/members").RequireAuthorization().WithTags("Members")
+            .AddEndpointFilter(RequireAccountId);
         members.MapPost("/", Join)
             .WithName("JoinMembership")
             .WithSummary("The account in the token joins FitLife and gets an active membership")
@@ -30,15 +31,22 @@ public static class MemberEndpoints
         return app;
     }
 
-    private static async Task<Results<Created<MemberResponse>, ProblemHttpResult, UnauthorizedHttpResult>> Join(
-        ClaimsPrincipal user, JoinMembershipHandler handler, CancellationToken cancellationToken)
+    // Every route here reads the account id. A valid token without one (no `sub`) is answered 401, as before #368,
+    // so GetAccountId() never throws in a route
+    private static async ValueTask<object?> RequireAccountId(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
-        string? accountId = user.FindFirstValue(FitLifeJwt.AccountIdClaim);
-        if (string.IsNullOrWhiteSpace(accountId))
+        if (string.IsNullOrWhiteSpace(context.HttpContext.User.FindFirstValue(FitLifeJwt.AccountIdClaim)))
         {
             return TypedResults.Unauthorized();
         }
 
+        return await next(context).ConfigureAwait(false);
+    }
+
+    private static async Task<Results<Created<MemberResponse>, ProblemHttpResult>> Join(
+        ClaimsPrincipal user, JoinMembershipHandler handler, CancellationToken cancellationToken)
+    {
+        string accountId = user.GetAccountId();
         JoinResult result = await handler.HandleAsync(new JoinMembershipCommand(accountId), cancellationToken).ConfigureAwait(false);
         if (result.Member is null || result.Membership is null)
         {
@@ -49,15 +57,11 @@ public static class MemberEndpoints
         return TypedResults.Created(new Uri($"/members/by-account/{Uri.EscapeDataString(accountId)}", UriKind.Relative), response);
     }
 
-    private static async Task<Results<Ok<MyMembershipResponse>, NotFound, UnauthorizedHttpResult>> GetMine(
+    private static async Task<Results<Ok<MyMembershipResponse>, NotFound>> GetMine(
         ClaimsPrincipal user, IMemberRepository members, IMembershipRepository memberships, CancellationToken cancellationToken)
     {
         // The account comes from the token, never from the path, so a member only ever sees their own (ADR 007)
-        string? accountId = user.FindFirstValue(FitLifeJwt.AccountIdClaim);
-        if (string.IsNullOrWhiteSpace(accountId))
-        {
-            return TypedResults.Unauthorized();
-        }
+        string accountId = user.GetAccountId();
 
         Member? member = await members.FindByAccountIdAsync(accountId, cancellationToken).ConfigureAwait(false);
         if (member is null)
@@ -79,7 +83,7 @@ public static class MemberEndpoints
     {
         // A member looks up only their own account. Another account answers as if it were unknown, so the lookup doesn't tell
         // which accounts are members (review on #199).
-        if (!string.Equals(user.FindFirstValue(FitLifeJwt.AccountIdClaim), accountId, StringComparison.Ordinal))
+        if (!string.Equals(user.GetAccountId(), accountId, StringComparison.Ordinal))
         {
             return TypedResults.NotFound();
         }

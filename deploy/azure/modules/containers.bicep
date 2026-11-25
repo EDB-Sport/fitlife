@@ -257,6 +257,15 @@ var containerDefinitions = [
           name: 'GRAFANA_URL'
           value: 'http://127.0.0.1:3000'
         }
+        {
+          // Log-ins per client address on POST /api/identity/tokens (#366), as in compose. Above them: 429.
+          name: 'LOGIN_RATE_LIMIT'
+          value: '10r/m'
+        }
+        {
+          name: 'LOGIN_RATE_BURST'
+          value: '10'
+        }
       ]
       volumeMounts: [
         {

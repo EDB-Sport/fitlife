@@ -62,8 +62,20 @@ public sealed class JustifiedSuppressionAnalyzer : DiagnosticAnalyzer
         context.RegisterSyntaxNodeAction(AnalyzeAttribute, SyntaxKind.Attribute);
     }
 
+    // .editorconfig marks Razor's output as hand-written so the style rules check @code blocks (#397).
+    // Its #pragma and #nullable lines are written by the Razor generator, so TEAM004 still skips that file.
+    private static bool IsRazorOutput(SyntaxTree tree)
+    {
+        return tree.FilePath.EndsWith("_razor.g.cs", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static void AnalyzeDirectives(SyntaxTreeAnalysisContext context)
     {
+        if (IsRazorOutput(context.Tree))
+        {
+            return;
+        }
+
         SyntaxNode root = context.Tree.GetRoot(context.CancellationToken);
         for (DirectiveTriviaSyntax? directive = root.GetFirstDirective(); directive is not null; directive = directive.GetNextDirective())
         {

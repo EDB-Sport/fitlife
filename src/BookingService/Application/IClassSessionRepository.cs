@@ -5,10 +5,11 @@ namespace BookingService.Application;
 /// <summary>The one repository of the <see cref="ClassSession"/> aggregate (METHODOLOGY §11.2 rule 4). The MongoDB class is <c>Repositories/ClassSessionRepository</c>.</summary>
 public interface IClassSessionRepository
 {
-    /// <summary>The class sessions, by start time, of one centre or, without a centre, of all of them.</summary>
+    /// <summary>The class sessions that start after a moment, by start time, of one centre or, without a centre, of all of them.</summary>
     /// <param name="centerId">The centre, or null for every centre.</param>
+    /// <param name="startsAfter">Only class sessions that start later than this.</param>
     /// <param name="cancellationToken">Stops the query.</param>
-    Task<IReadOnlyList<ClassSession>> ListAsync(Guid? centerId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<ClassSession>> ListAsync(Guid? centerId, DateTimeOffset startsAfter, CancellationToken cancellationToken);
 
     /// <summary>One class session, or null when there is none with that id.</summary>
     /// <param name="id">The class session's id.</param>

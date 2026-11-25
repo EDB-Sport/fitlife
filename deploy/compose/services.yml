@@ -13,6 +13,9 @@ services:
       MCP_SERVER_URL: http://mcp-server:8080 # the MCP server (#213), on /mcp
       MEMBER_PORTAL_URL: http://member-portal:8080 # the Blazor UI (#8), on every path that isn't /api/ or /health
       GRAFANA_URL: http://grafana:3000 # monitoring.yml
+      # Log-ins per client address on POST /api/identity/tokens (#366); above them the gateway answers 429
+      LOGIN_RATE_LIMIT: ${LOGIN_RATE_LIMIT:-10r/m}
+      LOGIN_RATE_BURST: ${LOGIN_RATE_BURST:-10}
     volumes:
       - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
     ports:
@@ -145,9 +148,11 @@ services:
       # RabbitMq:Username and RabbitMq:Password. The service waits for Vault and the seed job itself (Vault:WaitSeconds).
       Vault__Address: http://vault:8200 # infrastructure.yml
       Vault__Token: ${VAULT_DEV_ROOT_TOKEN:?set it in deploy/compose/.env}
-    # No depends_on, so this group still starts on its own: the consumer keeps trying until RabbitMQ answers
+    # No depends_on, so this group still starts on its own: the consumer keeps trying until RabbitMQ answers.
+    # /health is unhealthy until it consumes (#258); start_period covers RabbitMQ's own start-up.
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 60s

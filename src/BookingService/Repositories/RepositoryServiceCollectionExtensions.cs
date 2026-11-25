@@ -28,6 +28,7 @@ public static class RepositoryServiceCollectionExtensions
             return provider.GetRequiredService<IMongoClient>().GetDatabase(database);
         });
         services.AddScoped<IClassSessionRepository, ClassSessionRepository>();
+        services.AddSingleton<IReferenceDataRepository, ReferenceDataRepository>();
         return services;
     }
 

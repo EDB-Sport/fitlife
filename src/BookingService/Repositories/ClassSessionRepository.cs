@@ -1,3 +1,4 @@
+using BookingService.Application;
 using BookingService.Domain;
 using MongoDB.Driver;
 
@@ -42,7 +43,7 @@ public sealed class ClassSessionRepository : IClassSessionRepository
     }
 
     /// <inheritdoc />
-    public async Task<ClassSession?> GetAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<ClassSession?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
         ClassSessionDocument? document = await _collection.Find(candidate => candidate.Id == id)
             .FirstOrDefaultAsync(cancellationToken)

@@ -44,7 +44,7 @@ public sealed class ClassSession
     public Capacity Capacity { get; }
 
     /// <summary>When the class session starts.</summary>
-    public DateTimeOffset StartTime { get; }
+    public DateTimeOffset StartTime { get; private set; }
 
     /// <summary>The class session will not take place (Hold aflyst).</summary>
     public bool IsCancelled { get; private set; }
@@ -164,7 +164,9 @@ public sealed class ClassSession
         }
 
         Reservation reservation = _reservations[index];
-        bool isLateCancellation = !reservation.IsFromWaitlist && StartTime - clock.GetUtcNow() < WhenACancellationIsLateBeforeStart;
+        bool isLateCancellation = !reservation.IsFromWaitlist
+            && !reservation.IsFromBeforeAChangedStart
+            && StartTime - clock.GetUtcNow() < WhenACancellationIsLateBeforeStart;
         _reservations.RemoveAt(index);
         _domainEvents.Add(new ReservationCancelled(Id, memberId, isLateCancellation));
 
@@ -201,6 +203,42 @@ public sealed class ClassSession
 
         _waitlist.Clear();
         return WaitlistClosingResult.Closed;
+    }
+
+    /// <summary>
+    /// Moves the class session to a new start. Its reservations and waitlist entries are kept, and a member who has a reservation
+    /// now can later cancel it free: never a late cancellation. <see cref="ClassSessionChanged"/> names those members.
+    /// </summary>
+    /// <param name="newStart">When the class session starts from now on.</param>
+    /// <param name="clock">Tells the time now.</param>
+    /// <returns>
+    /// <see cref="ChangeStartResult.ClassSessionCancelled"/> or <see cref="ChangeStartResult.StartNotInTheFuture"/> when the start
+    /// doesn't change; then nothing changes and nothing is raised.
+    /// </returns>
+    public ChangeStartResult ChangeStart(DateTimeOffset newStart, TimeProvider clock)
+    {
+        ArgumentNullException.ThrowIfNull(clock);
+
+        if (IsCancelled)
+        {
+            return ChangeStartResult.ClassSessionCancelled;
+        }
+
+        if (newStart <= clock.GetUtcNow())
+        {
+            return ChangeStartResult.StartNotInTheFuture;
+        }
+
+        DateTimeOffset previousStart = StartTime;
+        StartTime = newStart;
+        for (int index = 0; index < _reservations.Count; index++)
+        {
+            _reservations[index] = _reservations[index].FromBeforeAChangedStart();
+        }
+
+        var memberIds = _reservations.Select(reservation => reservation.MemberId).ToList();
+        _domainEvents.Add(new ClassSessionChanged(Id, memberIds.AsReadOnly(), previousStart, newStart));
+        return ChangeStartResult.Changed;
     }
 
     /// <summary>

@@ -1,3 +1,5 @@
+using System.Globalization;
+using BookingService.Application;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
@@ -9,8 +11,9 @@ namespace BookingService.Repositories;
 public static class RepositoryServiceCollectionExtensions
 {
     /// <summary>
-    /// Reads <c>MongoDb:ConnectionString</c> (without a password), <c>MongoDb:Password</c> (from Vault, #17) and
-    /// <c>MongoDb:Database</c> from configuration.
+    /// Builds the client from <c>MongoDb:Host</c>, <c>MongoDb:Port</c>, <c>MongoDb:Database</c>, <c>MongoDb:Username</c>,
+    /// <c>MongoDb:Password</c> (from Vault, #17) and the optional <c>MongoDb:AuthSource</c>, the database the login lives in
+    /// (default: <c>MongoDb:Database</c>, as compose creates booking-svc). Read when the client is first resolved, not here.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The same service collection.</returns>
@@ -21,8 +24,7 @@ public static class RepositoryServiceCollectionExtensions
         services.AddSingleton<IMongoClient>(provider => new MongoClient(Settings(provider.GetRequiredService<IConfiguration>())));
         services.AddSingleton(provider =>
         {
-            string database = provider.GetRequiredService<IConfiguration>()["MongoDb:Database"]
-                ?? throw new InvalidOperationException("Set MongoDb:Database.");
+            string database = Required(provider.GetRequiredService<IConfiguration>(), "MongoDb:Database");
             return provider.GetRequiredService<IMongoClient>().GetDatabase(database);
         });
         services.AddScoped<IClassSessionRepository, ClassSessionRepository>();
@@ -31,18 +33,37 @@ public static class RepositoryServiceCollectionExtensions
 
     private static MongoClientSettings Settings(IConfiguration configuration)
     {
-        string connectionString = configuration["MongoDb:ConnectionString"]
-            ?? throw new InvalidOperationException("Set MongoDb:ConnectionString.");
-        // The URL names the user only; the password comes from its own setting (Vault). Put it in before the URL is parsed into
-        // settings, which reject a user without a password.
-        var url = new MongoUrlBuilder(connectionString);
-        string? password = configuration["MongoDb:Password"];
-        if (!string.IsNullOrEmpty(password))
+        string host = Required(configuration, "MongoDb:Host");
+        if (!int.TryParse(Required(configuration, "MongoDb:Port"), NumberStyles.None, CultureInfo.InvariantCulture, out int port))
         {
-            url.Password = password;
+            throw new InvalidOperationException("MongoDb:Port must be a number.");
         }
 
-        var settings = MongoClientSettings.FromUrl(url.ToMongoUrl());
-        return settings;
+        string database = Required(configuration, "MongoDb:Database");
+        string? authSource = configuration["MongoDb:AuthSource"];
+        if (string.IsNullOrEmpty(authSource))
+        {
+            authSource = database;
+        }
+
+        var url = new MongoUrlBuilder
+        {
+            Server = new MongoServerAddress(host, port),
+            Username = Required(configuration, "MongoDb:Username"),
+            Password = Required(configuration, "MongoDb:Password"),
+            AuthenticationSource = authSource,
+        };
+        return MongoClientSettings.FromUrl(url.ToMongoUrl());
+    }
+
+    private static string Required(IConfiguration configuration, string key)
+    {
+        string? value = configuration[key];
+        if (string.IsNullOrEmpty(value))
+        {
+            throw new InvalidOperationException($"Set {key}.");
+        }
+
+        return value;
     }
 }

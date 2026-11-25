@@ -19,6 +19,6 @@ public sealed class RabbitMqConsumerHealthCheck<TEvent>(RabbitMqEventConsumer<TE
             return Task.FromResult(HealthCheckResult.Healthy($"Consuming {consumer.Queue}"));
         }
 
-        return Task.FromResult(HealthCheckResult.Unhealthy($"Not consuming {consumer.Queue} yet: RabbitMQ is not reachable"));
+        return Task.FromResult(HealthCheckResult.Unhealthy($"Not consuming {consumer.Queue} yet"));
     }
 }

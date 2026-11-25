@@ -232,6 +232,77 @@ public sealed class ClassSessionApiTests
     }
 
     [Test]
+    public async Task PostWaitlist_WhenTheMemberAlreadyHasAReservation_Returns409ProblemDetails()
+    {
+        // Arrange
+        using BookingApiFactory factory = Factory();
+        ClassSession classSession = ClassSessionAt(Guid.NewGuid(), capacity: 1, Now.AddDays(1));
+        var memberId = Guid.NewGuid();
+        classSession.Reserve(memberId, factory.Clock);
+        await factory.AddAsync(classSession).ConfigureAwait(false);
+        using HttpClient client = factory.CreateClient();
+
+        // Act
+        using HttpResponseMessage response = await client.PostAsJsonAsync(WaitlistOf(classSession), new WaitlistEntryRequest(memberId)).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(await ProblemOfAsync(response).ConfigureAwait(false), Is.EqualTo((HttpStatusCode.Conflict, "application/problem+json", (int?)409)));
+    }
+
+    [Test]
+    public async Task PostWaitlist_WhenTheMemberIsAlreadyOnTheWaitlist_Returns409ProblemDetails()
+    {
+        // Arrange
+        using BookingApiFactory factory = Factory();
+        ClassSession classSession = ClassSessionAt(Guid.NewGuid(), capacity: 1, Now.AddDays(1));
+        var memberId = Guid.NewGuid();
+        classSession.Reserve(Guid.NewGuid(), factory.Clock);
+        classSession.JoinWaitlist(memberId, factory.Clock);
+        await factory.AddAsync(classSession).ConfigureAwait(false);
+        using HttpClient client = factory.CreateClient();
+
+        // Act
+        using HttpResponseMessage response = await client.PostAsJsonAsync(WaitlistOf(classSession), new WaitlistEntryRequest(memberId)).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(await ProblemOfAsync(response).ConfigureAwait(false), Is.EqualTo((HttpStatusCode.Conflict, "application/problem+json", (int?)409)));
+    }
+
+    [Test]
+    public async Task PostWaitlist_OnACancelledClassSession_Returns409ProblemDetails()
+    {
+        // Arrange
+        using BookingApiFactory factory = Factory();
+        ClassSession classSession = ClassSessionAt(Guid.NewGuid(), capacity: 1, Now.AddDays(1));
+        classSession.Cancel();
+        await factory.AddAsync(classSession).ConfigureAwait(false);
+        using HttpClient client = factory.CreateClient();
+
+        // Act
+        using HttpResponseMessage response = await client.PostAsJsonAsync(WaitlistOf(classSession), new WaitlistEntryRequest(Guid.NewGuid())).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(await ProblemOfAsync(response).ConfigureAwait(false), Is.EqualTo((HttpStatusCode.Conflict, "application/problem+json", (int?)409)));
+    }
+
+    [Test]
+    public async Task PostWaitlist_AfterTheWaitlistHasClosed_Returns409ProblemDetails()
+    {
+        // Arrange
+        using BookingApiFactory factory = Factory();
+        ClassSession classSession = ClassSessionAt(Guid.NewGuid(), capacity: 1, Now.AddHours(1));
+        classSession.Reserve(Guid.NewGuid(), factory.Clock);
+        await factory.AddAsync(classSession).ConfigureAwait(false);
+        using HttpClient client = factory.CreateClient();
+
+        // Act
+        using HttpResponseMessage response = await client.PostAsJsonAsync(WaitlistOf(classSession), new WaitlistEntryRequest(Guid.NewGuid())).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(await ProblemOfAsync(response).ConfigureAwait(false), Is.EqualTo((HttpStatusCode.Conflict, "application/problem+json", (int?)409)));
+    }
+
+    [Test]
     public async Task Start_WithSeedEnabled_LoadsTheDemoClassSessions()
     {
         // Arrange

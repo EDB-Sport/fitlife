@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Test helper, not a test project: validates JSON against the event schemas in contracts/events/ (#92).
+    Producer tests (the publishing service) and consumer tests (the consuming service) reference it,
+    so both sides test against exactly the same file (docs/CSHARP_SETUP_TODO.md section 6).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JsonSchema.Net" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The schemas, copied next to every test assembly that references this project -->
+    <Content Include="$(RepoRoot)contracts/events/*.schema.json" Link="contracts/events/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

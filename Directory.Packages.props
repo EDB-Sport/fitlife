@@ -23,11 +23,18 @@
     <PackageVersion Include="Scalar.AspNetCore" Version="3.1.1" />
     <!-- Writes contracts/openapi/<service>.json on build (docs/CSHARP_SETUP_TODO.md section 8) -->
     <PackageVersion Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.15" />
+    <!-- Booking's call to Membership: time-out, retry and circuit breaker (#256) -->
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.11.1" />
     <!-- NLog → Loki (course rule #8, docs/CSHARP_SETUP_TODO.md section 7) -->
     <PackageVersion Include="NLog.Web.AspNetCore" Version="6.2.2" />
     <PackageVersion Include="NLog.Targets.Loki" Version="2.7.1" />
     <!-- Checks the JWT from Identity, the same way in every service (libs/FitLife.Authentication, #183) -->
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.15" />
+  </ItemGroup>
+
+  <!-- RabbitMQ events, used only by libs/FitLife.Messaging (#190) -->
+  <ItemGroup Label="Messaging">
+    <PackageVersion Include="RabbitMQ.Client" Version="7.2.2" />
   </ItemGroup>
 
   <!-- Added to every test project automatically by tests/Directory.Build.props. -->
@@ -56,6 +63,11 @@
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.15" />
     <PackageVersion Include="Testcontainers.MongoDb" Version="4.17.0" />
     <PackageVersion Include="Testcontainers.RabbitMq" Version="4.17.0" />
+  </ItemGroup>
+
+  <!-- Event contracts: tests validate events against contracts/events/*.schema.json (#92) -->
+  <ItemGroup Label="Contract tests">
+    <PackageVersion Include="JsonSchema.Net" Version="9.6.0" />
   </ItemGroup>
 
   <!--

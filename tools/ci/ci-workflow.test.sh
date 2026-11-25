@@ -100,6 +100,21 @@ expect "ci.yml's test step passes $hang_flags" \
 expect "tdd-check.yml's TEST_CMD passes $hang_flags in both runs" \
   test "$(grep -cF "TEST_CMD: dotnet test -c Release $hang_flags" "$root/.github/workflows/tdd-check.yml")" -eq 2
 
+# A red CI run names the failing script or check and its first error in gh run view (issue #376).
+# The ci-scripts loop annotates each failing script by name.
+expect "ci-scripts annotates each failing script as ::error title=ci-scripts::<script> failed" \
+  grep -qF 'echo "::error title=ci-scripts::$test failed' <<<"$(job_block ci-scripts)"
+# The other checks run through tools/ci/summarize.sh with a hint, so a failure gets an annotation and a summary.
+# runs_through_summarize <job> <check> <script>: the job runs <script> as summarize.sh <check> "<hint>" -- <script>
+runs_through_summarize() {
+  grep -qE "run: tools/ci/summarize\.sh $2 \"[^\"]+\" -- tools/ci/$3\$" <<<"$(job_block "$1")"
+}
+for pair in stack-check:stack-check.sh mutation:mutation.sh build-rules:check-build-rules.sh \
+  contract:check-contracts.sh contract:oasdiff-breaking.sh diff-scan:diff-scan.sh; do
+  job=${pair%%:*} script=${pair#*:}
+  expect "$job runs tools/ci/$script through summarize.sh with a hint" runs_through_summarize "$job" "$job" "$script"
+done
+
 echo
 if [ "$failures" -eq 0 ]; then
   echo "ci.yml runs every CI script."

@@ -11,7 +11,7 @@ public sealed class ClassSessionCancelTests
 
     private static ClassSession ClassSessionWithCapacity(int capacity)
     {
-        return new ClassSession(Guid.NewGuid(), new Capacity(capacity), Now.AddDays(1));
+        return new ClassSession(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), new Capacity(capacity), Now.AddDays(1));
     }
 
     [Test]

@@ -106,9 +106,10 @@ mongodb://booking-svc:<BOOKING_DB_PASSWORD>@mongodb:27017/booking?authSource=boo
 
 ## The gateway
 
-`nginx/default.conf.template` is rendered by the nginx image's `envsubst` at start, so the upstream addresses are environment variables (`BOOKING_URL`, `MEMBERSHIP_URL`, `IDENTITY_URL`, `MEMBER_PORTAL_URL`, `GRAFANA_URL` in `services.yml`). Azure mounts the same file with `http://127.0.0.1:<port>` addresses instead (`deploy/azure/`, #10). Every variable must be set, or Nginx won't start.
+`nginx/default.conf.template` is rendered by the nginx image's `envsubst` at start, so the upstream addresses are environment variables (`BOOKING_URL`, `MEMBERSHIP_URL`, `IDENTITY_URL`, `MCP_SERVER_URL`, `MEMBER_PORTAL_URL`, `GRAFANA_URL` in `services.yml`). Azure mounts the same file with `http://127.0.0.1:<port>` addresses instead (`deploy/azure/`, #10). Every variable must be set, or Nginx won't start.
 
 - `/api/<context>/<path>` reaches the service as `/<path>`, e.g. `/api/booking/reservations/42` → `http://booking-svc:8080/reservations/42`.
+- `/mcp` reaches the MCP server (the `mcp-server` container, #213) with the path unchanged.
 - Every other path goes to the member portal (Blazor UI, the `member-portal` container) unchanged, with WebSocket upgrade for Blazor's SignalR connection. Open the member portal at http://localhost:8080/. Running it with `dotnet run` instead, it reaches the stack's APIs through `Gateway:BaseUrl` (`http://localhost:8080` in `appsettings.Development.json`).
 - A route whose service isn't running answers 502; the gateway itself still starts.
 - The gateway passes on the caller's `X-Correlation-ID`, or sets a new one, and returns it in the response (section 7).

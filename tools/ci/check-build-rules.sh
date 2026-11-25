@@ -3,6 +3,7 @@
 # Builds small throwaway projects inside src/ and tests/, so the root Directory.Build.* files apply,
 # and checks that each rule fails the build, and that clean code still builds.
 # Usage: tools/ci/check-build-rules.sh   (exit code 0 = every rule works)
+echo "error: red demo for #376 (reverted in the next commit)"; exit 1
 set -uo pipefail
 
 root=$(cd "$(dirname "$0")/../.." && pwd)

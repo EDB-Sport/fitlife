@@ -310,7 +310,7 @@ The project description's test terms map onto this as: *unit tests* = Unit, *int
   *Why:* proves the tests catch changes to the code, which a coverage number alone doesn't. The project description still asks for coverage reports, so CI produces both (section 10, job 4). It also answers the course question "if you remove the rule from the model, does the test fail?" (M4.02) for every rule at once.
 - [ ] **Adopt the tdd-check workflow** (`.github/workflows/tdd-check.yml`):
   - `TEST_CMD="dotnet test -c Release"`
-  - `SRC_DIR=src/`, `TEST_DIR=tests/`, and a second step with `SRC_DIR=tools/Analyzers/Team.Analyzers/`, `TEST_DIR=tools/Analyzers/Team.Analyzers.Tests/`, so a new TEAM rule is checked the same way (#49)
+  - `SRC_DIR='src/ libs/'`, `TEST_DIR=tests/`: **production code is `src/` and `libs/`** (the shared libraries FitLife.Configuration, FitLife.Correlation, FitLife.Messaging are production code too). The red-on-base run resets both together, so a test that depends on a `libs/` change is red even when `src/` only has the wiring (#379, #98). And a second step with `SRC_DIR=tools/Analyzers/Team.Analyzers/`, `TEST_DIR=tools/Analyzers/Team.Analyzers.Tests/`, so a new TEAM rule is checked the same way (#49)
   - `SRC_FILE_REGEX='\.cs$'` and `TEST_FILE_REGEX='\.cs$'`, so a `CONTEXT.md`, Dockerfile or `.razor` change under `src/` needs no new test, and a PR that only adds Postman collections isn't judged by `dotnet test`
   - add the NUnit markers `[[,][[:space:]]*(Ignore|Explicit)\b|\bIgnoreReason\b|Assert\.(Ignore|Inconclusive)|\bAssume\.` to `SKIP_MARKERS`
   - take `BASE_SHA` from `git rev-parse HEAD^1` (the checked-out merge commit's first parent), not from the event's base sha, which can lag behind

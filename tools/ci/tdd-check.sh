@@ -10,10 +10,12 @@
 #                               A test that no longer compiles on base counts as red. A run that stops before
 #                               any test is built (no project found, restore error: SETUP_ERRORS) does not.
 #
-# Comment-only changes (#361): a production file whose every added or removed line is blank or a comment
-# (a line that starts with //, ///, /* or *) is not production code for checks 1 and 4: a comment can't make
-# a test go red. Any other line counts, so #if and #pragma lines, and code with a trailing // comment, still do.
-# This is a line-based rule: a line inside a /* */ block that doesn't start with * is read as code.
+# Comment-only changes (#361): a production file whose code lines (every line except blank ones and ones made
+# only of comments, found with /* */ state tracked over the whole file) are the same on base and head is not
+# production code for checks 1 and 4: a comment can't make a test go red. Any other change counts, so #if and
+# #pragma lines, and code with a trailing // comment added, still do.
+# Limit: a verbatim string (@"...") is read like a regular one, so a backslash before its closing quote can hide a
+# later comment marker; the file then counts as changed or unchanged by the lines it can see, never by a hunk.
 #
 # A refactoring PR (label "refactor" in PR_LABELS, METHODOLOGY section 8) changes structure, not behaviour:
 #   R1. No file under TEST_DIR changes (added, modified, deleted or moved).
@@ -85,13 +87,31 @@ fi
 # Files added or modified by the PR under a directory, filtered by a regex. Renames count as delete + add.
 changed_files() { git diff --name-only --no-renames --diff-filter=AM "$BASE_SHA...$HEAD_SHA" -- "$1" | grep -E "$2" || true; }
 
-# Production files with at least one added or removed line that is neither blank nor a comment (#361).
+# The lines of a C# file that hold code: every line except blank ones and ones made only of comments.
+# Tracks /* */ across lines and skips strings and char literals, so "http://x" is code and "/* x */ y;" is too.
+code_lines() {
+  awk '
+    { code = 0; n = length($0); q = ""
+      for (i = 1; i <= n; i++) {
+        c = substr($0, i, 1); d = substr($0, i + 1, 1)
+        if (blk) { if (c == "*" && d == "/") { blk = 0; i++ } }
+        else if (q != "") { if (c == "\\") i++; else if (c == q) q = "" }
+        else if (c == "/" && d == "/") break
+        else if (c == "/" && d == "*") { blk = 1; i++ }
+        else if (c == "\"" || c == "\047") { q = c; code = 1 }
+        else if (c !~ /[ \t\r]/) code = 1
+      }
+      if (code) print }'
+}
+
+# Production files whose code lines changed (#361). A file whose only change is blank or comment lines is not.
+# The base and the head version are compared as code lines, so the comment state is known (a -U0 hunk can't
+# tell a "* operand;" continuation line from the middle of a block comment).
 code_changed_files() {
   local file
   while IFS= read -r file; do
     [[ -n $file ]] || continue
-    if git diff -U0 --no-renames "$BASE_SHA...$HEAD_SHA" -- "$file" | grep -E '^[+-]' | grep -Ev '^(\+\+\+|---)' \
-       | grep -Evq '^[+-][[:space:]]*(//.*|/\*.*|\*($|[[:space:]/].*))?$'; then
+    if ! diff -q <(git show "$BASE_SHA:$file" 2>/dev/null | code_lines) <(git show "$HEAD_SHA:$file" | code_lines) >/dev/null; then
       echo "$file"
     fi
   done <<< "$1"

@@ -288,6 +288,18 @@ git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
 expect "a comment next to a code change still needs red on base" fail "$repo" "also pass without the production change"
 expect "a #pragma line is not a comment" fail "$(comment_pr '#pragma warning disable CS1591')" "no test under tests/ was added or changed"
 expect "a trailing // comment after code is a code change" fail "$(comment_pr '' 'public static class Calculator { public static int Add(int a, int b) => a + b; } // x')" "no test under tests/ was added or changed"
+# A comment-looking diff line that is code (review of #401). Each is red against the line-by-line pattern.
+operand_pr() { # a base file with a wrapped operator line, and the PR changing only that line
+  local repo; repo=$(fixture)
+  printf 'public static class Calculator { public static int Add(int a, int b) =>\n    a\n    * rate; }\n' > "$repo/src/Calculator.cs"; commit "$repo" "wrapped"
+  sed 's/\* rate;/* discountRate;/' "$repo/src/Calculator.cs" > "$repo/src/Calculator.tmp" && mv "$repo/src/Calculator.tmp" "$repo/src/Calculator.cs"; commit "$repo" "change operand"
+  echo "$repo"
+}
+expect "a changed wrapped '* operand;' line is code" fail "$(operand_pr)" "no test under tests/ was added or changed"
+expect "code after a one-line block comment is code" fail "$(comment_pr '/* x */ return 1;')" "no test under tests/ was added or changed"
+expect "code after a closing */ is code" fail "$(comment_pr '/* x\n*/ return 1;')" "no test under tests/ was added or changed"
+expect "an unindented ++x; line is code" fail "$(comment_pr '++x;')" "no test under tests/ was added or changed"
+expect "a // inside a string is not a comment" fail "$(comment_pr 'var u = "http://x";')" "no test under tests/ was added or changed"
 
 # 5. The workflow (finding 1 and 3)
 wf() { grep -qE "$2" "$workflow" && echo "PASS  $1" || { echo "FAIL  $1: '$2' not in $workflow"; failures=$((failures + 1)); }; }

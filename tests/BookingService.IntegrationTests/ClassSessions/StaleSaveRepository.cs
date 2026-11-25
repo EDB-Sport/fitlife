@@ -1,6 +1,5 @@
-using BookingService.Domain;
 using BookingService.Application;
-using BookingService.Repositories;
+using BookingService.Domain;
 
 namespace BookingService.IntegrationTests.ClassSessions;
 

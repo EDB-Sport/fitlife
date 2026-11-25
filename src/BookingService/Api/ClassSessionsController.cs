@@ -1,6 +1,6 @@
 using System.Diagnostics;
-using BookingService.Domain;
 using BookingService.Application;
+using BookingService.Domain;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 

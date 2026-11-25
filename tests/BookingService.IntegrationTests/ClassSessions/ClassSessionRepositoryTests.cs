@@ -1,5 +1,5 @@
-using BookingService.Domain;
 using BookingService.Application;
+using BookingService.Domain;
 using BookingService.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;

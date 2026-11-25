@@ -47,6 +47,10 @@ expect 0 "an added endpoint passes"
 contract "{\"/members\":$get_op}" > "$repo/contracts/openapi/fresh.json"
 expect 0 "a service with no tag is skipped" "fresh: no fresh/v\* tag yet, skipped"
 
+# No contracts at all: an empty list of services under set -u in bash 3.2 (macOS, #87)
+rm "$repo"/contracts/openapi/*.json
+expect 0 "no contracts passes"
+
 echo
 if [ "$failures" -eq 0 ]; then echo "oasdiff-breaking.sh works."; else echo "$failures check(s) failed."; fi
 exit "$failures"

@@ -9,7 +9,8 @@
 # Checks:
 #   1. the group holds Caddy, Nginx, MongoDB, RabbitMQ and Vault, and only Caddy has a public port (443)
 #   2. restartPolicy Always, and a liveness and a readiness probe on every container
-#   3. the CPU and memory requests fit the container-group limit (LIMIT_CPU, LIMIT_MEMORY_GB below)
+#   3. the CPU and memory requests fit the container-group limit (LIMIT_CPU, LIMIT_MEMORY_GB below),
+#      and memory is in 0.1 GB steps, the only amounts ACI accepts
 #   4. every secret is a secure parameter and reaches containers as secureValue, never as value
 #   5. MongoDB and Caddy keep their data on Azure Files shares
 #   6. MongoDB's init script and Vault's start and seed scripts are the compose files, so there is one source
@@ -159,6 +160,16 @@ if cpu <= limit_cpu and memory <= limit_memory:
     ok(summary)
 else:
     fail(summary)
+# ACI accepts memory only in 0.1 GB steps and refuses the deploy otherwise (MemoryRequirementNotTimesOfOneTenthGB, #179)
+off_step = []
+for name, container in containers.items():
+    gb = float(resolve(container["resources"])["requests"]["memoryInGB"])
+    if abs(gb * 10 - round(gb * 10)) > 1e-6:
+        off_step.append(f"{name} ({gb:g} GB)")
+if off_step:
+    fail(f"memory not in 0.1 GB steps: {', '.join(off_step)}")
+else:
+    ok("every memory request is in 0.1 GB steps")
 
 # 4. Secrets: secure parameters, passed as secureValue.
 secret_name = re.compile(r"(PASS|TOKEN|SECRET|SIGNING_?KEY|_KEY$)", re.IGNORECASE)

@@ -5,7 +5,7 @@
 #   raises only one service's PATCH. Logic: tools/ci/release-gate.sh. Make "release-gate" a required check on main.
 # plan, images, tags: on the merge to main, every service whose version has no tag yet is built, scanned by Trivy,
 #   pushed to Docker Hub as X.Y.Z, X.Y, X and latest, and only then tagged. Logic: tools/ci/release-plan.sh.
-#   deploy.yml (#10) runs after this workflow by its name.
+#   deploy: calls deploy.yml (#10) after the tags job, so the deploy runs on main (#319).
 #
 # Needs from the owner: the repository variable DOCKERHUB_NAMESPACE and the secrets DOCKERHUB_USERNAME and
 # DOCKERHUB_TOKEN (a Docker Hub access token with push rights). They are used only in this workflow.
@@ -129,3 +129,16 @@ jobs:
           git push origin "${release_tags[@]}"
         env:
           TAGS: ${{ needs.plan.outputs.tags }}
+
+  # Deploys the released versions to Azure after one approval on the production environment (#319).
+  # Called, not started by workflow_run: a workflow_run workflow runs on the default branch (develop),
+  # which the production environment rejects. A called workflow runs in this push context on main.
+  # A job that calls a workflow can't set timeout-minutes: deploy.yml's own job sets it.
+  deploy:
+    needs: [plan, tags]
+    if: needs.plan.outputs.tags != ''
+    uses: ./.github/workflows/deploy.yml
+    permissions:
+      contents: read
+      id-token: write # azure/login in deploy.yml gets an OpenID Connect token
+    secrets: inherit

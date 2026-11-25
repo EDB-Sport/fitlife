@@ -18,6 +18,8 @@
     </PackageReference>
     <PackageReference Include="NLog.Web.AspNetCore" />
     <PackageReference Include="NLog.Targets.Loki" />
+    <!-- Used only in IdentityService.Repositories (TEAM001) -->
+    <PackageReference Include="MongoDB.Driver" />
   </ItemGroup>
 
   <ItemGroup>

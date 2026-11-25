@@ -51,7 +51,7 @@ public sealed class ClassSessionsController : ControllerBase
     /// <param name="id">The class session.</param>
     /// <param name="request">The member who wants the seat.</param>
     /// <param name="cancellationToken">Stops the request.</param>
-    /// <response code="409">The class session is full or cancelled, or the member already has a seat.</response>
+    /// <response code="409">The class session is full, cancelled or has started, or the member already has a seat.</response>
     /// <response code="422">The class session starts more than 4 weeks from now.</response>
     [HttpPost("{id:guid}/reservations")]
     [Consumes("application/json")]
@@ -81,6 +81,8 @@ public sealed class ClassSessionsController : ControllerBase
                 return Problem(statusCode: StatusCodes.Status409Conflict, title: "The member already has a seat on this class session.");
             case ReservationResult.ClassSessionCancelled:
                 return Problem(statusCode: StatusCodes.Status409Conflict, title: ClassSessionCancelledTitle);
+            case ReservationResult.ClassSessionStarted:
+                return Problem(statusCode: StatusCodes.Status409Conflict, title: "The class session has started.");
             default:
                 throw new UnreachableException($"ReservationResult.{result} has no status code.");
         }

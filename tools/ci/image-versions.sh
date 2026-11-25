@@ -7,7 +7,8 @@
 #   - image: in compose files (deploy/**/*.yml|yaml and compose.y*ml; a ${VAR:-default} is read as its default)
 #   - image parameters in *.bicep and *.bicepparam (a name with "image" and not "tag"; one whose version is
 #     in a companion <name>Tag parameter is left to deploy-check step 2)
-#   - string literals given to Testcontainers builders in tests/**/*.cs:  new MongoDbBuilder("mongo:8.0.38")
+#   - string literals given to Testcontainers builders in tests/**/*.cs:  new MongoDbBuilder("mongo:8.0.38"),
+#     also as the default of an override:  new MongoDbBuilder(env["MONGO_IMAGE"] ?? "mongo:8.0.38") (#315)
 # Rule 1: a full version X.Y.Z[-suffix], or a digest (@sha256:...).
 # Rule 2: the same image name has the same reference in all those places.
 # Not checked: mcr.microsoft.com/dotnet/aspnet (the .NET runtime image restores no packages, so it may float,
@@ -107,6 +108,24 @@ if [[ -d tests ]]; then
       text=${text#*"${BASH_REMATCH[0]}"}
     done
   done < <(grep -rnE --include='*.cs' '[A-Za-z]+Builder\("[^"]+"\)' tests || true)
+
+  # The override form, Builder(env["MONGO_IMAGE"] ?? "<image>"), on the builder's line or the line after it (#315).
+  # A builder call is "<Something>Builder(" with an argument, so ConfigurationBuilder() alone doesn't count.
+  while IFS='|' read -r file lineno image; do
+    record "$file" "$lineno" "$image"
+  done < <(find tests -type f -name '*.cs' -not -path '*/bin/*' -not -path '*/obj/*' -print0 | sort -z |
+    xargs -0 -r awk '
+      FNR == 1 { previous = "" }
+      {
+        builder = "[A-Za-z]+Builder[(]([^)]|$)"
+        if ((match($0, builder) || match(previous, builder)) && match($0, /[?][?][ \t]*"[^"]+"[ \t]*[)]/)) {
+          hit = substr($0, RSTART, RLENGTH)
+          sub(/^[?][?][ \t]*"/, "", hit)
+          sub(/"[ \t]*[)]$/, "", hit)
+          print FILENAME "|" FNR "|" hit
+        }
+        previous = $0
+      }')
 fi
 
 # --- Rule 2: one reference per image name

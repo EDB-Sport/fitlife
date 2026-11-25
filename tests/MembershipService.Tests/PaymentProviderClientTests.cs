@@ -105,6 +105,19 @@ public sealed class PaymentProviderClientTests
     }
 
     [Test]
+    public async Task Charge_WhenTheOutcomeIsNotAString_IsNotPaid()
+    {
+        // Arrange
+        using var provider = new StubProvider(HttpStatusCode.Created, """{ "charge_id": "ch_1001", "outcome": 1 }""");
+
+        // Act
+        bool paid = await Charge(provider);
+
+        // Assert
+        Assert.That(paid, Is.False);
+    }
+
+    [Test]
     public async Task Charge_WhenTheOutcomeIsNotApproved_IsNotPaid()
     {
         // Arrange

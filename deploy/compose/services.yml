@@ -89,10 +89,10 @@ services:
       RabbitMq__Port: "5672"
       MongoDb__Host: mongodb
       MongoDb__Port: "27017"
-      # Until the service reads them from Vault (#164), the secrets come from .env like the infrastructure's
-      RabbitMq__UserName: ${RABBITMQ_USERNAME:?set it in deploy/compose/.env}
-      RabbitMq__Password: ${RABBITMQ_PASSWORD:?set it in deploy/compose/.env}
-      MongoDb__Password: ${NOTIFICATION_DB_PASSWORD:?set it in deploy/compose/.env}
+      # Secrets from Vault (#259): secret/notification-svc (Vault:Path in appsettings.json) holds MongoDb:Password,
+      # RabbitMq:Username and RabbitMq:Password. The service waits for Vault and the seed job itself (Vault:WaitSeconds).
+      Vault__Address: http://vault:8200 # infrastructure.yml
+      Vault__Token: ${VAULT_DEV_ROOT_TOKEN:?set it in deploy/compose/.env}
     # No depends_on, so this group still starts on its own: the consumer keeps trying until RabbitMQ answers.
     # /health is unhealthy until it consumes (#258); start_period covers RabbitMQ's own start-up.
     healthcheck:

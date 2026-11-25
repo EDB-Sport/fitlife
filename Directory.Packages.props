@@ -28,6 +28,8 @@
     <!-- NLog → Loki (course rule #8, docs/CSHARP_SETUP_TODO.md section 7) -->
     <PackageVersion Include="NLog.Web.AspNetCore" Version="6.2.2" />
     <PackageVersion Include="NLog.Targets.Loki" Version="2.7.1" />
+    <!-- Used only in *.Repositories namespaces (TEAM001) -->
+    <PackageVersion Include="MongoDB.Driver" Version="3.14.1" />
     <!-- Checks the JWT from Identity, the same way in every service (libs/FitLife.Authentication, #183) -->
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.15" />
   </ItemGroup>
@@ -35,11 +37,6 @@
   <!-- RabbitMQ events, used only by libs/FitLife.Messaging (#190) -->
   <ItemGroup Label="Messaging">
     <PackageVersion Include="RabbitMQ.Client" Version="7.2.2" />
-  </ItemGroup>
-
-  <!-- MongoDB, only in a service's *.Repositories namespace (TEAM001) -->
-  <ItemGroup Label="Storage">
-    <PackageVersion Include="MongoDB.Driver" Version="3.14.1" />
   </ItemGroup>
 
   <!-- Added to every test project automatically by tests/Directory.Build.props. -->

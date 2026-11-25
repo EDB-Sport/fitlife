@@ -121,7 +121,7 @@ var fqdn = '${dnsNameLabel}.${location}.azurecontainer.io'
 var smallContainer = {
   requests: {
     cpu: json('0.25')
-    memoryInGB: json('0.25')
+    memoryInGB: json('0.3')
   }
 }
 var dotnetContainer = {

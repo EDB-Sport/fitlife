@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <!-- Shared code: correlation ID (docs/CSHARP_SETUP_TODO.md section 7) and RabbitMQ events (#190) -->
+    <ProjectReference Include="$(RepoRoot)libs/FitLife.Configuration/FitLife.Configuration.csproj" />
     <ProjectReference Include="$(RepoRoot)libs/FitLife.Correlation/FitLife.Correlation.csproj" />
     <ProjectReference Include="$(RepoRoot)libs/FitLife.Messaging/FitLife.Messaging.csproj" />
   </ItemGroup>

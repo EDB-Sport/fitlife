@@ -75,7 +75,8 @@ public sealed class RequestPipelineTests
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.InternalServerError));
         string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-        Assert.That(content, Does.Contain("An error occurred while processing your request."));
+        Assert.That(content, Does.Contain("Der skete en fejl. Prøv igen om lidt."));
+        Assert.That(content, Does.Not.Contain("Development"));
     }
 
     [Test]

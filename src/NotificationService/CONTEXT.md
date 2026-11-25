@@ -27,6 +27,8 @@ Plain types, no `*.Domain` layer yet (METHODOLOGY 11.2 rule 8): the only rule so
 |---|---|---|---|
 | 1 | One event gives at most one notification | `Notification.Id` is the event's id; `INotificationRepository.TryAddAsync` refuses a second one (MongoDB `_id`) | `HandleAsync_TheSameReservationTwice_LogsOneNotification` |
 
+**At most once, for now.** The notification is stored first and then sent (logged). If the process stops between the two, the redelivered event finds it stored and nothing is sent. Fine while sending is a log line; a real channel (SMS, e-mail, push) has to store after sending, or store a status.
+
 ## Commands, queries and events
 
 | Kind | Name | Notes |

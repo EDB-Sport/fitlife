@@ -126,3 +126,27 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  notification-svc:
+    # NotificationService (#191): consumes ReservationMade from RabbitMQ and logs the notification. No HTTP route
+    # in the gateway, nothing calls it.
+    build:
+      context: ../..
+      dockerfile: src/NotificationService/Dockerfile
+    image: fitlife/notificationservice:local
+    environment:
+      Loki__Url: http://loki:3100 # monitoring.yml; Loki:App is notification-svc in appsettings.json
+      RabbitMq__HostName: rabbitmq
+      RabbitMq__Port: "5672"
+      MongoDb__Host: mongodb
+      MongoDb__Port: "27017"
+      # Secrets from Vault (#259): secret/notification-svc (Vault:Path in appsettings.json) holds MongoDb:Password,
+      # RabbitMq:Username and RabbitMq:Password. The service waits for Vault and the seed job itself (Vault:WaitSeconds).
+      Vault__Address: http://vault:8200 # infrastructure.yml
+      Vault__Token: ${VAULT_DEV_ROOT_TOKEN:?set it in deploy/compose/.env}
+    # No depends_on, so this group still starts on its own: the consumer keeps trying until RabbitMQ answers
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10

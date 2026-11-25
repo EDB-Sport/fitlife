@@ -43,6 +43,7 @@ jobs:
     # A failed release deploys nothing.
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment:
       name: production # required reviewers: the job waits here for one group member's approval
       url: ${{ steps.deploy.outputs.public_url }}

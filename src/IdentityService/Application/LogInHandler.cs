@@ -6,6 +6,9 @@ namespace IdentityService.Application;
 /// <summary>Handles <see cref="LogInCommand"/>: checks the password against the stored hash and writes a token.</summary>
 public sealed class LogInHandler
 {
+    // An account nobody can log in as, hashed once: an unknown e-mail address is checked against it
+    private static readonly Lazy<Account> UnknownAccount = new(CreateUnknownAccount);
+
     private readonly IAccountRepository _repository;
     private readonly IPasswordHasher<Account> _hasher;
     private readonly TokenWriter _writer;
@@ -31,6 +34,8 @@ public sealed class LogInHandler
         Account? account = await _repository.FindByEmailAsync(command.Email, cancellationToken).ConfigureAwait(false);
         if (account is null)
         {
+            // Do the same hashing work as for a wrong password, so the response time doesn't tell whether the e-mail address has an account
+            _ = _hasher.VerifyHashedPassword(UnknownAccount.Value, UnknownAccount.Value.PasswordHash, command.Password);
             return null;
         }
 
@@ -40,5 +45,12 @@ public sealed class LogInHandler
         }
 
         return _writer.Write(account);
+    }
+
+    private static Account CreateUnknownAccount()
+    {
+        // ! PasswordHasher<TUser> doesn't read the user.
+        string passwordHash = new PasswordHasher<Account>().HashPassword(null!, Guid.NewGuid().ToString());
+        return Account.Create("unknown@fitlife.invalid", passwordHash);
     }
 }

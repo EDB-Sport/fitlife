@@ -12,6 +12,10 @@ internal sealed class ClassSessionDocument
 
     public Guid ClassTypeId { get; init; }
 
+    public string InstructorName { get; init; } = "";
+
+    public TimeSpan Duration { get; init; }
+
     public int Capacity { get; init; }
 
     /// <summary>In UTC. MongoDB stores a date to the millisecond.</summary>

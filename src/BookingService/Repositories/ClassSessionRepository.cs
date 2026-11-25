@@ -81,10 +81,9 @@ public sealed class ClassSessionRepository : IClassSessionRepository
         _versions[document.Id] = document.Version;
         var classSession = new ClassSession(
             document.Id,
-            document.CenterId,
-            document.ClassTypeId,
             new Capacity(document.Capacity),
-            new DateTimeOffset(DateTime.SpecifyKind(document.StartTime, DateTimeKind.Utc)));
+            new DateTimeOffset(DateTime.SpecifyKind(document.StartTime, DateTimeKind.Utc)),
+            new ClassSessionDetails(document.CenterId, document.ClassTypeId, new Instructor(document.InstructorName), document.Duration));
         classSession.Restore(
             document.IsCancelled,
             document.Reservations.Select(reservation => new Reservation(reservation.MemberId, reservation.IsFromWaitlist)),
@@ -99,6 +98,8 @@ public sealed class ClassSessionRepository : IClassSessionRepository
             Id = classSession.Id,
             CenterId = classSession.CenterId,
             ClassTypeId = classSession.ClassTypeId,
+            InstructorName = classSession.Details.Instructor.Name,
+            Duration = classSession.Details.Duration,
             Capacity = classSession.Capacity.Value,
             StartTime = classSession.StartTime.UtcDateTime,
             IsCancelled = classSession.IsCancelled,

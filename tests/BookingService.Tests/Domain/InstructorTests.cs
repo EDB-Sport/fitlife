@@ -13,7 +13,7 @@ public sealed class InstructorTests
         // (the blank name comes from the test case)
 
         // Act
-        TestDelegate create = () => _ = new Instructor(name);
+        Action create = () => _ = new Instructor(name);
 
         // Assert
         Assert.That(create, Throws.InstanceOf<ArgumentException>());

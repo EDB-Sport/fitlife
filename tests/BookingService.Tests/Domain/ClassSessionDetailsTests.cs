@@ -17,7 +17,7 @@ public sealed class ClassSessionDetailsTests
         TimeSpan duration = TimeSpan.FromMinutes(minutes);
 
         // Act
-        TestDelegate create = () => _ = new ClassSessionDetails(CenterId, ClassTypeId, Instructor, duration);
+        Action create = () => _ = new ClassSessionDetails(CenterId, ClassTypeId, Instructor, duration);
 
         // Assert
         Assert.That(create, Throws.InstanceOf<ArgumentOutOfRangeException>());

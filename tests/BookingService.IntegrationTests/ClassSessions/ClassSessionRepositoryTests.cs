@@ -16,7 +16,7 @@ public sealed class ClassSessionRepositoryTests
         // Arrange
         var clock = new FakeTimeProvider(Now);
         using var factory = new BookingApiFactory(MongoDbContainerSetUp.ConnectionString, $"booking-{Guid.NewGuid():N}", clock);
-        var classSession = new ClassSession(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), new Capacity(1), Now.AddDays(1));
+        var classSession = new ClassSession(Guid.NewGuid(), new Capacity(1), Now.AddDays(1), new ClassSessionDetails(Guid.NewGuid(), Guid.NewGuid(), new Instructor("Mette"), TimeSpan.FromMinutes(60)));
         await factory.AddAsync(classSession).ConfigureAwait(false);
         using IServiceScope first = factory.Services.CreateScope();
         using IServiceScope second = factory.Services.CreateScope();

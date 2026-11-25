@@ -16,27 +16,29 @@ public sealed class ClassSession
 
     /// <summary>Creates a class session with no reservations.</summary>
     /// <param name="id">The class session's id.</param>
-    /// <param name="centerId">The centre it takes place in. Booking refers to a centre by id.</param>
-    /// <param name="classTypeId">The kind of class it is a run of. Booking refers to a class type by id.</param>
     /// <param name="capacity">How many members can have a reservation.</param>
     /// <param name="startTime">When the class session starts.</param>
-    public ClassSession(Guid id, Guid centerId, Guid classTypeId, Capacity capacity, DateTimeOffset startTime)
+    /// <param name="details">Its centre, class type, instructor and duration (Holdoplysninger).</param>
+    public ClassSession(Guid id, Capacity capacity, DateTimeOffset startTime, ClassSessionDetails details)
     {
+        ArgumentNullException.ThrowIfNull(details);
         Id = id;
-        CenterId = centerId;
-        ClassTypeId = classTypeId;
         Capacity = capacity;
         StartTime = startTime;
+        Details = details;
     }
 
     /// <summary>The class session's id.</summary>
     public Guid Id { get; }
 
+    /// <summary>Its centre, class type, instructor and duration (Holdoplysninger).</summary>
+    public ClassSessionDetails Details { get; }
+
     /// <summary>The centre the class session takes place in.</summary>
-    public Guid CenterId { get; }
+    public Guid CenterId => Details.CenterId;
 
     /// <summary>The kind of class (Holdtype) this is a run of.</summary>
-    public Guid ClassTypeId { get; }
+    public Guid ClassTypeId => Details.ClassTypeId;
 
     /// <summary>How many members can have a reservation.</summary>
     public Capacity Capacity { get; }

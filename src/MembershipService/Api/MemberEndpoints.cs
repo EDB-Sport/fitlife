@@ -10,7 +10,8 @@ namespace MembershipService.Api;
 public static class MemberEndpoints
 {
     /// <summary>
-    /// Maps <c>POST /members</c>, <c>GET /members/me</c> and <c>GET /members/by-account/{accountId}</c>. All need a token from Identity.
+    /// Maps <c>POST /members</c>, <c>GET /members/me</c>, <c>GET /members/by-account/{accountId}</c>, and <c>PUT</c> and
+    /// <c>DELETE /members/me/pause</c>. All need a token from Identity. A status is the status on today, the UTC date.
     /// </summary>
     /// <param name="app">The routes.</param>
     /// <returns>The routes.</returns>
@@ -28,6 +29,14 @@ public static class MemberEndpoints
         members.MapGet("/me", GetMine)
             .WithName("GetMyMembership")
             .WithSummary("The membership of the account in the token: type, status and start date");
+        members.MapPut("/me/pause", Pause)
+            .WithName("PauseMyMembership")
+            .WithSummary("Pauses the membership of the account in the token from one day to another, both included")
+            .ProducesProblem(StatusCodes.Status409Conflict);
+        members.MapDelete("/me/pause", EndPause)
+            .WithName("EndMyPause")
+            .WithSummary("Ends the pause of the membership of the account in the token: it is active from today")
+            .ProducesProblem(StatusCodes.Status409Conflict);
         return app;
     }
 
@@ -44,7 +53,7 @@ public static class MemberEndpoints
     }
 
     private static async Task<Results<Created<MemberResponse>, ProblemHttpResult>> Join(
-        ClaimsPrincipal user, JoinMembershipHandler handler, CancellationToken cancellationToken)
+        ClaimsPrincipal user, JoinMembershipHandler handler, TimeProvider clock, CancellationToken cancellationToken)
     {
         string accountId = user.GetAccountId();
         JoinResult result = await handler.HandleAsync(new JoinMembershipCommand(accountId), cancellationToken).ConfigureAwait(false);
@@ -53,33 +62,35 @@ public static class MemberEndpoints
             return TypedResults.Problem(title: "The account is already a member", statusCode: StatusCodes.Status409Conflict);
         }
 
-        var response = new MemberResponse(result.Member.Id, result.Membership.Status, result.Membership.IsActive);
+        DateOnly today = MembershipLookup.Today(clock);
+        var response = new MemberResponse(result.Member.Id, result.Membership.StatusOn(today), result.Membership.IsActiveOn(today));
         return TypedResults.Created(new Uri($"/members/by-account/{Uri.EscapeDataString(accountId)}", UriKind.Relative), response);
     }
 
     private static async Task<Results<Ok<MyMembershipResponse>, NotFound>> GetMine(
-        ClaimsPrincipal user, IMemberRepository members, IMembershipRepository memberships, CancellationToken cancellationToken)
+        ClaimsPrincipal user, [AsParameters] MembershipReaders readers, CancellationToken cancellationToken)
     {
         // The account comes from the token, never from the path, so a member only ever sees their own (ADR 007)
         string accountId = user.GetAccountId();
 
-        Member? member = await members.FindByAccountIdAsync(accountId, cancellationToken).ConfigureAwait(false);
+        Member? member = await readers.Members.FindByAccountIdAsync(accountId, cancellationToken).ConfigureAwait(false);
         if (member is null)
         {
             return TypedResults.NotFound();
         }
 
-        Membership? membership = await memberships.FindByMemberIdAsync(member.Id, cancellationToken).ConfigureAwait(false);
+        Membership? membership = await readers.Memberships.FindByMemberIdAsync(member.Id, cancellationToken).ConfigureAwait(false);
         if (membership is null)
         {
             return TypedResults.NotFound();
         }
 
-        return TypedResults.Ok(new MyMembershipResponse(member.Id, membership.Type, membership.Status, membership.IsActive, membership.StartDate));
+        DateOnly today = MembershipLookup.Today(readers.Clock);
+        return TypedResults.Ok(new MyMembershipResponse(member.Id, membership.Type, membership.StatusOn(today), membership.IsActiveOn(today), membership.StartDate));
     }
 
     private static async Task<Results<Ok<MemberResponse>, NotFound>> GetByAccount(
-        string accountId, ClaimsPrincipal user, IMemberRepository members, IMembershipRepository memberships, CancellationToken cancellationToken)
+        string accountId, ClaimsPrincipal user, [AsParameters] MembershipReaders readers, CancellationToken cancellationToken)
     {
         // A member looks up only their own account. Another account answers as if it were unknown, so the lookup doesn't tell
         // which accounts are members (review on #199).
@@ -88,18 +99,80 @@ public static class MemberEndpoints
             return TypedResults.NotFound();
         }
 
-        Member? member = await members.FindByAccountIdAsync(accountId, cancellationToken).ConfigureAwait(false);
+        Member? member = await readers.Members.FindByAccountIdAsync(accountId, cancellationToken).ConfigureAwait(false);
         if (member is null)
         {
             return TypedResults.NotFound();
         }
 
-        Membership? membership = await memberships.FindByMemberIdAsync(member.Id, cancellationToken).ConfigureAwait(false);
+        Membership? membership = await readers.Memberships.FindByMemberIdAsync(member.Id, cancellationToken).ConfigureAwait(false);
         if (membership is null)
         {
             return TypedResults.NotFound();
         }
 
-        return TypedResults.Ok(new MemberResponse(member.Id, membership.Status, membership.IsActive));
+        DateOnly today = MembershipLookup.Today(readers.Clock);
+        return TypedResults.Ok(new MemberResponse(member.Id, membership.StatusOn(today), membership.IsActiveOn(today)));
+    }
+
+    private static async Task<Results<Ok<MembershipPauseResponse>, NotFound, ProblemHttpResult, ValidationProblem>> Pause(
+        PauseRequest request, ClaimsPrincipal user, PauseMembershipHandler handler, TimeProvider clock, CancellationToken cancellationToken)
+    {
+        // A malformed date never reaches here: the body doesn't bind, which is a 400. A missing one is a 400 too
+        if (request.From is not { } from || request.To is not { } to)
+        {
+            return TypedResults.ValidationProblem(new Dictionary<string, string[]>(StringComparer.Ordinal)
+            {
+                ["from"] = ["Both from and to are needed, as dates like 2026-12-01."],
+                ["to"] = ["Both from and to are needed, as dates like 2026-12-01."],
+            });
+        }
+
+        MembershipCommandResult<PauseResult> result = await handler.HandleAsync(
+            new PauseMembershipCommand(user.GetAccountId(), from, to), cancellationToken).ConfigureAwait(false);
+        if (result.Membership is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (result.Result != PauseResult.Paused)
+        {
+            return Conflict("The membership can't be paused for that period", result.Result.ToString());
+        }
+
+        return TypedResults.Ok(PauseResponse(result.Membership, MembershipLookup.Today(clock)));
+    }
+
+    private static async Task<Results<Ok<MembershipPauseResponse>, NotFound, ProblemHttpResult>> EndPause(
+        ClaimsPrincipal user, EndPauseHandler handler, TimeProvider clock, CancellationToken cancellationToken)
+    {
+        MembershipCommandResult<EndPauseResult> result = await handler.HandleAsync(
+            new EndPauseCommand(user.GetAccountId()), cancellationToken).ConfigureAwait(false);
+        if (result.Membership is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (result.Result != EndPauseResult.PauseEnded)
+        {
+            return Conflict("The membership has no pause to end", result.Result.ToString());
+        }
+
+        return TypedResults.Ok(PauseResponse(result.Membership, MembershipLookup.Today(clock)));
+    }
+
+    // 409 problem details whose extension "code" is the name of the root's answer, e.g. "PauseStartsInThePast"
+    private static ProblemHttpResult Conflict(string title, string code)
+    {
+        return TypedResults.Problem(
+            title: title,
+            statusCode: StatusCodes.Status409Conflict,
+            extensions: new Dictionary<string, object?>(StringComparer.Ordinal) { ["code"] = code });
+    }
+
+    private static MembershipPauseResponse PauseResponse(Membership membership, DateOnly today)
+    {
+        return new MembershipPauseResponse(
+            membership.MemberId, membership.Type, membership.StatusOn(today), membership.IsActiveOn(today), membership.StartDate, membership.PausedFrom, membership.PausedTo);
     }
 }

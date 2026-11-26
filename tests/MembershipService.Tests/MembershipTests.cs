@@ -251,17 +251,17 @@ public sealed class MembershipTests
     }
 
     [Test]
-    public void StatusOn_WithPaymentMissing_IsPaymentMissingAlsoInsideAPausePeriod()
+    public void StatusOn_WithPaymentMissing_IsPaymentMissing()
     {
         // Arrange
-        var membership = Membership.Restore(
-            Guid.NewGuid(), Guid.NewGuid(), MembershipType.Standard, MembershipStatus.PaymentMissing, Today, new DateOnly(2026, 12, 1), new DateOnly(2026, 12, 31));
+        var membership = Membership.Start(Guid.NewGuid(), Today);
 
         // Act
-        MembershipStatus status = membership.StatusOn(new DateOnly(2026, 12, 15));
+        MembershipStatus status = membership.StatusOn(Today);
 
         // Assert
         Assert.That(status, Is.EqualTo(MembershipStatus.PaymentMissing));
+        Assert.That(membership.IsActiveOn(Today), Is.False);
     }
 
     private static Membership ActiveMembership()

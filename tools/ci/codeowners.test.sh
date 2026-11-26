@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Checks .github/CODEOWNERS for the rule of issue #327: .hadolint.yaml is code-owned by the team.
 # Usage: tools/ci/codeowners.test.sh   (from the repo root, or anywhere in the repo; exit 0 = pass)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)" || exit 2

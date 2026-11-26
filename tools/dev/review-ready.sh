@@ -8,8 +8,9 @@
 # GH names the GitHub CLI (default gh; on WSL set GH=gh.exe).
 # Reasons: a required check (the base's ruleset: main, else develop) whose newest run on the head
 # isn't SUCCESS or SKIPPED; a conflict with the base; a base branch that is neither develop
-# nor main and has no open PR (a broken stack); a workflow under .github/workflows/ that changed on
-# develop after the merge base (CI on the head is stale). A draft PR is not a reason: a draft can
+# nor main and has no open PR (a broken stack); a workflow that produces a required check (one of its
+# job ids or names is a required check of the base) and changed on develop after the merge base (CI
+# on the head is stale). A draft PR is not a reason: a draft can
 # be reviewed (#470).
 set -uo pipefail
 
@@ -86,11 +87,43 @@ behind_json=$("$gh_cmd" api "repos/$repo/compare/$head...develop") || {
   echo "error: could not compare the head with develop" >&2
   exit 2
 }
+# Job ids and job names of a workflow (YAML on stdin): the names GitHub gives its checks. A job's
+# name: is its check's name when it has one; the id is matched too, which can only over-match.
+job_check_names() {
+  awk '
+    /^jobs:/ { injobs = 1; next }
+    /^[^ #]/ { injobs = 0 }
+    injobs && /^  [A-Za-z0-9_-]+:[ \t]*$/ { id = $0; sub(/^  /, "", id); sub(/:.*/, "", id); print id }
+    injobs && /^    name:/ { n = $0; sub(/^    name:[ \t]*/, "", n); gsub(/"/, "", n); print n }
+  '
+}
+
+# A workflow produces a required check when one of its job names is a required check of the base.
+produces_required() {
+  local name
+  while IFS= read -r name; do
+    grep -qxF -- "$name" <<<"$required" && return 0
+  done < <(job_check_names <<<"$1")
+  return 1
+}
+
 behind=$(jq -r .ahead_by <<<"$behind_json")
 if [ "$behind" -gt 0 ]; then
   info+=("info: $behind commit(s) behind develop (not a reason: the ruleset isn't strict)")
-  workflows=$(jq -r '[(.files // [])[] | .filename | select(startswith(".github/workflows/"))] | join(", ")' <<<"$behind_json")
-  [ -n "$workflows" ] && reasons+=("CI on the head is stale: develop changed $workflows since the merge base; update the branch from develop")
+  changed=$(jq -r '[(.files // [])[] | .filename | select(startswith(".github/workflows/"))] | .[]' <<<"$behind_json")
+  stale=()
+  while IFS= read -r wf; do
+    [ -n "$wf" ] || continue
+    yaml=$("$gh_cmd" api "repos/$repo/contents/$wf?ref=develop" -H 'Accept: application/vnd.github.raw') || {
+      echo "error: could not read $wf on develop" >&2
+      exit 2
+    }
+    produces_required "$yaml" && stale+=("$wf")
+  done <<<"$changed"
+  if [ ${#stale[@]} -gt 0 ]; then
+    workflows=$(IFS=', '; echo "${stale[*]}")
+    reasons+=("CI on the head is stale: develop changed $workflows since the merge base; update the branch from develop")
+  fi
 fi
 
 for line in ${info[@]+"${info[@]}"}; do echo "$line"; done

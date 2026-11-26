@@ -37,6 +37,7 @@ try
     // Who the member behind an account is, from Membership (#256). The reservation endpoints use it (#260)
     builder.Services.AddMembershipClient();
     builder.Services.AddScoped<ReserveSeatCommandHandler>();
+    builder.Services.AddScoped<CancelReservationCommandHandler>();
 
     // The member's token (#183, #260): POST reservations needs the role Medlem; the class schedule and /health stay open
     builder.Services.AddFitLifeJwtAuthentication();

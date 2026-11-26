@@ -158,27 +158,17 @@
         }
       }
     },
-    "/class-sessions/{id}/reservations/{memberId}": {
+    "/class-sessions/{id}/reservations/mine": {
       "delete": {
         "tags": [
           "ClassSessions"
         ],
-        "summary": "Cancels the member's reservation. When someone is on the waitlist, the first waitlist entry gets the seat.",
+        "summary": "Cancels the reservation of the member behind the token (#262). The route has no member id, so nobody can cancel another\nmember's reservation. When someone is on the waitlist, the first waitlist entry gets the seat.",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "description": "The class session.",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "memberId",
-            "in": "path",
-            "description": "The member who gives up the seat.",
             "required": true,
             "schema": {
               "type": "string",
@@ -190,8 +180,48 @@
           "204": {
             "description": "No Content"
           },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "404": {
-            "description": "No such class session, or the member has no seat on it.",
+            "description": "No such class session (code ClassSessionNotFound), or the member has no seat on it (code NoReservation).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -201,7 +231,17 @@
             }
           },
           "409": {
-            "description": "Conflict",
+            "description": "Another request changed the class session at the same time (code ChangedMeanwhile).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Membership didn't answer (code MembershipUnavailable).",
             "content": {
               "application/problem+json": {
                 "schema": {

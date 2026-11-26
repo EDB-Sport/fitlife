@@ -36,14 +36,14 @@ internal static class TestTokens
         return Sign(accountId, role, key, notBefore: now.AddMinutes(-1), expires: now.AddMinutes(30));
     }
 
-    /// <summary>A token that was valid for 30 minutes and ran out 1 minute ago.</summary>
+    /// <summary>A token that was valid for 30 minutes and ran out 10 minutes ago: longer than the 5 minutes of clock skew a token is given.</summary>
     /// <param name="accountId">The account id, the <c>sub</c> claim.</param>
     /// <param name="role">The role claim.</param>
     /// <returns>The signed token.</returns>
     public static string Expired(Guid accountId, string role = FitLifeRoles.Medlem)
     {
         DateTime now = TimeProvider.System.GetUtcNow().UtcDateTime;
-        return Sign(accountId.ToString(), role, SigningKey, notBefore: now.AddMinutes(-31), expires: now.AddMinutes(-1));
+        return Sign(accountId.ToString(), role, SigningKey, notBefore: now.AddMinutes(-40), expires: now.AddMinutes(-10));
     }
 
     private static string Sign(string accountId, string role, string key, DateTime notBefore, DateTime expires)

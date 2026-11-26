@@ -11,10 +11,10 @@ public sealed class EventSchemaTests
     public void Generate_ReservationMade_IsEquivalentToTheCommittedSchema()
     {
         // Arrange
-        JsonNode? committed = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "contracts", "events", "reservation-made.schema.json")));
+        var committed = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "contracts", "events", "reservation-made.schema.json")));
 
         // Act
-        JsonNode? generated = JsonNode.Parse(EventSchema.Generate<ReservationMade>());
+        var generated = JsonNode.Parse(EventSchema.Generate<ReservationMade>());
 
         // Assert
         Assert.That(JsonNode.DeepEquals(generated, committed), Is.True, generated?.ToJsonString());
@@ -33,19 +33,21 @@ public sealed class EventSchemaTests
     [Test]
     public void Generate_ReservationMade_RequiresEveryConstructorParameter()
     {
+        // Arrange
+        var expected = JsonNode.Parse("""["reservationId", "classSessionId", "memberId", "startTime"]""");
+
         // Act
         JsonNode schema = Parse(EventSchema.Generate<ReservationMade>());
 
         // Assert
-        string[] required = [.. schema["required"]!.AsArray().Select(field => field!.GetValue<string>())];
-        Assert.That(required, Is.EqualTo(new[] { "reservationId", "classSessionId", "memberId", "startTime" }));
+        Assert.That(JsonNode.DeepEquals(schema["required"], expected), Is.True);
     }
 
     [Test]
     public void Generate_ReservationMade_HasTheRecordsExample()
     {
         // Arrange
-        JsonNode? example = JsonNode.Parse(EventJson.Serialize((ReservationMade)ReservationMade.Example));
+        var example = JsonNode.Parse(EventJson.Serialize((ReservationMade)ReservationMade.Example));
 
         // Act
         JsonNode schema = Parse(EventSchema.Generate<ReservationMade>());
@@ -79,6 +81,20 @@ public sealed class EventSchemaTests
         {
             [ReservationMade.RoutingKey] = EventSchema.Generate<ReservationMade>(),
         }));
+    }
+
+    [Test]
+    public void GenerateAll_HasOneSchemaPerEventRecord()
+    {
+        // Arrange
+        int records = typeof(IIntegrationEvent).Assembly.GetTypes()
+            .Count(type => type.IsAssignableTo(typeof(IIntegrationEvent)) && !type.IsInterface);
+
+        // Act
+        IReadOnlyDictionary<string, string> schemas = EventSchema.GenerateAll();
+
+        // Assert
+        Assert.That(schemas, Has.Count.EqualTo(records));
     }
 
     private static JsonNode Parse(string json)

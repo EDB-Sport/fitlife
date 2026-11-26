@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using BookingService.Api;
 using BookingService.Application;
 using BookingService.Clients;
 using BookingService.Jobs;
@@ -8,6 +9,7 @@ using BookingService.Seed;
 using FitLife.Authentication;
 using FitLife.Configuration;
 using FitLife.Correlation;
+using Microsoft.AspNetCore.OpenApi;
 using NLog;
 using NLog.Web;
 using Scalar.AspNetCore;
@@ -23,7 +25,13 @@ try
     builder.Logging.ClearProviders();
     builder.Host.UseNLog();
 
-    builder.Services.AddOpenApi();
+    builder.Services.AddOpenApi(options =>
+    {
+        // The bearer token in the document: the scheme, and a requirement on each endpoint with [Authorize] (#369)
+        var bearer = new BearerSecurityTransformer();
+        options.AddDocumentTransformer(bearer);
+        options.AddOperationTransformer(bearer);
+    });
     builder.Services.AddHealthChecks();
     builder.Services.AddControllers();
     builder.Services.AddProblemDetails();

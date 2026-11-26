@@ -17,8 +17,8 @@
 # production code for checks 1 and 4: a comment can't make a test go red. Any other change counts, so #if and
 # #pragma lines, and code with a trailing // comment added, still do.
 # A file with a multi-line string (#484): code_lines resets its string state on every line, so a line inside a raw
-# string (""") or a verbatim string (@") that starts with // would be read as a comment. A file whose base or head
-# version contains """ or @" is therefore always treated as changed, never as comment-only. (A coarse rule: it also
+# string (""") or a verbatim string (@", $@" or @$") that starts with // would be read as a comment. A file whose base or head
+# version contains """, @" or @$" ($@" holds @") is therefore always treated as changed, never as comment-only. (A coarse rule: it also
 # matches a """ or @" in a comment or a one-line verbatim string, which only means a needless test requirement.)
 #
 # A refactoring PR (label "refactor" in PR_LABELS, METHODOLOGY section 8) changes structure, not behaviour:
@@ -113,8 +113,8 @@ code_lines() {
       if (code) print }'
 }
 
-# Does the file at a commit contain a raw string (""") or a verbatim string (@")? has_multiline_string <commit> <file>
-has_multiline_string() { git show "$1:$2" 2>/dev/null | grep -qF -e '"""' -e '@"'; }
+# Does the file at a commit contain a raw string (""") or a verbatim string (@", $@" or @$")? has_multiline_string <commit> <file>
+has_multiline_string() { git show "$1:$2" 2>/dev/null | grep -qF -e '"""' -e '@"' -e '@$"'; }
 
 # Production files whose code lines changed (#361). A file whose only change is blank or comment lines is not.
 # The base and the head version are compared as code lines, so the comment state is known (a -U0 hunk can't

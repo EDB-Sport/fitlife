@@ -76,6 +76,30 @@ public sealed class MongoAccountRepository : IAccountRepository, IDisposable
     }
 
     /// <inheritdoc />
+    public async Task<Account?> FindByIdAsync(Guid id, CancellationToken cancellationToken)
+    {
+        AccountDocument? document = await _accounts.Find(stored => stored.Id == id).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        if (document is null)
+        {
+            return null;
+        }
+
+        return ToAccount(document);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> SaveRolesAsync(Account account, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(account);
+        UpdateResult result = await _accounts.UpdateOneAsync(
+            stored => stored.Id == account.Id,
+            Builders<AccountDocument>.Update.Set(stored => stored.Roles, [.. account.Roles.Select(role => role.Name)]),
+            options: null,
+            cancellationToken).ConfigureAwait(false);
+        return result.MatchedCount == 1;
+    }
+
+    /// <inheritdoc />
     public void Dispose()
     {
         _indexLock.Dispose();

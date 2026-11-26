@@ -62,6 +62,8 @@ public sealed class NotFoundFallbackTests
         builder.Services.AddFitLifeJwtAuthentication();
         builder.Services.AddFitLifeAuthorization();
         WebApplication app = builder.Build();
+        // A started host adds routing first and the endpoints last by itself; this app is never started
+        app.UseRouting();
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapGet("/members/me", Answered);
@@ -70,6 +72,7 @@ public sealed class NotFoundFallbackTests
             app.MapFitLifeNotFoundFallback();
         }
 
+        app.UseEndpoints(_ => { });
         return app;
     }
 

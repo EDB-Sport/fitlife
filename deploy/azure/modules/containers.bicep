@@ -43,6 +43,12 @@ param uiImage string
 @description('Health endpoint of the member portal.')
 param uiHealthPath string
 
+@description('Whether NotificationService is in the group. False until it has a release, as there is no image to pull.')
+param includeNotificationService bool
+
+@description('NotificationService image with its tag. Unused while includeNotificationService is false.')
+param notificationImage string
+
 @description('Nginx image with its tag.')
 param nginxImage string
 
@@ -104,6 +110,7 @@ var servicePorts = {
   booking: 5001
   membership: 5002
   identity: 5003
+  notification: 5004
   mcp: 5005
 }
 var uiPort = 5101
@@ -169,7 +176,8 @@ func commandProbe(command string[], initialDelaySeconds int) object => {
   failureThreshold: 3
 }
 
-// Every container the group can hold. The member portal is dropped below until it has a release (#198).
+// Every container the group can hold. The member portal (#198) and NotificationService (#261) are dropped
+// below until they have a release.
 var containerDefinitions = [
   {
     name: 'caddy'
@@ -334,6 +342,61 @@ var containerDefinitions = [
       ]
       livenessProbe: healthProbe(uiHealthPath, uiPort, 30)
       readinessProbe: healthProbe(uiHealthPath, uiPort, 10)
+    }
+  }
+  {
+    // Consumes ReservationMade from RabbitMQ (#191), with the settings of compose's notification-svc. Nginx has
+    // no route to it.
+    name: 'notification-svc'
+    properties: {
+      image: notificationImage
+      resources: dotnetContainer
+      ports: [
+        {
+          port: servicePorts.notification
+          protocol: 'TCP'
+        }
+      ]
+      environmentVariables: [
+        {
+          name: 'ASPNETCORE_HTTP_PORTS'
+          value: string(servicePorts.notification)
+        }
+        {
+          // Loki isn't in the group yet (#6), so nothing listens here and the log lines aren't collected.
+          name: 'Loki__Url'
+          value: 'http://127.0.0.1:3100'
+        }
+        {
+          name: 'RabbitMq__HostName'
+          value: '127.0.0.1'
+        }
+        {
+          name: 'RabbitMq__Port'
+          value: string(rabbitmqPort)
+        }
+        {
+          name: 'MongoDb__Host'
+          value: '127.0.0.1'
+        }
+        {
+          name: 'MongoDb__Port'
+          value: string(mongoPort)
+        }
+        {
+          // secret/notification-svc: MongoDb:Password, RabbitMq:Username and RabbitMq:Password (#259)
+          name: 'Vault__Address'
+          value: 'http://127.0.0.1:${vaultPort}'
+        }
+        {
+          name: 'Vault__Token'
+          secureValue: vaultRootToken
+        }
+      ]
+      // /health is unhealthy until it consumes (#258), so liveness waits for RabbitMQ's start-up, as
+      // compose's start_period does.
+      livenessProbe: healthProbe('/health', servicePorts.notification, 60)
+      readinessProbe: healthProbe('/health', servicePorts.notification, 10)
     }
   }
   {
@@ -529,7 +592,7 @@ resource containerGroup 'Microsoft.ContainerInstance/containerGroups@2025-09-01'
         }
       ]
     }
-    containers: filter(containerDefinitions, c => includeMemberPortal || c.name != 'member-portal')
+    containers: filter(containerDefinitions, c => (includeMemberPortal || c.name != 'member-portal') && (includeNotificationService || c.name != 'notification-svc'))
     volumes: [
       {
         // One source for the gateway config: the compose template, mounted as a file.

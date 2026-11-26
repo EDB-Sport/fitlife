@@ -137,8 +137,9 @@ public sealed class ReserveSeatApiTests
     private static async Task<(HttpStatusCode Status, string? Code)> StatusAndCodeAsync(HttpResponseMessage response)
     {
         ProblemDetails? problem = await response.Content.ReadFromJsonAsync<ProblemDetails>().ConfigureAwait(false);
-        string? code = problem is not null && problem.Extensions.TryGetValue("code", out object? value) ? value?.ToString() : null;
-        return (response.StatusCode, code);
+        object? code = null;
+        problem?.Extensions.TryGetValue("code", out code);
+        return (response.StatusCode, code?.ToString());
     }
 
     private static BookingApiFactory Factory()

@@ -6,6 +6,7 @@ using Moq;
 namespace BookingService.Tests.Application;
 
 /// <summary>A member reserves a seat: Membership first, then the class session decides (#260).</summary>
+[FixtureLifeCycle(LifeCycle.InstancePerTestCase)] // fresh mocks for every test, so no call counts carry over
 public sealed class ReserveSeatCommandHandlerTests
 {
     private const string BearerToken = "the-members-token";

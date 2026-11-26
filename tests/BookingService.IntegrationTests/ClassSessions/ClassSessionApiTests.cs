@@ -68,6 +68,7 @@ public sealed class ClassSessionApiTests
         Uri? location;
         using (BookingApiFactory factory = Factory())
         {
+            factory.Membership.Answer = MemberLookup.Found(memberId, isActive: true);
             await factory.AddAsync(classSession).ConfigureAwait(false);
             using HttpClient client = factory.CreateClient();
 

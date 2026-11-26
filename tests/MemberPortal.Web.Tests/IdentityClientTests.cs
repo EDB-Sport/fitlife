@@ -135,8 +135,12 @@ public sealed class IdentityClientTests
             directory = directory.Parent;
         }
 
-        Assert.That(directory, Is.Not.Null, "Found no contracts/openapi/identityservice.json above the test directory.");
-        using JsonDocument contract = JsonDocument.Parse(File.ReadAllText(Path.Combine(directory!.FullName, "contracts", "openapi", "identityservice.json")));
+        if (directory is null)
+        {
+            throw new FileNotFoundException("Found no contracts/openapi/identityservice.json above the test directory.");
+        }
+
+        using var contract = JsonDocument.Parse(File.ReadAllText(Path.Combine(directory.FullName, "contracts", "openapi", "identityservice.json")));
         JsonElement properties = contract.RootElement.GetProperty("components").GetProperty("schemas").GetProperty(schema).GetProperty("properties");
         return [.. properties.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal)];
     }
@@ -171,7 +175,11 @@ public sealed class IdentityClientTests
         {
             Method = request.Method;
             Uri = request.RequestUri;
-            Body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            if (request.Content is not null)
+            {
+                Body = await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            }
+
             if (_failure is not null)
             {
                 throw _failure;

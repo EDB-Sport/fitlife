@@ -61,6 +61,9 @@ public sealed class NavMenuTests : BunitContext
     {
         public const string Value = "antiforgery-test-value";
 
-        public override AntiforgeryRequestToken GetAntiforgeryToken() => new(Value, "__RequestVerificationToken");
+        public override AntiforgeryRequestToken GetAntiforgeryToken()
+        {
+            return new AntiforgeryRequestToken(Value, "__RequestVerificationToken");
+        }
     }
 }

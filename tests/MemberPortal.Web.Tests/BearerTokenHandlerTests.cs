@@ -18,7 +18,7 @@ public sealed class BearerTokenHandlerTests
     public async Task BearerTokenHandler_WhenLoggedIn_AddsTheBearerHeader()
     {
         // Arrange
-        HttpContext context = Context(new FakeAuthentication("header.payload.signature"));
+        DefaultHttpContext context = Context(new FakeAuthentication("header.payload.signature"));
 
         // Act
         HttpRequestMessage sent = await Send(context).ConfigureAwait(false);
@@ -31,7 +31,7 @@ public sealed class BearerTokenHandlerTests
     public async Task BearerTokenHandler_WhenNotLoggedIn_AddsNoHeader()
     {
         // Arrange
-        HttpContext context = Context(new FakeAuthentication(accessToken: null));
+        DefaultHttpContext context = Context(new FakeAuthentication(accessToken: null));
 
         // Act
         HttpRequestMessage sent = await Send(context).ConfigureAwait(false);
@@ -50,7 +50,7 @@ public sealed class BearerTokenHandlerTests
         Assert.That(sent.Headers.Authorization, Is.Null);
     }
 
-    private static HttpContext Context(FakeAuthentication authentication)
+    private static DefaultHttpContext Context(FakeAuthentication authentication)
     {
         ServiceProvider services = new ServiceCollection().AddSingleton<IAuthenticationService>(authentication).BuildServiceProvider();
         return new DefaultHttpContext { RequestServices = services };
@@ -65,7 +65,8 @@ public sealed class BearerTokenHandlerTests
 
         using HttpResponseMessage response = await invoker.SendAsync(request, CancellationToken.None).ConfigureAwait(false);
 
-        return service.Request!;
+        Assert.That(service.Request, Is.Not.Null, "The handler passed no request on.");
+        return service.Request ?? throw new InvalidOperationException("Unreachable after the assertion.");
     }
 
     /// <summary>The cookie scheme: a logged-in person's ticket with the token in its properties, or nobody.</summary>
@@ -73,24 +74,36 @@ public sealed class BearerTokenHandlerTests
     {
         public Task<AuthenticateResult> AuthenticateAsync(HttpContext context, string? scheme)
         {
-            if (accessToken is null || scheme != CookieAuthenticationDefaults.AuthenticationScheme)
+            if (accessToken is null || !string.Equals(scheme, CookieAuthenticationDefaults.AuthenticationScheme, StringComparison.Ordinal))
             {
                 return Task.FromResult(AuthenticateResult.NoResult());
             }
 
             var properties = new AuthenticationProperties();
             properties.StoreTokens([new AuthenticationToken { Name = "access_token", Value = accessToken }]);
-            var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, "medlem@fitlife.test")], scheme));
-            return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(principal, properties, scheme)));
+            var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, "medlem@fitlife.test")], CookieAuthenticationDefaults.AuthenticationScheme));
+            return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(principal, properties, CookieAuthenticationDefaults.AuthenticationScheme)));
         }
 
-        public Task ChallengeAsync(HttpContext context, string? scheme, AuthenticationProperties? properties) => throw new NotSupportedException();
+        public Task ChallengeAsync(HttpContext context, string? scheme, AuthenticationProperties? properties)
+        {
+            throw new NotSupportedException();
+        }
 
-        public Task ForbidAsync(HttpContext context, string? scheme, AuthenticationProperties? properties) => throw new NotSupportedException();
+        public Task ForbidAsync(HttpContext context, string? scheme, AuthenticationProperties? properties)
+        {
+            throw new NotSupportedException();
+        }
 
-        public Task SignInAsync(HttpContext context, string? scheme, ClaimsPrincipal principal, AuthenticationProperties? properties) => throw new NotSupportedException();
+        public Task SignInAsync(HttpContext context, string? scheme, ClaimsPrincipal principal, AuthenticationProperties? properties)
+        {
+            throw new NotSupportedException();
+        }
 
-        public Task SignOutAsync(HttpContext context, string? scheme, AuthenticationProperties? properties) => throw new NotSupportedException();
+        public Task SignOutAsync(HttpContext context, string? scheme, AuthenticationProperties? properties)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     /// <summary>The service behind the gateway: remembers the request and answers 200.</summary>

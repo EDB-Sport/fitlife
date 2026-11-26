@@ -23,6 +23,11 @@ internal sealed class FakeIdentityClient : IIdentityClient
     public Task<TokenResponse?> LogInAsync(LogInRequest request, CancellationToken cancellationToken)
     {
         Request = request;
-        return _failure is null ? Task.FromResult(_token) : Task.FromException<TokenResponse?>(_failure);
+        if (_failure is not null)
+        {
+            return Task.FromException<TokenResponse?>(_failure);
+        }
+
+        return Task.FromResult(_token);
     }
 }

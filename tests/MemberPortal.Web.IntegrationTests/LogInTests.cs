@@ -14,6 +14,7 @@ namespace MemberPortal.Web.IntegrationTests;
 /// Each form post first gets the page and sends back its hidden fields, as a browser does.
 /// </summary>
 [TestFixture]
+[FixtureLifeCycle(LifeCycle.InstancePerTestCase)] // a new portal and cookie jar per test, so no test sees another's log-in
 public sealed partial class LogInTests : IDisposable
 {
     private const string AuthenticationCookie = ".AspNetCore.Cookies";
@@ -42,7 +43,7 @@ public sealed partial class LogInTests : IDisposable
 
         // Assert
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Redirect));
-        Assert.That(new Uri(_client.BaseAddress!, response.Headers.Location!).AbsolutePath, Is.EqualTo("/"));
+        Assert.That(RedirectPath(response), Is.EqualTo("/"));
         Assert.That(SetCookie(response, AuthenticationCookie), Is.Not.Null);
     }
 
@@ -53,7 +54,7 @@ public sealed partial class LogInTests : IDisposable
         using HttpResponseMessage response = await LogInAsync().ConfigureAwait(false);
 
         // Assert
-        string cookie = SetCookie(response, AuthenticationCookie)!.ToUpperInvariant();
+        string cookie = (SetCookie(response, AuthenticationCookie) ?? string.Empty).ToUpperInvariant();
         Assert.That(cookie, Does.Contain("; SECURE"));
         Assert.That(cookie, Does.Contain("; HTTPONLY"));
         Assert.That(cookie, Does.Contain("; SAMESITE=LAX"));
@@ -116,7 +117,7 @@ public sealed partial class LogInTests : IDisposable
 
         // Assert
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Redirect));
-        Assert.That(new Uri(_client.BaseAddress!, response.Headers.Location!).AbsolutePath, Is.EqualTo("/"));
+        Assert.That(RedirectPath(response), Is.EqualTo("/"));
         Assert.That(SetCookie(response, AuthenticationCookie), Does.Contain("expires=Thu, 01 Jan 1970"));
     }
 
@@ -147,17 +148,38 @@ public sealed partial class LogInTests : IDisposable
 
     private static Dictionary<string, string> HiddenFields(string page)
     {
-        return HiddenField().Matches(page).ToDictionary(match => WebUtility.HtmlDecode(match.Groups["name"].Value), match => WebUtility.HtmlDecode(match.Groups["value"].Value), StringComparer.Ordinal);
+        // The antiforgery field can appear once per form; its value is the same in every form of one page
+        var fields = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (Match match in HiddenField().Matches(page))
+        {
+            fields.TryAdd(WebUtility.HtmlDecode(match.Groups["name"].Value), WebUtility.HtmlDecode(match.Groups["value"].Value));
+        }
+
+        return fields;
     }
 
     private static string? SetCookie(HttpResponseMessage response, string name)
     {
-        return response.Headers.TryGetValues("Set-Cookie", out IEnumerable<string>? cookies)
-            ? cookies.FirstOrDefault(cookie => cookie.StartsWith(name + "=", StringComparison.Ordinal))
-            : null;
+        if (!response.Headers.TryGetValues("Set-Cookie", out IEnumerable<string>? cookies))
+        {
+            return null;
+        }
+
+        return cookies.FirstOrDefault(cookie => cookie.StartsWith(name + "=", StringComparison.Ordinal));
     }
 
-    [GeneratedRegex("""<input type="hidden" name="(?<name>[^"]+)" value="(?<value>[^"]*)" */?>""")]
+    // The path a redirect goes to, whether its Location is relative or absolute
+    private string? RedirectPath(HttpResponseMessage response)
+    {
+        if (response.Headers.Location is not Uri location || _client.BaseAddress is not Uri baseAddress)
+        {
+            return null;
+        }
+
+        return new Uri(baseAddress, location).AbsolutePath;
+    }
+
+    [GeneratedRegex("""<input type="hidden" name="(?<name>[^"]+)" value="(?<value>[^"]*)" */?>""", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
     private static partial Regex HiddenField();
 
     private sealed class FakeIdentity : IIdentityClient
@@ -166,7 +188,10 @@ public sealed partial class LogInTests : IDisposable
 
         public TokenResponse? Token { get; set; } = new(AccessToken, ExpiresAt);
 
-        public Task<TokenResponse?> LogInAsync(LogInRequest request, CancellationToken cancellationToken) => Task.FromResult(Token);
+        public Task<TokenResponse?> LogInAsync(LogInRequest request, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Token);
+        }
     }
 
     private sealed class PortalFactory : WebApplicationFactory<Program>

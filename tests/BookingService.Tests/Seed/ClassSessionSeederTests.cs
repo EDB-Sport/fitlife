@@ -3,6 +3,7 @@ using BookingService.Domain;
 using BookingService.Models;
 using BookingService.Seed;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 
@@ -108,13 +109,81 @@ public sealed class ClassSessionSeederTests
         });
     }
 
+    [Test]
+    public async Task StartAsync_WhenTheSeedFails_LogsOneErrorAndLetsTheServiceStart()
+    {
+        // Arrange
+        var logger = new ErrorCountingLogger();
+        ClassSessionSeeder seeder = Seeder(new FailingReferenceData(), logger);
+
+        // Act
+        await seeder.StartAsync(CancellationToken.None).ConfigureAwait(false);
+
+        // Assert: StartAsync returned, so the host goes on starting
+        Assert.That(logger.Errors, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void StartAsync_WhenCancelled_PassesTheCancellationOn()
+    {
+        // Arrange
+        ClassSessionSeeder seeder = Seeder(new FailingReferenceData(new OperationCanceledException()), new ErrorCountingLogger());
+
+        // Act & Assert
+        Assert.That(() => seeder.StartAsync(CancellationToken.None), Throws.InstanceOf<OperationCanceledException>());
+    }
+
     private ClassSessionSeeder Seeder()
+    {
+        return Seeder(_referenceData, NullLogger<ClassSessionSeeder>.Instance);
+    }
+
+    private ClassSessionSeeder Seeder(IReferenceDataWriter referenceData, ILogger<ClassSessionSeeder> logger)
     {
         ServiceProvider services = new ServiceCollection()
             .AddSingleton<IClassSessionRepository>(_classSessions)
-            .AddSingleton<IReferenceDataWriter>(_referenceData)
+            .AddSingleton(referenceData)
             .BuildServiceProvider();
-        return new ClassSessionSeeder(services.GetRequiredService<IServiceScopeFactory>(), _clock, NullLogger<ClassSessionSeeder>.Instance);
+        return new ClassSessionSeeder(services.GetRequiredService<IServiceScopeFactory>(), _clock, logger);
+    }
+
+    /// <summary>Reference data whose every write fails, as a MongoDB write or log-in error would.</summary>
+    private sealed class FailingReferenceData(Exception? failure = null) : IReferenceDataWriter
+    {
+        public Task SaveCenterAsync(Center center, CancellationToken cancellationToken)
+        {
+            throw failure ?? new InvalidOperationException("The write failed.");
+        }
+
+        public Task SaveClassTypeAsync(ClassType classType, CancellationToken cancellationToken)
+        {
+            throw failure ?? new InvalidOperationException("The write failed.");
+        }
+    }
+
+    /// <summary>Counts the error log lines.</summary>
+    private sealed class ErrorCountingLogger : ILogger<ClassSessionSeeder>
+    {
+        public int Errors { get; private set; }
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull
+        {
+            return null;
+        }
+
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return true;
+        }
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel == LogLevel.Error)
+            {
+                Errors++;
+            }
+        }
     }
 
     /// <summary>Class sessions kept in memory; a stored class session is the same object on every read.</summary>

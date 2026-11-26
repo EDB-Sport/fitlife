@@ -48,7 +48,7 @@ expect_trigger "cancel-in-progress only for pull_request events" \
   grep -qE '^  cancel-in-progress: \$\{\{ github\.event_name == .pull_request. \}\}' "$workflow"
 
 for tool in yq docker git; do
-  command -v "$tool" >/dev/null || { echo "needs $tool"; [ "$failures" -eq 0 ] || echo "$failures trigger check(s) failed."; exit 2; }
+  command -v "$tool" >/dev/null || { echo "needs $tool"; exit 2; }
 done
 
 # The shell GitHub runs a step with: the step's shell:, then the job's and the workflow's
@@ -67,7 +67,6 @@ shell_for() {
 }
 
 step_shell=$(shell_for gitleaks) || exit 1
-echo "gitleaks step shell: $step_shell"
 step_script=$(mktemp)
 work=$(mktemp -d)
 trap 'rm -rf "$step_script" "$work"' EXIT
@@ -90,7 +89,8 @@ printf 'GITHUB_PAT=%s_%s\n' ghp "$fake" >"$work/config.env"
 git -C "$work" add . && git -C "$work" commit -qm leak
 leak=$(git -C "$work" rev-parse HEAD)
 
-# run_step <base sha or empty> <head sha>: runs the step like the runner does, prints its exit code
+# run_step <base sha or empty> <head sha>: runs the step like the runner does, returns its exit code.
+# The step's last 5 output lines go to $step_out, for a FAIL line to show.
 run_step() {
   local runner_temp cmd
   runner_temp=$(mktemp -d)
@@ -98,7 +98,7 @@ run_step() {
   (cd "$work" && BASE_SHA="$1" HEAD_SHA="$2" GITHUB_SHA="$2" RUNNER_TEMP="$runner_temp" \
     GITLEAKS_IMAGE="$image" $cmd) >"$runner_temp/out" 2>&1
   local status=$?
-  sed 's/^/      /' "$runner_temp/out" | tail -n 5
+  step_out=$(tail -n 5 "$runner_temp/out")
   rm -rf "$runner_temp"
   return "$status"
 }
@@ -110,7 +110,8 @@ expect() {
   if { [ "$2" = pass ] && [ "$status" -eq 0 ]; } || { [ "$2" = fail ] && [ "$status" -ne 0 ]; }; then
     echo "PASS  $1"
   else
-    echo "FAIL  $1: expected the step to $2, got exit $status"
+    echo "FAIL  $1: expected the step to $2, got exit $status (shell: $step_shell)"
+    sed 's/^/      /' <<<"$step_out"
     failures=$((failures + 1))
   fi
 }

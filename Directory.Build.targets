@@ -84,4 +84,18 @@
     </ReadLinesFromFile>
     <FitLifeUseLineFeeds Files="@(_FitLifeOpenApiDocument)" Condition="'@(_FitLifeOpenApiDocument)' != ''" />
   </Target>
+
+  <!--
+    Only this repo's .globalconfig counts (issue #434). The SDK adds every .globalconfig above a project, so a worktree
+    inside another checkout (e.g. .claude/worktrees/<name>/) loads two. Roslyn then unsets every key they share,
+    and the style rules, CA/S severities and naming rules are all off. The SDK's own analysis-level configs have
+    other file names and stay.
+  -->
+  <Target Name="FitLifeOnlyRepoGlobalConfig" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <_FitLifeOuterGlobalConfig Include="@(EditorConfigFiles)"
+                                 Condition="'%(Filename)%(Extension)' == '.globalconfig' And !$([System.String]::Copy('%(FullPath)').Replace('\', '/').StartsWith($([System.String]::Copy('$(RepoRoot)').Replace('\', '/')), System.StringComparison.OrdinalIgnoreCase))" />
+      <EditorConfigFiles Remove="@(_FitLifeOuterGlobalConfig)" />
+    </ItemGroup>
+  </Target>
 </Project>

@@ -1,0 +1,39 @@
+{
+  "jobs": [
+    {
+      "name": "plan",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-25T09:11:02Z",
+      "completed_at": "2026-11-25T09:11:06Z"
+    },
+    {
+      "name": "release-gate",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-25T09:10:14Z",
+      "completed_at": "2026-11-25T09:10:14Z"
+    },
+    {
+      "name": "images (MemberPortal.Web, memberportal, 0.1.0)",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "started_at": "2026-11-25T09:11:06Z",
+      "completed_at": "2026-11-25T09:12:24Z"
+    },
+    {
+      "name": "images (BookingService, bookingservice, 0.1.0)",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-11-25T09:11:19Z",
+      "completed_at": "2026-11-25T09:12:24Z"
+    },
+    {
+      "name": "tags",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-25T09:12:25Z",
+      "completed_at": "2026-11-25T09:12:24Z"
+    }
+  ]
+}

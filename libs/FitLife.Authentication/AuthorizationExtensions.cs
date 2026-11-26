@@ -12,6 +12,9 @@ public static class AuthorizationExtensions
     /// An endpoint without authorization metadata answers 401 without a token; one with a policy answers 403 to a
     /// token without its role. When a service adopts this, mark these <c>AllowAnonymous()</c>: <c>/health</c>,
     /// and in Development the OpenAPI document (<c>MapOpenApi()</c>) and Scalar (<c>MapScalarApiReference()</c>).
+    /// The fallback policy also covers a request that matches no endpoint, so call
+    /// <see cref="NotFoundFallbackExtensions.MapFitLifeNotFoundFallback"/> after the endpoints: an unknown path then
+    /// answers 404, not 401.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection.</returns>

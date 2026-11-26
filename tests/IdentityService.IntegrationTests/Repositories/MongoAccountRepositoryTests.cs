@@ -76,6 +76,38 @@ public sealed class MongoAccountRepositoryTests
     }
 
     [Test]
+    public async Task ListAsync_ReturnsEveryStoredAccountWithItsRoles()
+    {
+        // Arrange
+        IAccountRepository repository = await RepositoryAsync().ConfigureAwait(false);
+        var anna = Account.Create("anna@fitlife.example", PasswordHash);
+        var admin = Account.Create("admin@fitlife.example", PasswordHash, Role.Admin);
+        await repository.AddAsync(anna, CancellationToken.None).ConfigureAwait(false);
+        await repository.AddAsync(admin, CancellationToken.None).ConfigureAwait(false);
+
+        // Act
+        IReadOnlyList<Account> accounts = await repository.ListAsync(CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(accounts.Select(account => account.Id), Is.EquivalentTo(new[] { anna.Id, admin.Id }));
+        Assert.That(accounts.Single(account => account.Id == admin.Id).Roles, Is.EqualTo(new[] { Role.Admin }));
+        Assert.That(accounts.Single(account => account.Id == anna.Id).Roles, Is.EqualTo(new[] { Role.Medlem }));
+    }
+
+    [Test]
+    public async Task ListAsync_WithNoAccounts_ReturnsAnEmptyList()
+    {
+        // Arrange
+        IAccountRepository repository = await RepositoryAsync().ConfigureAwait(false);
+
+        // Act
+        IReadOnlyList<Account> accounts = await repository.ListAsync(CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(accounts, Is.Empty);
+    }
+
+    [Test]
     public async Task AddAsync_WithANewEmail_AnswersThatTheEmailWasFree()
     {
         // Arrange
@@ -129,5 +161,35 @@ public sealed class MongoAccountRepositoryTests
 
         // Assert
         Assert.That(found?.Id, Is.EqualTo(account.Id));
+    }
+
+    [Test]
+    public async Task SaveRolesAsync_AfterGiveRole_StoresTheNewRoles()
+    {
+        // Arrange
+        IAccountRepository repository = await RepositoryAsync().ConfigureAwait(false);
+        var account = Account.Create("anna@fitlife.example", PasswordHash);
+        await repository.AddAsync(account, CancellationToken.None).ConfigureAwait(false);
+        account.GiveRole(Role.Traener);
+
+        // Act
+        bool saved = await repository.SaveRolesAsync(account, CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Account? found = await repository.FindByIdAsync(account.Id, CancellationToken.None).ConfigureAwait(false);
+        Assert.That((saved, found?.Roles), Is.EqualTo((true, new[] { Role.Medlem, Role.Traener })));
+    }
+
+    [Test]
+    public async Task SaveRolesAsync_ForAnUnknownAccount_ReturnsFalse()
+    {
+        // Arrange
+        IAccountRepository repository = await RepositoryAsync().ConfigureAwait(false);
+
+        // Act
+        bool saved = await repository.SaveRolesAsync(Account.Create("bo@fitlife.example", PasswordHash), CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(saved, Is.False);
     }
 }

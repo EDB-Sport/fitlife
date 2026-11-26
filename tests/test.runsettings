@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Settings for every dotnet test run, local and CI (tests/Directory.Build.props points each test project here).
+  Loki__MinLevel=Off: no Loki answers in a test run, and the Loki target's retries against it made the hosts'
+  shutdown hit "NLog LogFactory Flush Timeout" at random under load (#394). The console target still logs.
+-->
+<RunSettings>
+  <RunConfiguration>
+    <EnvironmentVariables>
+      <Loki__MinLevel>Off</Loki__MinLevel>
+    </EnvironmentVariables>
+  </RunConfiguration>
+</RunSettings>

@@ -2,6 +2,7 @@
 # Tests for tools/ci/develop-plan.sh (issue #340): which services a push to develop delivers images for,
 # in a throwaway git repo. A service counts as changed by the rules of release-gate.sh (tools/ci/changes.sh).
 # Needs only git. Usage: tools/ci/develop-plan.test.sh
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"

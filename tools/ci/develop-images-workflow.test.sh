@@ -3,6 +3,7 @@
 # changed service once, scans that image with Trivy as release.yml does, and pushes only :develop and :sha-<short>:
 # never latest, never an X.Y.Z tag, and no secret but the Docker Hub credentials the release uses.
 # Usage: tools/ci/develop-images-workflow.test.sh   (from anywhere in the repo; exit 0 = all pass)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)" || exit 2

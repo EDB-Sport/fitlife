@@ -10,7 +10,7 @@ public sealed class HealthEndpointTests
     public async Task GetHealth_ReturnsOkAndHealthy()
     {
         // Arrange
-        using var factory = new WebApplicationFactory<Program>();
+        using var factory = new TestKeyFactory();
         using HttpClient client = factory.CreateClient();
 
         // Act

@@ -1,6 +1,5 @@
 using System.Net;
 using System.Text.Json;
-using IdentityService.IntegrationTests.Accounts;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 
@@ -14,7 +13,7 @@ public sealed class ApiDocumentationTests
     public async Task Get_InProduction_ReturnsNotFound(string path)
     {
         // Arrange
-        using var app = new WebApplicationFactory<Program>();
+        using var app = new TestKeyFactory();
         using WebApplicationFactory<Program> factory = app.WithWebHostBuilder(host => host.UseEnvironment("Production"));
         using HttpClient client = factory.CreateClient();
 
@@ -58,7 +57,7 @@ public sealed class ApiDocumentationTests
     public async Task Get_InDevelopment_ReturnsOk(string path)
     {
         // Arrange
-        using var app = new WebApplicationFactory<Program>();
+        using var app = new TestKeyFactory();
         using WebApplicationFactory<Program> factory = app.WithWebHostBuilder(host => host.UseEnvironment("Development"));
         using HttpClient client = factory.CreateClient();
 
@@ -71,8 +70,8 @@ public sealed class ApiDocumentationTests
 
     private static async Task<JsonDocument> OpenApiDocumentAsync()
     {
-        using var app = new WebApplicationFactory<Program>();
-        using WebApplicationFactory<Program> factory = app.WithWebHostBuilder(host => host.UseEnvironment("Development").UseSetting("Jwt:SigningKey", IdentityApiFactory.SigningKey));
+        using var app = new TestKeyFactory();
+        using WebApplicationFactory<Program> factory = app.WithWebHostBuilder(host => host.UseEnvironment("Development"));
         using HttpClient client = factory.CreateClient();
         string json = await client.GetStringAsync(new Uri("/openapi/v1.json", UriKind.Relative)).ConfigureAwait(false);
         return JsonDocument.Parse(json);

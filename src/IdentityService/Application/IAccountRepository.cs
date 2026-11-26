@@ -16,4 +16,9 @@ public interface IAccountRepository
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The account, or <see langword="null"/> when no account has that e-mail address.</returns>
     Task<Account?> FindByEmailAsync(string email, CancellationToken cancellationToken);
+
+    /// <summary>Reads every account, in no particular order.</summary>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>All the accounts; an empty list when there are none.</returns>
+    Task<IReadOnlyList<Account>> ListAsync(CancellationToken cancellationToken);
 }

@@ -69,6 +69,54 @@
             }
           }
         }
+      },
+      "get": {
+        "tags": [
+          "ListAccounts"
+        ],
+        "summary": "Lists every account with its id, e-mail address and roles, ordered by e-mail address. Needs a token with the role Admin.",
+        "responses": {
+          "200": {
+            "description": "Every account. Never a password or its hash.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccountResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccountResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccountResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The token doesn't have the role Admin."
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
       }
     },
     "/tokens": {
@@ -165,7 +213,7 @@
             "description": "The glossary's names of the account's roles."
           }
         },
-        "description": "A new account. Never the password or its hash."
+        "description": "An account, as POST /accounts and GET /accounts answer. Never the password or its hash."
       },
       "CreateAccountRequest": {
         "required": [
@@ -307,11 +355,21 @@
           }
         }
       }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
     }
   },
   "tags": [
     {
       "name": "Accounts"
+    },
+    {
+      "name": "ListAccounts"
     },
     {
       "name": "Tokens"

@@ -94,6 +94,24 @@ done
 mutation_timeout=$(sed -n 's/^    timeout-minutes: \([0-9][0-9]*\)$/\1/p' <<<"$(job_block mutation)")
 expect "mutation sets timeout-minutes of at least 30 (issue #335)" test "${mutation_timeout:-0}" -ge 30
 
+# Mutation testing is switched on by FITLIFE_MUTATION=1 alone, so CI and local runs of the script tests agree (issue #461).
+# The mutation job runs only with its original condition; ci-scripts sets FITLIFE_MUTATION=1 only then.
+mutation_enabled=0
+grep -qF "if: github.event_name == 'pull_request'" <<<"$(job_block mutation)" && mutation_enabled=1
+ci_scripts_switch=0
+grep -qE '^ +FITLIFE_MUTATION: "?1"?$' <<<"$(job_block ci-scripts)" && ci_scripts_switch=1
+expect "ci-scripts sets FITLIFE_MUTATION=1 exactly when the mutation job runs (job: $mutation_enabled, ci-scripts: $ci_scripts_switch)" \
+  test "$mutation_enabled" = "$ci_scripts_switch"
+expect "ci-scripts runs every tools/ci/*.test.sh, with no special case for mutation.test.sh" \
+  bash -c '! grep -qF "mutation.test.sh" <<<"$1"' _ "$(job_block ci-scripts | grep -v '^ *#\|- uses:')"
+if [ "$mutation_enabled" = 0 ]; then
+  skipped=$(env -u FITLIFE_MUTATION timeout 30 "$root/tools/ci/mutation.test.sh" 2>&1)
+  skipped_status=$?
+  expect "a local run of mutation.test.sh exits 0 while mutation is disabled (got $skipped_status)" test "$skipped_status" -eq 0
+  expect "a local run of mutation.test.sh says it is skipped while mutation is disabled" \
+    grep -qF "skipped: mutation testing is disabled" <<<"$skipped"
+fi
+
 # A hanging test is killed after 5 minutes and named, without a dump file (issue #276).
 hang_flags='--blame-hang-timeout 5m --blame-hang-dump-type none'
 expect "ci.yml's test step passes $hang_flags" \

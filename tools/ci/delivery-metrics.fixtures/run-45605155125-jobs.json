@@ -1,0 +1,32 @@
+{
+  "jobs": [
+    {
+      "name": "plan",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-25T11:31:04Z",
+      "completed_at": "2026-11-25T11:31:08Z"
+    },
+    {
+      "name": "release-gate",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-25T11:31:02Z",
+      "completed_at": "2026-11-25T11:31:01Z"
+    },
+    {
+      "name": "images",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-25T11:31:09Z",
+      "completed_at": "2026-11-25T11:31:08Z"
+    },
+    {
+      "name": "tags",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-25T11:31:09Z",
+      "completed_at": "2026-11-25T11:31:09Z"
+    }
+  ]
+}

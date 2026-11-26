@@ -12,6 +12,15 @@
 #                               A test that no longer compiles on base counts as red. A run that stops before
 #                               any test is built (no project found, restore error: SETUP_ERRORS) does not.
 #
+# Comment-only changes (#361): a production file whose code lines (every line except blank ones and ones made
+# only of comments, found with /* */ state tracked over the whole file) are the same on base and head is not
+# production code for checks 1 and 4: a comment can't make a test go red. Any other change counts, so #if and
+# #pragma lines, and code with a trailing // comment added, still do.
+# A file with a multi-line string (#484): code_lines resets its string state on every line, so a line inside a raw
+# string (""") or a verbatim string (@", $@" or @$") that starts with // would be read as a comment. A file whose base or head
+# version contains """, @" or @$" ($@" holds @") is therefore always treated as changed, never as comment-only. (A coarse rule: it also
+# matches a """ or @" in a comment or a one-line verbatim string, which only means a needless test requirement.)
+#
 # A refactoring PR (label "refactor" in PR_LABELS, METHODOLOGY section 8) changes structure, not behaviour:
 #   R1. No file under TEST_DIR changes (added, modified, deleted or moved).
 #   R2. The tests pass.
@@ -87,6 +96,41 @@ fi
 # Files added or modified by the PR under directories, filtered by a regex: changed_files <regex> <dir>... Renames count as delete + add.
 changed_files() { git diff --name-only --no-renames --diff-filter=AM "$BASE_SHA...$HEAD_SHA" -- "${@:2}" | grep -E "$1" || true; }
 
+# The lines of a C# file that hold code: every line except blank ones and ones made only of comments.
+# Tracks /* */ across lines and skips strings and char literals, so "http://x" is code and "/* x */ y;" is too.
+code_lines() {
+  awk '
+    { code = 0; n = length($0); q = ""
+      for (i = 1; i <= n; i++) {
+        c = substr($0, i, 1); d = substr($0, i + 1, 1)
+        if (blk) { if (c == "*" && d == "/") { blk = 0; i++ } }
+        else if (q != "") { if (c == "\\") i++; else if (c == q) q = "" }
+        else if (c == "/" && d == "/") break
+        else if (c == "/" && d == "*") { blk = 1; i++ }
+        else if (c == "\"" || c == "\047") { q = c; code = 1 }
+        else if (c !~ /[ \t\r]/) code = 1
+      }
+      if (code) print }'
+}
+
+# Does the file at a commit contain a raw string (""") or a verbatim string (@", $@" or @$")? has_multiline_string <commit> <file>
+has_multiline_string() { git show "$1:$2" 2>/dev/null | grep -qF -e '"""' -e '@"' -e '@$"'; }
+
+# Production files whose code lines changed (#361). A file whose only change is blank or comment lines is not.
+# The base and the head version are compared as code lines, so the comment state is known (a -U0 hunk can't
+# tell a "* operand;" continuation line from the middle of a block comment).
+code_changed_files() {
+  local file
+  while IFS= read -r file; do
+    [[ -n $file ]] || continue
+    if has_multiline_string "$BASE_SHA" "$file" || has_multiline_string "$HEAD_SHA" "$file"; then
+      echo "$file"
+    elif ! diff -q <(git show "$BASE_SHA:$file" 2>/dev/null | code_lines) <(git show "$HEAD_SHA:$file" | code_lines) >/dev/null; then
+      echo "$file"
+    fi
+  done <<< "$1"
+}
+
 # Number of test attributes in the test files of a commit. Comment lines (// ...) don't count.
 count_tests() {
   git ls-tree -r --name-only "$1" -- "$TEST_DIR" | grep -E "$TEST_FILE_REGEX" | while read -r file; do
@@ -109,7 +153,7 @@ if [[ ",$PR_LABELS," == *",refactor,"* ]]; then
   exit "$failed"
 fi
 
-src_changes=$(changed_files "$SRC_FILE_REGEX" "${src_dirs[@]}")
+src_changes=$(code_changed_files "$(changed_files "$SRC_FILE_REGEX" "${src_dirs[@]}")")
 test_changes=$(changed_files "$TEST_FILE_REGEX" "$TEST_DIR")
 
 echo "Production files changed:"; echo "${src_changes:-  (none)}"
@@ -148,7 +192,11 @@ if [[ -n "$src_changes" ]]; then
 
   # Fail closed: if the base copy can't be set up, red on base is not proven, so the check fails.
   # Only the test run itself may fail (including a compile error on base), and that counts as red.
+  # The worktree is removed on every way out: the normal path, a failure, and an interrupt (#479).
   worktree=$(mktemp -d)
+  remove_worktree() { [[ -n "${worktree:-}" ]] && { git worktree remove --force "$worktree" 2>/dev/null; rm -rf "$worktree"; worktree=""; }; }
+  trap remove_worktree EXIT
+  trap 'remove_worktree; exit 130' INT TERM
   if git worktree add --quiet --detach "$worktree" "$HEAD_SHA"; then
     (
       cd "$worktree" || exit 1
@@ -167,7 +215,7 @@ if [[ -n "$src_changes" ]]; then
     )
     red=$(cat "$worktree/.tdd-check-exit" 2>/dev/null || echo missing)
     setup_error=$(grep -Eo "$SETUP_ERRORS" "$worktree/.tdd-check-output" 2>/dev/null | head -1 || true)
-    git worktree remove --force "$worktree"
+    remove_worktree
     if [[ "$red" == missing ]]; then
       fail "could not prepare the base copy of the code, so red on base is not proven."
     elif [[ -n "$setup_error" ]]; then

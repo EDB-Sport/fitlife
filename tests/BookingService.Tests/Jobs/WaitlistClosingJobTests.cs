@@ -123,6 +123,36 @@ public sealed class WaitlistClosingJobTests
         Assert.That(repository.Saved?.Waitlist, Is.Empty);
     }
 
+    [Test]
+    public async Task RunOnceAsync_ReadsTheClassSessionsThatStartAfterNow()
+    {
+        // Arrange: a later bound (now + 2 h, say) would never see a class session that is due
+        var repository = new StoredClassSession(() => FullWithAWaitlistEntry(Now.AddHours(1)));
+
+        using WaitlistClosingJob job = Job(repository);
+
+        // Act
+        await job.RunOnceAsync(CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(repository.AskedStartsAfter, Is.EqualTo(Now));
+    }
+
+    [Test]
+    public async Task RunOnceAsync_WithAClassSessionThatHasStarted_LeavesIt()
+    {
+        // Arrange
+        var repository = new StoredClassSession(() => FullWithAWaitlistEntry(Now.AddMinutes(-1)));
+
+        using WaitlistClosingJob job = Job(repository);
+
+        // Act
+        await job.RunOnceAsync(CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(repository.Saves, Is.Zero);
+    }
+
     /// <summary>A full class session with one waitlist entry, joined while the waitlist was still open.</summary>
     private static ClassSession FullWithAWaitlistEntry(DateTimeOffset startTime)
     {
@@ -160,6 +190,8 @@ public sealed class WaitlistClosingJobTests
 
         public int Saves { get; private set; }
 
+        public DateTimeOffset? AskedStartsAfter { get; private set; }
+
         public ClassSession? Saved { get; private set; }
 
         public Task<IReadOnlyList<ClassSession>> ListAsync(Guid? centerId, DateTimeOffset startsAfter, CancellationToken cancellationToken)
@@ -171,7 +203,10 @@ public sealed class WaitlistClosingJobTests
                 return Task.FromException<IReadOnlyList<ClassSession>>(new TimeoutException("MongoDB isn't up yet."));
             }
 
-            return Task.FromResult<IReadOnlyList<ClassSession>>([Saved ?? build()]);
+            // As ClassSessionRepository: only class sessions that start after startsAfter
+            AskedStartsAfter = startsAfter;
+            ClassSession stored = Saved ?? build();
+            return Task.FromResult<IReadOnlyList<ClassSession>>(stored.StartTime > startsAfter ? [stored] : []);
         }
 
         public Task<ClassSession?> GetByIdAsync(Guid id, CancellationToken cancellationToken)

@@ -148,6 +148,11 @@ cp "$root/tools/ci/test-report.sh" "$job_repo/tools/ci/"
 printf '%s\n' '#!/usr/bin/env bash' '. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"' \
   'echo "PASS  one"' 'echo "FAIL  two: expected 1, got 2"' 'exit 1' >"$job_repo/tools/ci/sample.test.sh"
 chmod +x "$job_repo/tools/ci/sample.test.sh"
+# A tools/dev test of any name, to see that the job picks it up without being edited (issue #488).
+mkdir -p "$job_repo/tools/dev"
+printf '%s
+' '#!/usr/bin/env bash' 'echo "FAIL  dev tool case"' 'exit 1' >"$job_repo/tools/dev/any-name.test.sh"
+chmod +x "$job_repo/tools/dev/any-name.test.sh"
 quiet=$(cd "$job_repo" && env -u TEST_REPORT_RAW -u VERBOSE bash -c "$ci_scripts_run" 2>&1)
 verbose=$(cd "$job_repo" && env -u TEST_REPORT_RAW VERBOSE=1 bash -c "$ci_scripts_run" 2>&1)
 expect "ci-scripts hides the PASS lines by default" bash -c '! grep -q "^PASS" <<<"$1"' _ "$quiet"
@@ -155,5 +160,7 @@ expect "ci-scripts prints the FAIL lines by default" grep -qxF "FAIL  two: expec
 expect "ci-scripts prints one summary line per script" grep -qxF "2 cases, 1 failed" <<<"$quiet"
 expect "ci-scripts with VERBOSE=1 prints the PASS lines" grep -qxF "PASS  one" <<<"$verbose"
 expect "ci-scripts with VERBOSE=1 prints the FAIL lines" grep -qxF "FAIL  two: expected 1, got 2" <<<"$verbose"
+expect "ci-scripts runs every tools/dev/*.test.sh" grep -qxF "FAIL  dev tool case" <<<"$quiet"
+expect "ci-scripts annotates a failing tools/dev test by name"   grep -qF "::error title=ci-scripts::tools/dev/any-name.test.sh failed" <<<"$quiet"
 
 exit "$failures"

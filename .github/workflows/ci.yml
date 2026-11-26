@@ -122,11 +122,6 @@ jobs:
         run: |
           status=0
           for test in tools/ci/*.test.sh; do
-            # Mutation testing is disabled for now (see the mutation job below).
-            if [ "$test" = tools/ci/mutation.test.sh ]; then
-              echo "skipped $test: mutation testing is disabled"
-              continue
-            fi
             echo "::group::$test"
             if ! "$test"; then
               status=1
@@ -175,8 +170,9 @@ jobs:
   # Stryker on the C# files the PR changes; fails below the break threshold in stryker-config.json (issue #53).
   # DISABLED 2026-11-25 (owner's call): it was the CI bottleneck (8-22 min per service PR, whole-file
   # mutation, whole-solution builds) and gave no useful signal yet. A skipped job still satisfies the
-  # required check. Re-enable by restoring the line below and the mutation.test.sh run in ci-scripts,
-  # after #353, #382 and #336. Original condition: if: github.event_name == 'pull_request'
+  # required check. Re-enable as #385 lists: restore the original condition below and set
+  # FITLIFE_MUTATION: 1 in the ci-scripts env, the one switch that runs mutation.test.sh (#461).
+  # Original condition: if: github.event_name == 'pull_request'
   mutation:
     if: false
     runs-on: ubuntu-latest

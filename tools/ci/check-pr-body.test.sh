@@ -143,6 +143,15 @@ dependabot_body=$'Bumps the github-actions group with 1 update.\n\nUpdates `acti
 PR_AUTHOR='dependabot[bot]' expect "Dependabot PR without the template passes" pass <<<"$dependabot_body"
 PR_AUTHOR='someone' expect "same body from a person still fails" fail "no linked issue" <<<"$dependabot_body"
 
+# 15. The template's Tests hint is a visible line, not an HTML comment (issue #481): CI strips comments and GitHub hides them
+hint_line=$(grep -F 'Did you touch an existing test' "$(dirname "$0")/../../.github/pull_request_template.md")
+if [ -n "$hint_line" ] && [[ "$hint_line" != '<!--'* ]]; then
+  echo "PASS  the template's Tests hint is visible, not an HTML comment"
+else
+  echo "FAIL  the template's Tests hint is missing or inside an HTML comment: $hint_line"
+  failures=$((failures + 1))
+fi
+
 echo
 if [ "$failures" -eq 0 ]; then
   echo "All PR description checks work."

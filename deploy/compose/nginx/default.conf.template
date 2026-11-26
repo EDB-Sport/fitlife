@@ -71,6 +71,13 @@ server {
         proxy_pass $membership_upstream;
     }
 
+    # The delivery log for staff (#221). In Azure it answers 502 until Notification runs there.
+    location /api/notification/ {
+        set $notification_upstream ${NOTIFICATION_URL};
+        rewrite ^/api/notification/(.*)$ /$1 break;
+        proxy_pass $notification_upstream;
+    }
+
     # Log-in (POST /tokens, #235), limited per client address (limit_req_zone above). Otherwise routed as
     # /api/identity/ is. No proxy_set_header here: it would drop the server-level ones.
     location = /api/identity/tokens {

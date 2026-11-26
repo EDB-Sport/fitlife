@@ -10,6 +10,8 @@ Follow `docs/PR_RULES.md`. CI fails a PR whose description doesn't follow the te
 
 **A red CI run:** run `gh run view <run id>` first. Its ANNOTATIONS name each failing check and its first error; the run's summary page in the browser adds a hint. Only then use `gh run view --log-failed`, which can be very long (#132).
 
+**Waiting for a PR's checks:** `tools/dev/wait-ci.sh <pr>` waits, prints `all checks green` on success, and otherwise prints only the checks that are not green (#377).
+
 ## Test and CI logs
 
 - **Local tests:** `dotnet test -c Release -v q -tl:off --logger "console;verbosity=minimal" 2>&1 | grep -E -A15 '^\s*Failed |error [A-Z]+[0-9]+:|^(Passed|Failed)!' | head -120`. It shows the failing tests, compiler errors and each project's summary. No `Passed!` or `Failed!` line means the run did not finish.

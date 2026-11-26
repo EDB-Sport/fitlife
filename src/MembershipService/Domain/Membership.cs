@@ -48,6 +48,22 @@ public sealed class Membership
         Status = MembershipStatus.Active;
     }
 
+    /// <summary>
+    /// The member paid the missing fee: Betaling mangler becomes Aktiv (TO-BE-kontekst §8, UC18). Any other status owes nothing,
+    /// and nothing changes.
+    /// </summary>
+    /// <returns><see cref="PaymentResult.Paid"/>, or <see cref="PaymentResult.NothingIsOwed"/>.</returns>
+    public PaymentResult RegisterPayment()
+    {
+        if (Status != MembershipStatus.PaymentMissing)
+        {
+            return PaymentResult.NothingIsOwed;
+        }
+
+        MarkPaid();
+        return PaymentResult.Paid;
+    }
+
     /// <summary>Rebuilds a stored membership.</summary>
     /// <param name="id">The membership id.</param>
     /// <param name="memberId">The member id.</param>

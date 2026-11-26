@@ -244,6 +244,12 @@ var containerDefinitions = [
           value: 'http://127.0.0.1:${servicePorts.identity}'
         }
         {
+          // The template's /api/notification/ route (#221). Notification isn't in the group yet,
+          // so nothing listens on this port and the route answers 502, like /grafana/.
+          name: 'NOTIFICATION_URL'
+          value: 'http://127.0.0.1:5004'
+        }
+        {
           name: 'MCP_SERVER_URL'
           value: 'http://127.0.0.1:${servicePorts.mcp}'
         }

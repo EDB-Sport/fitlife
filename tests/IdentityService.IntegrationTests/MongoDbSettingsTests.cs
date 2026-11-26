@@ -11,7 +11,7 @@ public sealed class MongoDbSettingsTests
     public void AppSettings_NameTheIdentityDatabaseAndTheIdentitySvcUser()
     {
         // Arrange
-        using var factory = new WebApplicationFactory<Program>();
+        using var factory = new TestKeyFactory();
 
         // Act
         IConfiguration configuration = factory.Services.GetRequiredService<IConfiguration>();

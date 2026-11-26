@@ -95,6 +95,7 @@ No PR merges without at least one signoff: a group member other than the author,
 An agent review starts from the shared prompt in `docs/REVIEW_PROMPT.md`, so every review checks the same things (#118).
 
 Rules for reviewers:
+- **Required checks first.** A PR is not ready for review while a required check (`gh pr checks <n> --required`) isn't green on its head, it conflicts with its base, its base branch has no open PR (a broken stack), or a workflow changed on `develop` since its merge base (stale CI). Run `tools/dev/review-ready.sh <n>`: if it says "not ready", that is the review. Give its lines as the reasons and don't read the diff. Making it ready is the author's job. "Behind the base" alone is not a reason, because the ruleset doesn't require an up-to-date branch. A draft PR can still be reviewed (#470).
 - **Changes to existing tests get extra scrutiny.** A weakened or deleted test is the usual way generated code fakes success. The PR has to explain the change.
 - **Don't re-run what CI already proved.** Read the diff and the CI result.
 - **A re-review reads only the commits since the last review.** When re-reviewing a PR after the author has pushed new commits, review `git diff <reviewed-sha>..<new-head>` plus the earlier review reasons, and say which reasons are resolved; do not re-read the entire PR from the beginning.

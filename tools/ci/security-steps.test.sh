@@ -3,6 +3,7 @@
 # Runs the step's own script, taken from the workflow, with the shell GitHub would use for it,
 # on a throwaway repo, and checks that a planted fake secret fails the step.
 # Needs yq (v4), docker and git, which ubuntu-latest has. Usage: tools/ci/security-steps.test.sh
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 root="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -118,5 +119,4 @@ expect "pull request with a clean commit passes" pass "$base" "$clean"
 expect "pull request with a planted fake token fails" fail "$clean" "$leak"
 expect "push whose history has a planted fake token fails" fail "" "$leak"
 
-[ "$failures" -eq 0 ] && echo "All cases pass." || echo "$failures case(s) failed."
 [ "$failures" -eq 0 ]

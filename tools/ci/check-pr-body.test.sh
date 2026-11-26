@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Tests for tools/ci/check-pr-body.sh (issue #34).
 # Usage: tools/ci/check-pr-body.test.sh   (exit code 0 = all cases pass)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 check="$(dirname "$0")/check-pr-body.sh"
@@ -143,10 +144,4 @@ dependabot_body=$'Bumps the github-actions group with 1 update.\n\nUpdates `acti
 PR_AUTHOR='dependabot[bot]' expect "Dependabot PR without the template passes" pass <<<"$dependabot_body"
 PR_AUTHOR='someone' expect "same body from a person still fails" fail "no linked issue" <<<"$dependabot_body"
 
-echo
-if [ "$failures" -eq 0 ]; then
-  echo "All PR description checks work."
-else
-  echo "$failures case(s) failed."
-fi
 exit "$failures"

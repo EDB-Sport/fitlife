@@ -18,7 +18,7 @@ fake() {
 
 # run [VAR=value...] <name>: runs a fake as the ci-scripts job does, outside any other test. Sets out and status.
 run() {
-  out=$(env -u TEST_REPORT_RAW "$@" 2>&1)
+  out=$(env -u TEST_REPORT_RAW -u VERBOSE "$@" 2>&1)
   status=$?
 }
 
@@ -35,7 +35,8 @@ check() { # check <description> <command...>
 has() { grep -qxF -- "$1" <<<"$out"; }
 lacks() { ! grep -qF -- "$1" <<<"$out"; }
 
-fake green.test.sh 'echo "PASS  one"; echo "PASS  two"; echo; echo "All cases pass."'
+fake green.test.sh 'echo "PASS  one"; echo; echo "PASS  two"'
+fake note.test.sh 'echo "PASS  one"; echo "needs yq"; exit 2'
 fake red.test.sh 'echo "PASS  one"; echo "FAIL  two: expected exit 0, got exit 1"; echo "  detail of two"; echo "PASS  three"; exit 1'
 fake code.test.sh 'echo "FAIL  one"; exit 3'
 fake crash.test.sh 'echo "PASS  one"; exit 2'
@@ -56,6 +57,9 @@ run VERBOSE=1 "$tmp/red.test.sh"
 check "VERBOSE=1 prints the PASS lines" has "PASS  one"
 check "VERBOSE=1 prints the FAIL lines" has "FAIL  two: expected exit 0, got exit 1"
 check "VERBOSE=1 ends with the same summary line" test "$(tail -1 <<<"$out")" = "3 cases, 1 failed"
+
+run "$tmp/note.test.sh"
+check "a line that is neither PASS nor FAIL is printed, so an error stays visible" has "needs yq"
 
 run "$tmp/code.test.sh"
 check "the script's own exit code is kept" test "$status" = 3

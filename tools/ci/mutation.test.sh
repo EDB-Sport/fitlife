@@ -2,6 +2,7 @@
 # Tests for tools/ci/mutation.sh (issue #53). Each case copies the repo into a throwaway git repo,
 # so the real Directory.Build.*, dotnet-tools.json and stryker-config.json (break threshold) apply.
 # Needs the .NET SDK. Usage: tools/ci/mutation.test.sh   (exit code 0 = every case passes)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -185,10 +186,4 @@ else
   echo "PASS  missing SINCE fails"
 fi
 
-echo
-if [ "$failures" -eq 0 ]; then
-  echo "All mutation.sh cases pass."
-else
-  echo "$failures case(s) failed."
-fi
 exit "$failures"

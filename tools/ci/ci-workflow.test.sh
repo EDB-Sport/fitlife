@@ -2,6 +2,7 @@
 # Checks that .github/workflows/ci.yml runs the CI scripts that aren't *.test.sh (issue #54),
 # and that it never cancels a push run on develop or main (issue #131).
 # Usage: tools/ci/ci-workflow.test.sh   (exit code 0 = every check passes)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 root=$(cd "$(dirname "$0")/../.." && pwd)

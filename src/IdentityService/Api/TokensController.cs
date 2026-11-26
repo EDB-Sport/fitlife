@@ -1,4 +1,5 @@
 using IdentityService.Application;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IdentityService.Api;
@@ -24,6 +25,7 @@ public sealed class TokensController : ControllerBase
     /// <response code="400">The e-mail address or the password is missing.</response>
     /// <response code="401">No account has the e-mail address, or the password is wrong. Both give the same answer.</response>
     [HttpPost]
+    [AllowAnonymous]
     [Consumes("application/json")]
     [ProducesResponseType<TokenResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]

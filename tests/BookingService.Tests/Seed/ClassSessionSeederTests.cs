@@ -18,6 +18,7 @@ public sealed class ClassSessionSeederTests
     private FakeTimeProvider _clock = new(Now);
     private StoredClassSessions _classSessions = new();
     private StoredReferenceData _referenceData = new();
+    private ClassSessionSeedStatus _status = new();
 
     [SetUp]
     public void StartWithAnEmptyDatabase()
@@ -25,6 +26,7 @@ public sealed class ClassSessionSeederTests
         _clock = new FakeTimeProvider(Now);
         _classSessions = new StoredClassSessions();
         _referenceData = new StoredReferenceData();
+        _status = new ClassSessionSeedStatus();
     }
 
     [Test]
@@ -110,27 +112,51 @@ public sealed class ClassSessionSeederTests
     }
 
     [Test]
-    public async Task StartAsync_WhenTheSeedFails_LogsOneErrorAndLetsTheServiceStart()
+    public async Task ExecuteAsync_AfterTheSeed_MarksItFinished()
+    {
+        // Arrange
+        ClassSessionSeeder seeder = Seeder();
+
+        // Act
+        await RunAsync(seeder).ConfigureAwait(false);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(_status.HasFinished, Is.True);
+            Assert.That(_classSessions.All, Is.Not.Empty);
+        });
+    }
+
+    [Test]
+    public async Task ExecuteAsync_WhenTheSeedFails_LogsAnErrorAndDoesNotStopTheHost()
     {
         // Arrange
         var logger = new ErrorCountingLogger();
         ClassSessionSeeder seeder = Seeder(new FailingReferenceData(), logger);
 
-        // Act
-        await seeder.StartAsync(CancellationToken.None).ConfigureAwait(false);
+        // Act: the background work ends without an exception, so the host keeps running
+        await RunAsync(seeder).ConfigureAwait(false);
 
-        // Assert: StartAsync returned, so the host goes on starting
-        Assert.That(logger.Errors, Is.EqualTo(1));
+        // Assert: one error, and /health stays unhealthy since the demo data isn't there
+        Assert.That((logger.Errors, _status.HasFinished), Is.EqualTo((1, false)));
     }
 
     [Test]
-    public void StartAsync_WhenCancelled_PassesTheCancellationOn()
+    public void ExecuteAsync_WhenCancelled_PassesTheCancellationOn()
     {
         // Arrange
         ClassSessionSeeder seeder = Seeder(new FailingReferenceData(new OperationCanceledException()), new ErrorCountingLogger());
 
         // Act & Assert
-        Assert.That(() => seeder.StartAsync(CancellationToken.None), Throws.InstanceOf<OperationCanceledException>());
+        Assert.That(() => RunAsync(seeder), Throws.InstanceOf<OperationCanceledException>());
+    }
+
+    /// <summary>Starts the seeder as the host does, and waits for its background work.</summary>
+    private static async Task RunAsync(ClassSessionSeeder seeder)
+    {
+        await seeder.StartAsync(CancellationToken.None).ConfigureAwait(false);
+        await (seeder.ExecuteTask ?? Task.CompletedTask).ConfigureAwait(false);
     }
 
     private ClassSessionSeeder Seeder()
@@ -144,7 +170,7 @@ public sealed class ClassSessionSeederTests
             .AddSingleton<IClassSessionRepository>(_classSessions)
             .AddSingleton(referenceData)
             .BuildServiceProvider();
-        return new ClassSessionSeeder(services.GetRequiredService<IServiceScopeFactory>(), _clock, logger);
+        return new ClassSessionSeeder(services.GetRequiredService<IServiceScopeFactory>(), _status, _clock, logger);
     }
 
     /// <summary>Reference data whose every write fails, as a MongoDB write or log-in error would.</summary>

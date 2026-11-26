@@ -15,6 +15,7 @@ public sealed class DemoDataApiTests
         // Arrange
         using var factory = new BookingApiFactory(MongoDbContainerSetUp.ConnectionString, $"booking-{Guid.NewGuid():N}", new FakeTimeProvider(Now), seed: true);
         using HttpClient client = factory.CreateClient();
+        await factory.SeedFinishedAsync().ConfigureAwait(false);
 
         // Act
         ClassSessionResponse[]? schedule = await client.GetFromJsonAsync<ClassSessionResponse[]>(new Uri("/class-sessions", UriKind.Relative)).ConfigureAwait(false);

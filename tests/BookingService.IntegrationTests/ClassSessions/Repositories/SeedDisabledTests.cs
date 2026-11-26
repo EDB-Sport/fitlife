@@ -9,7 +9,7 @@ public sealed class SeedDisabledTests
     private static readonly DateTimeOffset Now = new(2026, 11, 24, 12, 0, 0, TimeSpan.Zero);
 
     [Test]
-    public async Task Start_WithoutSeedEnabled_WritesNothing()
+    public async Task Start_WithoutSeedDemoData_WritesNothing()
     {
         // Arrange
         string database = $"booking-{Guid.NewGuid():N}";

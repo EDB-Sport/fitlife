@@ -2,6 +2,7 @@ using System.Globalization;
 using BookingService.Application;
 using BookingService.Domain;
 using BookingService.Repositories;
+using BookingService.Seed;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -39,6 +40,12 @@ internal sealed class BookingApiFactory : WebApplicationFactory<Program>
     }
 
     public FakeTimeProvider Clock { get; }
+
+    /// <summary>Waits until the demo data is loaded: the seed runs after start-up, in the background (#255).</summary>
+    public Task SeedFinishedAsync()
+    {
+        return Services.GetRequiredService<ClassSessionSeedStatus>().Finished;
+    }
 
     /// <summary>Stores a class session through the service's own repository.</summary>
     public async Task AddAsync(ClassSession classSession)

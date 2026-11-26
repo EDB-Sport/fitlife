@@ -21,7 +21,8 @@ if ! docker run --rm -v "$PWD:/repo:ro" -w /repo "$ACTIONLINT_IMAGE"; then
 fi
 echo "::endgroup::"
 
-mapfile -t scripts < <(find tools deploy -name '*.sh' -type f 2>/dev/null | sort)
+scripts=()
+while IFS= read -r script; do scripts+=("$script"); done < <(find tools deploy -name '*.sh' -type f 2>/dev/null | sort)
 echo "::group::shellcheck (${#scripts[@]} scripts)"
 shellcheck() { docker run --rm -v "$PWD:/repo:ro" -w /repo "$SHELLCHECK_IMAGE" "$@"; }
 shellcheck_status=0

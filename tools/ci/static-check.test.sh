@@ -44,7 +44,7 @@ fixture clean
 expect "a clean workflow and script pass" 0 "static-check: ok" clean
 
 fixture typo
-sed -i 's/github.sha/github.shaa/' "$work/typo/.github/workflows/ci.yml"
+sed 's/github.sha/github.shaa/' "$work/typo/.github/workflows/ci.yml" > "$work/typo/ci.tmp" && mv "$work/typo/ci.tmp" "$work/typo/.github/workflows/ci.yml"
 expect "an expression typo in a workflow fails" 1 "github.shaa|property" typo
 
 fixture scalar

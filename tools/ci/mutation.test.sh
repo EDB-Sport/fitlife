@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
 # Tests for tools/ci/mutation.sh (issue #53). Each case copies the repo into a throwaway git repo,
 # so the real Directory.Build.*, dotnet-tools.json and stryker-config.json (break threshold) apply.
-# Needs the .NET SDK. Usage: tools/ci/mutation.test.sh   (exit code 0 = every case passes)
+# Needs the .NET SDK. Usage: FITLIFE_MUTATION=1 tools/ci/mutation.test.sh   (exit code 0 = every case passes)
 set -uo pipefail
+
+# Mutation testing is disabled for now (#385): each case restores and mutates a project, 2-15 min (#353).
+# FITLIFE_MUTATION=1 is the one switch; ci.yml sets it on ci-scripts when the mutation job runs again (#461).
+if [ "${FITLIFE_MUTATION:-}" != 1 ]; then
+  echo "skipped: mutation testing is disabled. Set FITLIFE_MUTATION=1 to run these cases."
+  exit 0
+fi
 
 root=$(cd "$(dirname "$0")/../.." && pwd)
 script="$root/tools/ci/mutation.sh"
@@ -10,7 +17,7 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 failures=0
 
-# A copy of the tracked files as they are now, with a library and its test project added, committed as the base.
+# A copy of the tracked files as they are now, with FitLife.slnx replaced by a solution of a library and its test project, committed as the base.
 setup_repo() {
   repo="$work/repo"
   rm -rf "$repo"
@@ -37,7 +44,14 @@ EOF
 EOF
   write_calculator ""
   write_tests ""
-  dotnet sln FitLife.slnx add src/MutationCheck/MutationCheck.csproj tests/MutationCheck.Tests/MutationCheck.Tests.csproj >/dev/null
+  # A solution of only these two projects, so Stryker's analysis and build don't grow with the number of services (#353).
+  # stryker-config.json still names FitLife.slnx and still holds the break threshold.
+  cat > FitLife.slnx <<'EOF'
+<Solution>
+  <Project Path="src/MutationCheck/MutationCheck.csproj" />
+  <Project Path="tests/MutationCheck.Tests/MutationCheck.Tests.csproj" />
+</Solution>
+EOF
   # The lock files are committed, as in the repo. Otherwise Stryker sees changed files in a test project and tests every mutant.
   dotnet restore FitLife.slnx >/dev/null
   git init -q -b develop
@@ -119,6 +133,18 @@ expect() {
     failures=$((failures + 1))
   fi
 }
+
+# 0. The throwaway repo's solution lists only the two MutationCheck projects, so Stryker's build time doesn't
+#    grow with the number of services (#353). The real stryker-config.json (break threshold) is still the one used.
+setup_repo
+listed=$(dotnet sln FitLife.slnx list | tail -n +3 | tr -d '\r' | tr '\\' '/' | sort | tr '\n' ' ')
+want="src/MutationCheck/MutationCheck.csproj tests/MutationCheck.Tests/MutationCheck.Tests.csproj "
+if [ "$listed" = "$want" ] && cmp -s stryker-config.json "$root/stryker-config.json"; then
+  echo "PASS  the throwaway solution lists only the MutationCheck projects"
+else
+  echo "FAIL  the throwaway solution lists: $listed"
+  failures=$((failures + 1))
+fi
 
 # 1. An untested line in the change leaves mutants alive, so the score is below the break threshold
 setup_repo

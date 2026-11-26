@@ -317,6 +317,72 @@ repo=$(marked "$(refactor_pr)")
 label_event "the refactor label still runs in full" fail "$repo" labeled refactor "$(runs completed:success)" "no test under tests/ was added or changed"
 ran "the refactor label runs the suite" "$repo"
 
+# 4a. Comment-only changes under src/ (issue #361): checks 1 and 4 skip them, a code change still gets them.
+comment_pr() { # comment_pr <lines to add above the code line in src/Calculator.cs> [replacement for the code line]
+  local repo; repo=$(fixture)
+  { printf '%b\n' "$1"; echo "${2:-public static class Calculator { public static int Add(int a, int b) => a + b; }}"; } > "$repo/src/Calculator.cs"
+  commit "$repo" "comment"
+  echo "$repo"
+}
+removed_comment_pr() {
+  local repo; repo=$(fixture)
+  echo '// old note' > "$repo/src/Note.cs"; commit "$repo" "note"
+  echo '' > "$repo/src/Note.cs"; commit "$repo" "drop the note"
+  echo "$repo"
+}
+changed_code='public static class Calculator { public static int Add(int a, int b) => b + a; }'
+expect "a // comment added under src/ passes without a test" pass "$(comment_pr '// Stryker disable once Boolean')"
+expect "///, /* */ and blank lines added under src/ pass" pass "$(comment_pr '/// <summary>x</summary>\n\n/* note\n * more\n */')"
+expect "a removed comment line passes" pass "$(removed_comment_pr)"
+expect "a comment next to a code change still needs a test" fail "$(comment_pr '// Stryker disable once Boolean' "$changed_code")" "no test under tests/ was added or changed"
+repo=$(comment_pr '// Stryker disable once Boolean' "$changed_code")
+echo '// a note' >> "$repo/tests/CalculatorTests.cs"
+git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+expect "a comment next to a code change still needs red on base" fail "$repo" "also pass without the production change"
+expect "a #pragma line is not a comment" fail "$(comment_pr '#pragma warning disable CS1591')" "no test under tests/ was added or changed"
+expect "a trailing // comment after code is a code change" fail "$(comment_pr '' 'public static class Calculator { public static int Add(int a, int b) => a + b; } // x')" "no test under tests/ was added or changed"
+# A comment-looking diff line that is code (review of #401). Each is red against the line-by-line pattern.
+operand_pr() { # a base file with a wrapped operator line, and the PR changing only that line
+  local repo; repo=$(fixture)
+  printf 'public static class Calculator { public static int Add(int a, int b) =>\n    a\n    * rate; }\n' > "$repo/src/Calculator.cs"; commit "$repo" "wrapped"
+  sed 's/\* rate;/* discountRate;/' "$repo/src/Calculator.cs" > "$repo/src/Calculator.tmp" && mv "$repo/src/Calculator.tmp" "$repo/src/Calculator.cs"; commit "$repo" "change operand"
+  echo "$repo"
+}
+expect "a changed wrapped '* operand;' line is code" fail "$(operand_pr)" "no test under tests/ was added or changed"
+expect "code after a one-line block comment is code" fail "$(comment_pr '/* x */ return 1;')" "no test under tests/ was added or changed"
+expect "code after a closing */ is code" fail "$(comment_pr '/* x\n*/ return 1;')" "no test under tests/ was added or changed"
+expect "an unindented ++x; line is code" fail "$(comment_pr '++x;')" "no test under tests/ was added or changed"
+expect "a // inside a string is not a comment" fail "$(comment_pr 'var u = "http://x";')" "no test under tests/ was added or changed"
+# A multi-line string (#484): a line inside it that starts with // is string content, not a comment.
+string_pr() { # string_pr <opening of the string> <closing>: a base file with a multi-line string, the PR changing a //-line inside it
+  local repo; repo=$(fixture)
+  printf 'public static class Calculator { public static string Text() => %s\n// old\n%s; }\n' "$1" "$2" > "$repo/src/Calculator.cs"; commit "$repo" "string"
+  sed 's|^// old$|// new|' "$repo/src/Calculator.cs" > "$repo/src/Calculator.tmp" && mv "$repo/src/Calculator.tmp" "$repo/src/Calculator.cs"; commit "$repo" "change the string"
+  echo "$repo"
+}
+expect "a changed // line inside a raw string is a code change" fail "$(string_pr '"""' '"""')" "no test under tests/ was added or changed"
+expect "a changed // line inside a verbatim string is a code change" fail "$(string_pr '@"' '"')" "no test under tests/ was added or changed"
+expect "a changed // line inside an interpolated verbatim string is a code change" fail "$(string_pr '@$"' '"')" "no test under tests/ was added or changed"
+libs_comment_pr() { # a comment added to libs/Clock.cs, which is production code since #379
+  local repo; repo=$(fixture)
+  { echo '// Stryker disable once Boolean'; cat "$repo/libs/Clock.cs"; } > "$repo/libs/Clock.tmp" && mv "$repo/libs/Clock.tmp" "$repo/libs/Clock.cs"; commit "$repo" "comment"
+  echo "$repo"
+}
+expect "a // comment added under libs/ passes without a test" pass "$(libs_comment_pr)" "" "" "src/ libs/"
+
+# 4d. The red-on-base worktree is removed on exit and on interrupt (#479).
+# interrupted_pr <repo>: the runner stops the check itself (SIGTERM) once it runs in the base copy (no src/Subtractor.cs).
+worktrees_left() { git -C "$1" worktree list | wc -l; }
+repo=$(feature_pr)
+runner=$(cat "$repo/run-tests.sh")
+{ echo '#!/usr/bin/env bash'; echo '[ -f src/Subtractor.cs ] || kill -TERM "$(cat '$repo.pid')"'; tail -n +2 <<<"$runner"; } > "$repo/run-tests.sh"
+git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+(cd "$repo" && BASE_SHA=$(git rev-parse HEAD^) TEST_CMD="bash run-tests.sh" bash -c 'echo $$ > "$0"; exec "$1"' "$repo.pid" "$check" >/dev/null 2>&1)
+if [ "$(worktrees_left "$repo")" -eq 1 ]; then echo "PASS  an interrupted check leaves no worktree"; else echo "FAIL  an interrupted check leaves no worktree"; git -C "$repo" worktree list | sed 's/^/      /'; failures=$((failures + 1)); fi
+repo=$(feature_pr)
+expect "a finished check leaves no worktree" pass "$repo"
+if [ "$(worktrees_left "$repo")" -eq 1 ]; then echo "PASS  a finished check leaves no worktree (list)"; else echo "FAIL  a finished check leaves no worktree (list)"; failures=$((failures + 1)); fi
+
 # 5. The workflow (finding 1 and 3)
 wf() { grep -qE "$2" "$workflow" && echo "PASS  $1" || { echo "FAIL  $1: '$2' not in $workflow"; failures=$((failures + 1)); }; }
 wf "workflow re-runs on label changes" 'types: \[opened, synchronize, reopened, labeled, unlabeled\]'

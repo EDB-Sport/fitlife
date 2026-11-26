@@ -92,6 +92,8 @@ If a card lands somewhere else, the board's Workflows page has changed: correct 
 
 No PR merges without at least one signoff: a group member other than the author, or an agent controlled by one, approves the PR on GitHub.
 
+One reviewer per PR: the review is requested from `@EDB-Sport/edb-team`, any member takes it first come first served, and once one member has reviewed, nobody else does unless the author asks for a second review (#464). A re-review goes to the member who reviewed first.
+
 An agent review starts from the shared prompt in `docs/REVIEW_PROMPT.md`, so every review checks the same things (#118).
 
 Rules for reviewers:

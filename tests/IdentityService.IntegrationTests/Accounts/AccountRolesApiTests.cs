@@ -186,7 +186,7 @@ public sealed class AccountRolesApiTests
         // Assert
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
         var token = new JsonWebToken(body.RootElement.GetProperty("accessToken").GetString());
-        Assert.That(token.Claims.Where(claim => claim.Type == FitLifeJwt.RoleClaim).Select(claim => claim.Value), Is.EquivalentTo(new[] { FitLifeRoles.Medlem, FitLifeRoles.Traener }));
+        Assert.That(token.Claims.Where(claim => string.Equals(claim.Type, FitLifeJwt.RoleClaim, StringComparison.Ordinal)).Select(claim => claim.Value), Is.EquivalentTo(new[] { FitLifeRoles.Medlem, FitLifeRoles.Traener }));
     }
 
     [Test]

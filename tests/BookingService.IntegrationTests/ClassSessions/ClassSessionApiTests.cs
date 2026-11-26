@@ -167,14 +167,15 @@ public sealed class ClassSessionApiTests
         var waitingMemberId = Guid.NewGuid();
         classSession.Reserve(memberId, factory.Clock);
         classSession.JoinWaitlist(waitingMemberId, factory.Clock);
-        factory.Membership.Answer = MemberLookup.Found(waitingMemberId, isActive: true);
+        factory.Membership.Answer = MemberLookup.Found(memberId, isActive: true);
         await factory.AddAsync(classSession).ConfigureAwait(false);
         using HttpClient client = factory.CreateClient();
 
         // Act
-        using HttpResponseMessage response = await client.DeleteAsync(new Uri($"/class-sessions/{classSession.Id}/reservations/{memberId}", UriKind.Relative)).ConfigureAwait(false);
+        using HttpResponseMessage response = await client.DeleteAsync(MyReservationOn(classSession)).ConfigureAwait(false);
 
         // Assert
+        factory.Membership.Answer = MemberLookup.Found(waitingMemberId, isActive: true);
         using HttpResponseMessage again = await client.PostAsync(ReservationsOf(classSession), content: null).ConfigureAwait(false);
         Assert.Multiple(() =>
         {
@@ -193,7 +194,7 @@ public sealed class ClassSessionApiTests
         using HttpClient client = factory.CreateClient();
 
         // Act
-        using HttpResponseMessage response = await client.DeleteAsync(new Uri($"/class-sessions/{classSession.Id}/reservations/{Guid.NewGuid()}", UriKind.Relative)).ConfigureAwait(false);
+        using HttpResponseMessage response = await client.DeleteAsync(MyReservationOn(classSession)).ConfigureAwait(false);
 
         // Assert
         Assert.That(await ProblemOfAsync(response).ConfigureAwait(false), Is.EqualTo((HttpStatusCode.NotFound, "application/problem+json", (int?)404)));
@@ -351,11 +352,12 @@ public sealed class ClassSessionApiTests
         ClassSession classSession = ClassSessionAt(Guid.NewGuid(), capacity: 1, Now.AddDays(1));
         var memberId = Guid.NewGuid();
         classSession.Reserve(memberId, factory.Clock);
+        factory.Membership.Answer = MemberLookup.Found(memberId, isActive: true);
         await factory.AddAsync(classSession).ConfigureAwait(false);
         using HttpClient client = factory.CreateClient();
 
         // Act
-        using HttpResponseMessage response = await client.DeleteAsync(new Uri($"/class-sessions/{classSession.Id}/reservations/{memberId}", UriKind.Relative)).ConfigureAwait(false);
+        using HttpResponseMessage response = await client.DeleteAsync(MyReservationOn(classSession)).ConfigureAwait(false);
 
         // Assert
         Assert.That(await ProblemOfAsync(response).ConfigureAwait(false), Is.EqualTo((HttpStatusCode.Conflict, "application/problem+json", (int?)409)));
@@ -400,6 +402,11 @@ public sealed class ClassSessionApiTests
     private static Uri ReservationsOf(ClassSession classSession)
     {
         return new Uri($"/class-sessions/{classSession.Id}/reservations", UriKind.Relative);
+    }
+
+    private static Uri MyReservationOn(ClassSession classSession)
+    {
+        return new Uri($"/class-sessions/{classSession.Id}/reservations/mine", UriKind.Relative);
     }
 
     private static Uri WaitlistOf(ClassSession classSession)

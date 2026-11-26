@@ -101,6 +101,9 @@ expect "older failing run listed first, newer run green: ready" 0 "ready for rev
 new_case; edit pr.json '.statusCheckRollup |= map(if .name=="test" then .startedAt="2026-11-26T10:00:00Z" else . end) + [{"__typename":"CheckRun","name":"test","status":"COMPLETED","conclusion":"FAILURE","startedAt":"2026-11-26T09:55:00Z","detailsUrl":"https://run/test-old"}]'
 expect "older failing run listed last, newer run green: ready" 0 "ready for review"
 
+new_case; edit pr.json '.statusCheckRollup |= [{"__typename":"CheckRun","name":"test","status":"QUEUED","conclusion":null,"startedAt":"0001-01-01T00:00:00Z","detailsUrl":"https://run/test-rerun"}] + map(if .name=="test" then .startedAt="2026-11-26T10:00:00Z" | .conclusion="FAILURE" else . end)'
+expect "re-run queued after a failure (not started yet): the re-run decides" 1 "not ready: required check test is QUEUED on the head: https://run/test-rerun"
+
 new_case; edit pr.json '(.statusCheckRollup[] | select(.name=="test") | .conclusion) = "FAILURE"'
 expect "failing required check: named with its run link" 1 "not ready: required check test is FAILURE on the head: https://run/test"
 

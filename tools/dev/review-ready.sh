@@ -6,10 +6,11 @@
 #   exit 1  not ready: one "not ready: <reason>" line per reason
 #   exit 2  could not check (gh failed)
 # GH names the GitHub CLI (default gh; on WSL set GH=gh.exe).
-# Reasons: a draft PR; a required check (the base's ruleset: main, else develop) that isn't
-# SUCCESS or SKIPPED on the head; a conflict with the base; a base branch that is neither develop
+# Reasons: a required check (the base's ruleset: main, else develop) whose newest run on the head
+# isn't SUCCESS or SKIPPED; a conflict with the base; a base branch that is neither develop
 # nor main and has no open PR (a broken stack); a workflow under .github/workflows/ that changed on
-# develop after the merge base (CI on the head is stale).
+# develop after the merge base (CI on the head is stale). A draft PR is not a reason: a draft can
+# be reviewed (#470).
 set -uo pipefail
 
 repo=EDB-Sport/fitlife
@@ -17,7 +18,7 @@ gh_cmd=${GH:-gh}
 pr=${1:?usage: tools/dev/review-ready.sh <pr>}
 
 pr_json=$("$gh_cmd" pr view "$pr" -R "$repo" \
-  --json isDraft,mergeable,mergeStateStatus,baseRefName,headRefOid,statusCheckRollup,body) || {
+  --json mergeable,mergeStateStatus,baseRefName,headRefOid,statusCheckRollup,body) || {
   echo "error: could not read PR #$pr" >&2
   exit 2
 }
@@ -39,10 +40,9 @@ fi
 reasons=()
 info=()
 
-[ "$(jq -r .isDraft <<<"$pr_json")" = true ] && reasons+=("draft PR: mark it ready for review")
-
-# The last run of a check name wins (a re-run replaces the earlier run). A status context has
-# .context and .state; a check run has .name and .status/.conclusion.
+# The newest run of a check name wins (a re-run replaces the earlier run). The rollup isn't in time
+# order, so pick by startedAt; a run that hasn't started yet (no startedAt, or gh's 0001-01-01) is
+# the newest. A status context has .context and .state; a check run has .name and .status/.conclusion.
 while IFS= read -r check; do
   entry=$(jq -r --arg n "$check" '
     [(.statusCheckRollup // [])[]
@@ -50,8 +50,10 @@ while IFS= read -r check; do
          state: (if .__typename == "StatusContext" then .state
                  elif .status == "COMPLETED" then .conclusion
                  else .status end),
-         link: (.detailsUrl // .targetUrl // "")}]
-    | map(select(.name == $n)) | last // empty
+         link: (.detailsUrl // .targetUrl // ""),
+         started: (if (.startedAt // "") == "" or (.startedAt | startswith("0001-")) then "9999"
+                   else .startedAt end)}]
+    | map(select(.name == $n)) | sort_by(.started) | last // empty
     | "\(.state)\t\(.link)"' <<<"$pr_json")
   if [ -z "$entry" ]; then
     reasons+=("required check $check has no run on the head")

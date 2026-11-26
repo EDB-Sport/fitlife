@@ -116,6 +116,41 @@ public sealed class ReserveSeatApiTests
         Assert.That(await StatusAndCodeAsync(response).ConfigureAwait(false), Is.EqualTo((HttpStatusCode.ServiceUnavailable, "MembershipUnavailable")));
     }
 
+    [Test]
+    public async Task PostReservation_AsksMembershipWithTheTokensAccountIdAndTheTokenUnchanged()
+    {
+        // Arrange
+        using BookingApiFactory factory = Factory();
+        ClassSession classSession = await StoredAsync(factory, capacity: 1).ConfigureAwait(false);
+        var accountId = Guid.NewGuid();
+        string token = TestTokens.For(accountId);
+        using HttpClient client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Act
+        using HttpResponseMessage response = await client.PostAsync(ReservationsOf(classSession), content: null).ConfigureAwait(false);
+
+        // Assert: the account id is the token's sub claim, and the token goes on without its "Bearer " prefix
+        Assert.That((factory.Membership.AskedAccountId, factory.Membership.AskedBearerToken), Is.EqualTo(((Guid?)accountId, token)));
+    }
+
+    [Test]
+    public async Task PostReservation_WhenTheTokensAccountIdIsNotAGuid_Returns403WithCodeAndNeverAsksMembership()
+    {
+        // Arrange
+        using BookingApiFactory factory = Factory();
+        ClassSession classSession = await StoredAsync(factory, capacity: 1).ConfigureAwait(false);
+        using HttpClient client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", TestTokens.For("not-an-account-id"));
+
+        // Act
+        using HttpResponseMessage response = await client.PostAsync(ReservationsOf(classSession), content: null).ConfigureAwait(false);
+
+        // Assert
+        (HttpStatusCode Status, string? Code) answer = await StatusAndCodeAsync(response).ConfigureAwait(false);
+        Assert.That((answer, factory.Membership.AskedAccountId), Is.EqualTo(((HttpStatusCode.Forbidden, "MembershipNotActive"), (Guid?)null)));
+    }
+
     private static async Task<ClassSession> StoredAsync(BookingApiFactory factory, int capacity, Guid? reservedBy = null)
     {
         var classSession = new ClassSession(Guid.NewGuid(), new Capacity(capacity), Now.AddDays(1), new ClassSessionDetails(Guid.NewGuid(), Guid.NewGuid(), new Instructor("Mette"), TimeSpan.FromMinutes(60)));

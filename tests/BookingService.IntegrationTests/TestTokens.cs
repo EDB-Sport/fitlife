@@ -18,12 +18,21 @@ internal static class TestTokens
     /// <returns>The signed token.</returns>
     public static string For(Guid accountId, string role = FitLifeRoles.Medlem)
     {
+        return For(accountId.ToString(), role);
+    }
+
+    /// <summary>A token whose <c>sub</c> is any text, e.g. one that is not an account id.</summary>
+    /// <param name="accountId">The <c>sub</c> claim.</param>
+    /// <param name="role">The role claim.</param>
+    /// <returns>The signed token.</returns>
+    public static string For(string accountId, string role = FitLifeRoles.Medlem)
+    {
         DateTime now = TimeProvider.System.GetUtcNow().UtcDateTime;
         var descriptor = new SecurityTokenDescriptor
         {
             Issuer = FitLifeJwt.Issuer,
             Audience = FitLifeJwt.Audience,
-            Subject = new ClaimsIdentity([new Claim(FitLifeJwt.AccountIdClaim, accountId.ToString()), new Claim(FitLifeJwt.RoleClaim, role)]),
+            Subject = new ClaimsIdentity([new Claim(FitLifeJwt.AccountIdClaim, accountId), new Claim(FitLifeJwt.RoleClaim, role)]),
             NotBefore = now.AddMinutes(-1),
             IssuedAt = now.AddMinutes(-1),
             Expires = now.AddMinutes(30),

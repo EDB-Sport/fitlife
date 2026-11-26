@@ -37,6 +37,25 @@ public sealed class JustifiedSuppressionRazorTests
         return VerifyAtPathAsync("/0/Components/Pages/Home.cs", source);
     }
 
+    [Test]
+    public Task RazorOutput_DirectiveMappedToARazorFile_ReportsOnlyThatOne()
+    {
+        const string source = """
+            #pragma warning disable 1591
+            #nullable disable
+            namespace Portal.Components.Pages
+            {
+                public partial class Home
+                {
+            #line 5 "/0/Components/Pages/Home.razor"
+            {|TEAM004:#pragma warning disable CS0168|}
+            #line default
+                }
+            }
+            """;
+        return VerifyAtPathAsync("/0/Components/Pages/Home_razor.g.cs", source);
+    }
+
     // A snippet at its own path, because the rule depends on the file name
     private static Task VerifyAtPathAsync(string path, string source)
     {

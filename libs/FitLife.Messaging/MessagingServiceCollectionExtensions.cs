@@ -28,7 +28,8 @@ public static class MessagingServiceCollectionExtensions
     }
 
     /// <summary>
-    /// A consumer for one event type. Register the <see cref="IEventSubscriber{TEvent}"/> for it as well.
+    /// A consumer for one event type, and a health check that is unhealthy until it consumes.
+    /// Register the <see cref="IEventSubscriber{TEvent}"/> for it as well.
     /// </summary>
     /// <typeparam name="TEvent">The event type.</typeparam>
     /// <param name="services">The service collection.</param>
@@ -37,12 +38,16 @@ public static class MessagingServiceCollectionExtensions
     public static IServiceCollection AddEventConsumer<TEvent>(this IServiceCollection services, string queuePrefix)
         where TEvent : IIntegrationEvent
     {
-        services.AddHostedService(provider => new RabbitMqEventConsumer<TEvent>(
+        services.AddSingleton(provider => new RabbitMqEventConsumer<TEvent>(
             provider.GetRequiredService<RabbitMqConnection>(),
             provider.GetRequiredService<IServiceScopeFactory>(),
             provider.GetRequiredService<ILogger<RabbitMqEventConsumer<TEvent>>>(),
             provider.GetService<TimeProvider>() ?? TimeProvider.System,
             queuePrefix));
+        services.AddHostedService(provider => provider.GetRequiredService<RabbitMqEventConsumer<TEvent>>());
+
+        // Part of the service's /health: unhealthy until the queue is bound (#258)
+        services.AddHealthChecks().AddCheck<RabbitMqConsumerHealthCheck<TEvent>>("rabbitmq-" + TEvent.RoutingKey);
         return services;
     }
 }

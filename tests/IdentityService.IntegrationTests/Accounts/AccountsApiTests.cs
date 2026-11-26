@@ -172,5 +172,10 @@ public sealed class AccountsApiTests
         {
             throw new InvalidOperationException(Message);
         }
+
+        public Task<IReadOnlyList<Account>> ListAsync(CancellationToken cancellationToken)
+        {
+            throw new InvalidOperationException(Message);
+        }
     }
 }

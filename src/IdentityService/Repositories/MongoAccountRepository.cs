@@ -62,13 +62,28 @@ public sealed class MongoAccountRepository : IAccountRepository, IDisposable
             return null;
         }
 
-        return new Account(document.Id, document.Email, document.PasswordHash, document.Roles.Select(Role.FromName));
+        return ToAccount(document);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Account>> ListAsync(CancellationToken cancellationToken)
+    {
+        List<AccountDocument> documents = await _accounts
+            .Find(FilterDefinition<AccountDocument>.Empty)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return [.. documents.Select(ToAccount)];
     }
 
     /// <inheritdoc />
     public void Dispose()
     {
         _indexLock.Dispose();
+    }
+
+    private static Account ToAccount(AccountDocument document)
+    {
+        return new Account(document.Id, document.Email, document.PasswordHash, document.Roles.Select(Role.FromName));
     }
 
     private async Task EnsureIndexAsync(CancellationToken cancellationToken)

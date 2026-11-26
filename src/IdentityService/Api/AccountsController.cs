@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using IdentityService.Application;
 using IdentityService.Domain;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IdentityService.Api;
@@ -26,6 +27,7 @@ public sealed class AccountsController : ControllerBase
     /// <response code="400">The e-mail address isn't an address, or the password is shorter than 8 characters.</response>
     /// <response code="409">Another account has the e-mail address, in some letter case. The problem's <c>code</c> is <c>EmailAlreadyTaken</c>.</response>
     [HttpPost]
+    [AllowAnonymous]
     [Consumes("application/json")]
     [ProducesResponseType<AccountResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -37,7 +39,7 @@ public sealed class AccountsController : ControllerBase
         switch (outcome.Result)
         {
             case CreateAccountResult.Created when outcome.Account is Account account:
-                return StatusCode(StatusCodes.Status201Created, new AccountResponse(account.Id, account.Email, [.. account.Roles.Select(role => role.Name)]));
+                return StatusCode(StatusCodes.Status201Created, AccountResponse.From(account));
             case CreateAccountResult.EmailAlreadyTaken:
                 ProblemDetails problem = ProblemDetailsFactory.CreateProblemDetails(HttpContext, StatusCodes.Status409Conflict, "The e-mail address is taken.");
                 problem.Extensions["code"] = nameof(CreateAccountResult.EmailAlreadyTaken);

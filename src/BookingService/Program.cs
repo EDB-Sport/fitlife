@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using BookingService.Application;
 using BookingService.Clients;
 using BookingService.Repositories;
 using BookingService.Seed;
@@ -26,6 +27,7 @@ try
     builder.Services.AddProblemDetails();
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddRepositories();
+    builder.Services.AddScoped<GetClassSessionsQueryHandler>(); // the class schedule (#254)
     if (builder.Configuration.GetValue<bool>("Seed:Enabled"))
     {
         builder.Services.AddHostedService<ClassSessionSeeder>();

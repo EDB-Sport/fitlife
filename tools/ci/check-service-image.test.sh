@@ -15,6 +15,22 @@ mkdir -p "$work/bin"
 cat > "$work/bin/docker" <<'EOF'
 #!/usr/bin/env bash
 echo "docker $*" >> "$CALLS"
+# A build behaves like BuildKit (#423): the steps' output goes to stderr, and -q hides it, so only the last
+# "ERROR: failed to solve" line is left. STUB_BUILD_FAILS=1 ends the steps with a compiler error.
+if [ "$1" = build ]; then
+  quiet=0
+  [[ " $* " == *" -q "* ]] && quiet=1
+  steps() {
+    for i in $(seq 1 60); do echo "#12 $i.0 build step output line $i"; done
+    [ "${STUB_BUILD_FAILS:-0}" = 1 ] && echo "#12 61.0 /app/src/IdentityService/Program.cs(12,5): error CS1002: ; expected"
+  }
+  [ "$quiet" = 1 ] || steps >&2
+  if [ "${STUB_BUILD_FAILS:-0}" = 1 ]; then
+    echo "ERROR: failed to solve: process \"/bin/sh -c dotnet publish\" did not complete successfully: exit code: 1" >&2
+    exit 1
+  fi
+  echo "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+fi
 case "$1" in
   run) echo "stub-container" ;;
   port) echo "127.0.0.1:49999" ;;
@@ -72,7 +88,17 @@ check "every setting is passed" has_call '^docker run .*-e First__Key=a -e Secon
 run Jwt__SigningKey MembershipService
 check "a service that needs a key fails without it" test "$status" -ne 0
 
-# 5. An argument that isn't KEY=VALUE
+# 5. A failed build shows its cause, and a good one stays quiet (#423)
+STUB_BUILD_FAILS=1 run "" IdentityService
+check "a failed build fails the check" test "$status" -eq 1
+check "a failed build says so" grep -q 'FAIL  docker build -f src/IdentityService/Dockerfile . failed' <<<"$out"
+check "a failed build shows the compiler error" grep -q 'error CS1002: ; expected' <<<"$out"
+check "a failed build shows only the end of the build output" bash -c '! grep -q "output line 20$" <<<"$1"' _ "$out"
+check "nothing runs after a failed build" no_call '^docker run'
+run "" BookingService
+check "a good build prints none of its output" bash -c '! grep -q "build step output" <<<"$1"' _ "$out"
+
+# 6. An argument that isn't KEY=VALUE
 run "" MembershipService not-a-setting
 check "an argument without = fails" test "$status" -ne 0
 check "it says how to call the script" grep -q 'Usage' <<<"$out"

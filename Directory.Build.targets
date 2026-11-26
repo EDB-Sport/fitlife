@@ -53,4 +53,49 @@
            Code="FITLIFE001"
            Text="Found a ProjectReference from src/$(_FitLifeService) to src/%(_FitLifeCrossServiceReference.Service). Remove it: services and UIs talk to each other over HTTP or RabbitMQ events only (docs/CSHARP_SETUP_TODO.md section 1)." />
   </Target>
+
+  <!--
+    contracts/openapi/<service>.json keeps \n line breaks on every platform (issue #395).
+    On Windows the OpenAPI generator turns a line break in an XML comment into "\r\n" in a description,
+    so a local build left a tracked contract changed. This rewrites the documents the build just wrote with \n only.
+  -->
+  <UsingTask TaskName="FitLifeUseLineFeeds" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        foreach (var file in Files)
+        {
+            string text = System.IO.File.ReadAllText(file.ItemSpec);
+            string lineFeeds = text.Replace("\\r\\n", "\\n").Replace("\r\n", "\n");
+            if (lineFeeds != text)
+            {
+                System.IO.File.WriteAllText(file.ItemSpec, lineFeeds, new System.Text.UTF8Encoding(false));
+            }
+        }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="FitLifeOpenApiLineFeeds" AfterTargets="GenerateOpenApiDocuments" Condition="'$(_OpenApiDocumentsCache)' != '' And Exists('$(_OpenApiDocumentsCache)')">
+    <ReadLinesFromFile File="$(_OpenApiDocumentsCache)">
+      <Output TaskParameter="Lines" ItemName="_FitLifeOpenApiDocument" />
+    </ReadLinesFromFile>
+    <FitLifeUseLineFeeds Files="@(_FitLifeOpenApiDocument)" Condition="'@(_FitLifeOpenApiDocument)' != ''" />
+  </Target>
+
+  <!--
+    Only this repo's .globalconfig counts (issue #434). The SDK adds every .globalconfig above a project, so a worktree
+    inside another checkout (e.g. .claude/worktrees/<name>/) loads two. Roslyn then unsets every key they share,
+    and the style rules, CA/S severities and naming rules are all off. The SDK's own analysis-level configs have
+    other file names and stay.
+  -->
+  <Target Name="FitLifeOnlyRepoGlobalConfig" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <_FitLifeOuterGlobalConfig Include="@(EditorConfigFiles)"
+                                 Condition="'%(Filename)%(Extension)' == '.globalconfig' And !$([System.String]::Copy('%(FullPath)').Replace('\', '/').StartsWith($([System.String]::Copy('$(RepoRoot)').Replace('\', '/')), System.StringComparison.OrdinalIgnoreCase))" />
+      <EditorConfigFiles Remove="@(_FitLifeOuterGlobalConfig)" />
+    </ItemGroup>
+  </Target>
 </Project>

@@ -5,6 +5,7 @@ using BookingService.Clients;
 using BookingService.Jobs;
 using BookingService.Repositories;
 using BookingService.Seed;
+using FitLife.Authentication;
 using FitLife.Configuration;
 using FitLife.Correlation;
 using NLog;
@@ -38,6 +39,11 @@ try
 
     // Who the member behind an account is, from Membership (#256). The reservation endpoints use it (#260)
     builder.Services.AddMembershipClient();
+    builder.Services.AddScoped<ReserveSeatCommandHandler>();
+
+    // The member's token (#183, #260): POST reservations needs the role Medlem; the class schedule and /health stay open
+    builder.Services.AddFitLifeJwtAuthentication();
+    builder.Services.AddAuthorization();
 
     WebApplication app = builder.Build();
 
@@ -52,6 +58,8 @@ try
     }
 
     app.UseExceptionHandler(); // an unexpected error is a problem-details 500, without the exception's text
+    app.UseAuthentication();
+    app.UseAuthorization();
     app.MapHealthChecks("/health");
     app.MapControllers();
 

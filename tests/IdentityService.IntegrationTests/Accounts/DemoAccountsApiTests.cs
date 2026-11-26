@@ -89,5 +89,21 @@ public sealed class DemoAccountsApiTests
             await _gate.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
             return await _accounts.FindByEmailAsync(email, cancellationToken).ConfigureAwait(false);
         }
+
+        public async Task<IReadOnlyList<Account>> ListAsync(CancellationToken cancellationToken)
+        {
+            await _gate.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+            return await _accounts.ListAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        public Task<Account?> FindByIdAsync(Guid id, CancellationToken cancellationToken)
+        {
+            return _accounts.FindByIdAsync(id, cancellationToken);
+        }
+
+        public Task<bool> SaveRolesAsync(Account account, CancellationToken cancellationToken)
+        {
+            return _accounts.SaveRolesAsync(account, cancellationToken);
+        }
     }
 }

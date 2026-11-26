@@ -23,7 +23,7 @@ public sealed class StartedClassSessionApiTests
         using HttpClient client = factory.CreateClient();
 
         // Act
-        using HttpResponseMessage response = await client.PostAsJsonAsync(new Uri($"/class-sessions/{classSession.Id}/reservations", UriKind.Relative), new ReservationRequest(Guid.NewGuid())).ConfigureAwait(false);
+        using HttpResponseMessage response = await client.PostAsync(new Uri($"/class-sessions/{classSession.Id}/reservations", UriKind.Relative), content: null).ConfigureAwait(false);
 
         // Assert
         ProblemDetails? problem = await response.Content.ReadFromJsonAsync<ProblemDetails>().ConfigureAwait(false);

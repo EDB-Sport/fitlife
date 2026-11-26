@@ -310,7 +310,7 @@ The project description's test terms map onto this as: *unit tests* = Unit, *int
   *Why:* proves the tests catch changes to the code, which a coverage number alone doesn't. The project description still asks for coverage reports, so CI produces both (section 10, job 4). It also answers the course question "if you remove the rule from the model, does the test fail?" (M4.02) for every rule at once.
 - [ ] **Adopt the tdd-check workflow** (`.github/workflows/tdd-check.yml`):
   - `TEST_CMD="dotnet test -c Release"`
-  - `SRC_DIR=src/`, `TEST_DIR=tests/`, and a second step with `SRC_DIR=tools/Analyzers/Team.Analyzers/`, `TEST_DIR=tools/Analyzers/Team.Analyzers.Tests/`, so a new TEAM rule is checked the same way (#49)
+  - `SRC_DIR='src/ libs/'`, `TEST_DIR=tests/`: **production code is `src/` and `libs/`** (the shared libraries FitLife.Configuration, FitLife.Correlation, FitLife.Messaging are production code too). The red-on-base run resets both together, so a test that depends on a `libs/` change is red even when `src/` only has the wiring (#379, #98). And a second step with `SRC_DIR=tools/Analyzers/Team.Analyzers/`, `TEST_DIR=tools/Analyzers/Team.Analyzers.Tests/`, so a new TEAM rule is checked the same way (#49)
   - `SRC_FILE_REGEX='\.cs$'` and `TEST_FILE_REGEX='\.cs$'`, so a `CONTEXT.md`, Dockerfile or `.razor` change under `src/` needs no new test, and a PR that only adds Postman collections isn't judged by `dotnet test`
   - add the NUnit markers `[[,][[:space:]]*(Ignore|Explicit)\b|\bIgnoreReason\b|Assert\.(Ignore|Inconclusive)|\bAssume\.` to `SKIP_MARKERS`
   - take `BASE_SHA` from `git rev-parse HEAD^1` (the checked-out merge commit's first parent), not from the event's base sha, which can lag behind
@@ -391,6 +391,12 @@ The project description asks for a user interface that demonstrates the implemen
   *Why:* with only the service folder as context, restore fails: central package versions and the lock-file settings would be missing, and the image would be built without the reviewed rules.
 - [ ] **hadolint** on every Dockerfile and **Trivy** on release images.
   *Why:* consistent, linted images, and known vulnerabilities in base images, which NuGet audit doesn't see. This covers **patching** in the course's security methods (M10).
+- [x] **Trivy on the images a PR changes** (`.github/workflows/image-scan.yml`, #280), with release.yml's settings, so a vulnerable base image fails the PR and not the release. `tools/ci/image-scan-plan.sh` picks each service whose Dockerfile copies a changed path. The image is built once, by `tools/ci/check-service-image.sh --build-only <Service>`, and Trivy scans that tag. A PR that changes no image skips the scan. To run it locally, with Docker and the [Trivy CLI](https://trivy.dev/latest/getting-started/installation/):
+  ```sh
+  git diff --name-only origin/develop... | tools/ci/image-scan-plan.sh   # e.g. ["BookingService"]
+  tools/ci/check-service-image.sh --build-only BookingService             # image=fitlife-check/bookingservice:local
+  trivy image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 fitlife-check/bookingservice:local
+  ```
 - [ ] **gitleaks** secret scan on every PR.
   *Why:* course rule #9, "secrets in Vault, never in code or committed files", checked by a tool instead of by hope.
 

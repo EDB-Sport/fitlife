@@ -43,7 +43,7 @@ jobs:
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GH_TOKEN: ${{ github.token }}
           TEST_CMD: dotnet test -c Release --blame-hang-timeout 5m --blame-hang-dump-type none
-          SRC_DIR: src/
+          SRC_DIR: 'src/ libs/' # libs/ is production code too (issue #379)
           TEST_DIR: tests/
           SRC_FILE_REGEX: '\.cs$'
           TEST_FILE_REGEX: '\.cs$'

@@ -14,7 +14,7 @@ public sealed class StartupLogTests
     {
         // Arrange
         using var logs = new CapturingLoggerProvider();
-        using var app = new WebApplicationFactory<Program>();
+        using var app = new TestKeyFactory();
         using WebApplicationFactory<Program> factory = app.WithWebHostBuilder(host => host.ConfigureServices(services => services.AddSingleton<ILoggerProvider>(logs)));
 
         // Act

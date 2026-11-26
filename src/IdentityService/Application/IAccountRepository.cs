@@ -16,4 +16,21 @@ public interface IAccountRepository
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The account, or <see langword="null"/> when no account has that e-mail address.</returns>
     Task<Account?> FindByEmailAsync(string email, CancellationToken cancellationToken);
+
+    /// <summary>Reads every account, in no particular order.</summary>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>All the accounts; an empty list when there are none.</returns>
+    Task<IReadOnlyList<Account>> ListAsync(CancellationToken cancellationToken);
+
+    /// <summary>Finds the account with the id (#365).</summary>
+    /// <param name="id">The account id.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns>The account, or <see langword="null"/> when no account has that id.</returns>
+    Task<Account?> FindByIdAsync(Guid id, CancellationToken cancellationToken);
+
+    /// <summary>Stores the account's roles, and nothing else about it (#365).</summary>
+    /// <param name="account">The account with its new roles.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    /// <returns><see langword="true"/> when the account is stored; <see langword="false"/> when no account has its id.</returns>
+    Task<bool> SaveRolesAsync(Account account, CancellationToken cancellationToken);
 }

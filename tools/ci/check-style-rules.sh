@@ -322,6 +322,47 @@ expect_razor IDE0022 "an expression-bodied method in a .razor @code block fails 
 }
 EOF
 
+# 6c. A .globalconfig above the checkout doesn't switch the rules off (#434). In a worktree inside the main checkout,
+# the SDK finds both .globalconfig files; every key they share is then unset, IDE0022 included. The project below
+# adds such a file by hand, so the case works wherever this checkout sits.
+outer=$(mktemp -d)
+cp "$root/.globalconfig" "$outer/.globalconfig"
+# Git Bash on Windows: MSBuild needs the Windows form of the temp path
+outer_for_msbuild=$(cygpath -m "$outer" 2>/dev/null || echo "$outer")
+rm -rf "$a"
+mkdir -p "$a"
+cat > "$a/StyleCheck.csproj" <<EOF
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <EditorConfigFiles Include="$outer_for_msbuild/.globalconfig" />
+  </ItemGroup>
+</Project>
+EOF
+cat > "$a/Sample.cs" <<'EOF'
+namespace StyleCheck;
+
+/// <summary>Sample.</summary>
+public static class Sample
+{
+    /// <summary>Doubles a number.</summary>
+    /// <param name="number">The number.</param>
+    /// <returns>Twice the number.</returns>
+    public static int Twice(int number) => number * 2;
+}
+EOF
+out=$(dotnet build "$a" -v q -clp:NoSummary -tl:off 2>&1)
+if grep -q "error IDE0022" <<<"$out" && ! grep -q "MultipleGlobalAnalyzerKeys" <<<"$out"; then
+  echo "PASS  a .globalconfig outside the repo is ignored, so IDE0022 still fails the build (#434)"
+else
+  echo "FAIL  a .globalconfig outside the repo is ignored, so IDE0022 still fails the build (#434)"
+  grep -E 'error|MultipleGlobalAnalyzerKeys' <<<"$out" | head -3
+  failures=$((failures + 1))
+fi
+rm -rf "$outer"
+
 # 7. Repo-level criteria
 expect_text ".editorconfig has an empty Blazor section" .editorconfig '^\[src/\*\.Web/\*\*\.cs\]'
 expect_text ".editorconfig is code-owned" .github/CODEOWNERS '^/\.editorconfig[[:space:]]+@EDB-Sport/edb-team'

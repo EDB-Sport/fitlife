@@ -27,8 +27,8 @@ services:
       retries: 10
 
   identity-svc:
-    # IdentityService, built from the repo root (src/IdentityService/Dockerfile, #232). POST /accounts (#234);
-    # tokens come in #235. The gateway routes /api/identity/ here (IDENTITY_URL).
+    # IdentityService, built from the repo root (src/IdentityService/Dockerfile, #232). POST /accounts (#234),
+    # POST /tokens (#235) and GET /accounts (#364). The gateway routes /api/identity/ here (IDENTITY_URL).
     build:
       context: ../..
       dockerfile: src/IdentityService/Dockerfile

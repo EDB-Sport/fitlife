@@ -11,13 +11,7 @@ namespace NotificationService.IntegrationTests;
 /// <summary>The delivery log for staff: <c>GET /notifications?memberId={id}</c>, for Træner and Admin only (#221).</summary>
 public sealed class NotificationsEndpointTests
 {
-    private NotificationServiceFactory _factory = null!;
-
-    [OneTimeSetUp]
-    public void Start()
-    {
-        _factory = new NotificationServiceFactory();
-    }
+    private readonly NotificationServiceFactory _factory = new();
 
     [OneTimeTearDown]
     public async Task Stop()
@@ -72,7 +66,7 @@ public sealed class NotificationsEndpointTests
 
         // Assert
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
         JsonElement[] items = [.. body.RootElement.EnumerateArray()];
         Assert.That(items.Select(item => item.GetProperty("id").GetString()), Is.EqualTo(new[] { newer.Id, older.Id }));
         JsonElement first = items[0];

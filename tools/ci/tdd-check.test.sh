@@ -370,6 +370,19 @@ libs_comment_pr() { # a comment added to libs/Clock.cs, which is production code
 }
 expect "a // comment added under libs/ passes without a test" pass "$(libs_comment_pr)" "" "" "src/ libs/"
 
+# 4d. The red-on-base worktree is removed on exit and on interrupt (#479).
+# interrupted_pr <repo>: the runner stops the check itself (SIGTERM) once it runs in the base copy (no src/Subtractor.cs).
+worktrees_left() { git -C "$1" worktree list | wc -l; }
+repo=$(feature_pr)
+runner=$(cat "$repo/run-tests.sh")
+{ echo '#!/usr/bin/env bash'; echo '[ -f src/Subtractor.cs ] || kill -TERM "$(cat '$repo.pid')"'; tail -n +2 <<<"$runner"; } > "$repo/run-tests.sh"
+git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+(cd "$repo" && BASE_SHA=$(git rev-parse HEAD^) TEST_CMD="bash run-tests.sh" bash -c 'echo $$ > "$0"; exec "$1"' "$repo.pid" "$check" >/dev/null 2>&1)
+if [ "$(worktrees_left "$repo")" -eq 1 ]; then echo "PASS  an interrupted check leaves no worktree"; else echo "FAIL  an interrupted check leaves no worktree"; git -C "$repo" worktree list | sed 's/^/      /'; failures=$((failures + 1)); fi
+repo=$(feature_pr)
+expect "a finished check leaves no worktree" pass "$repo"
+if [ "$(worktrees_left "$repo")" -eq 1 ]; then echo "PASS  a finished check leaves no worktree (list)"; else echo "FAIL  a finished check leaves no worktree (list)"; failures=$((failures + 1)); fi
+
 # 5. The workflow (finding 1 and 3)
 wf() { grep -qE "$2" "$workflow" && echo "PASS  $1" || { echo "FAIL  $1: '$2' not in $workflow"; failures=$((failures + 1)); }; }
 wf "workflow re-runs on label changes" 'types: \[opened, synchronize, reopened, labeled, unlabeled\]'

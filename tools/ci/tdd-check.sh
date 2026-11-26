@@ -192,7 +192,11 @@ if [[ -n "$src_changes" ]]; then
 
   # Fail closed: if the base copy can't be set up, red on base is not proven, so the check fails.
   # Only the test run itself may fail (including a compile error on base), and that counts as red.
+  # The worktree is removed on every way out: the normal path, a failure, and an interrupt (#479).
   worktree=$(mktemp -d)
+  remove_worktree() { [[ -n "${worktree:-}" ]] && { git worktree remove --force "$worktree" 2>/dev/null; rm -rf "$worktree"; worktree=""; }; }
+  trap remove_worktree EXIT
+  trap 'remove_worktree; exit 130' INT TERM
   if git worktree add --quiet --detach "$worktree" "$HEAD_SHA"; then
     (
       cd "$worktree" || exit 1
@@ -211,7 +215,7 @@ if [[ -n "$src_changes" ]]; then
     )
     red=$(cat "$worktree/.tdd-check-exit" 2>/dev/null || echo missing)
     setup_error=$(grep -Eo "$SETUP_ERRORS" "$worktree/.tdd-check-output" 2>/dev/null | head -1 || true)
-    git worktree remove --force "$worktree"
+    remove_worktree
     if [[ "$red" == missing ]]; then
       fail "could not prepare the base copy of the code, so red on base is not proven."
     elif [[ -n "$setup_error" ]]; then

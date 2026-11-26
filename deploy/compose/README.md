@@ -58,11 +58,11 @@ docker compose up -d --wait --build
 
 A local build uses the base images already on your machine. The cheapest source comes first:
 
-- **(a)** pull the published `:develop` images from Docker Hub instead of building (#340);
+- **(a)** pull the published `:develop` images from Docker Hub instead of building (#340, not usable on `develop` until it lands);
 - **(b)** build with the base images in your local cache. This is what `docker compose up --build` does, and the compose files never force a pull (no `--pull`, no `pull: true`);
 - **(c)** download the base images from MCR (`mcr.microsoft.com`) only as a last resort.
 
-A first build with no base images on disk is slow because of MCR, not the build: on 2026-11-25 the first `docker compose up` took about 10 minutes for three images, and the SDK image alone is about 272 MB, downloaded at about 40 KB/s. After that, a rebuild downloads nothing.
+A first build with no base images on disk is slow because of MCR, not the build: on 2026-11-25 the first `docker compose up` took about 10 minutes for three images, and the SDK image alone is about 272 MB, downloaded at about 40 KB/s. After that, a rebuild downloads no base images.
 
 **Probe: does a build with the base images on disk pull anything?** This scratch build names its base under an unreachable registry host (`127.0.0.1:9`), so a build that reaches a registry would fail. It passes only when the base comes from the local image store:
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Executable acceptance check for the OpenAPI contract check (issue #90): tools/ci/check-contracts.sh
-# passes on a clean checkout, fails after an endpoint change without the regenerated contract,
-# and passes again once the regenerated contract is in the commit.
+# Executable acceptance check for the contract check (issues #90 and #491): tools/ci/check-contracts.sh
+# passes on a clean checkout, fails after an endpoint or event record change without the regenerated
+# contract, and passes again once the regenerated contract is in the commit.
 # Needs dotnet, so it is not a *.test.sh (the ci-scripts job has no .NET). Usage: tools/ci/check-contracts.acceptance.sh
 set -uo pipefail
 
@@ -26,6 +26,16 @@ expect fail "an endpoint change without the regenerated contract fails"
 # The same change with the regenerated contract committed (staged)
 git add contracts/openapi/
 expect pass "the same change with the regenerated contract passes"
+
+# An event record change, without committing the regenerated schema (#491)
+perl -0pi -e 's/(public static string RoutingKey)/public string? ContractCheck { get; init; }
+
+    $1/' libs/FitLife.Messaging/Events/ReservationMade.cs
+expect fail "an event record change without the regenerated schema fails"
+
+# The same change with the regenerated schema committed (staged)
+git add contracts/events/
+expect pass "the same change with the regenerated schema passes"
 
 echo
 if [ "$failures" -eq 0 ]; then echo "The contract check works."; else echo "$failures check(s) failed."; fi

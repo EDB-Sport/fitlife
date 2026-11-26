@@ -1,7 +1,9 @@
 using System.Globalization;
 using System.Reflection;
+using FitLife.Authentication;
 using FitLife.Configuration;
 using FitLife.Correlation;
+using IdentityService.Api;
 using IdentityService.Application;
 using IdentityService.Domain;
 using IdentityService.Repositories;
@@ -21,16 +23,32 @@ try
     builder.Logging.ClearProviders();
     builder.Host.UseNLog();
 
-    builder.Services.AddOpenApi();
+    builder.Services.AddOpenApi(options =>
+    {
+        // The token requirement in the contract (#364)
+        options.AddDocumentTransformer<BearerSecurityTransformer>();
+        options.AddOperationTransformer<BearerSecurityTransformer>();
+    });
     builder.Services.AddHealthChecks();
+
+    // The token Identity issues, checked the same way as in every service (#183), and closed by default (#364):
+    // an endpoint needs a token unless it is marked AllowAnonymous()
+    builder.Services.AddFitLifeJwtAuthentication();
+    builder.Services.AddFitLifeAuthorization();
     builder.Services.AddControllers();
     builder.Services.AddProblemDetails();
     builder.Services.AddMongoAccountRepository(); // nothing connects until the first request
     builder.Services.AddSingleton<IPasswordHasher<Account>, PasswordHasher<Account>>();
     builder.Services.AddScoped<CreateAccountHandler>();
+    builder.Services.AddScoped<ListAccountsHandler>();
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddSingleton<TokenWriter>(); // reads Jwt:SigningKey when it writes a token, so the app starts without one
     builder.Services.AddScoped<LogInHandler>();
+    builder.Services.AddSingleton<DemoAccountSeeder>();
+    builder.Services.AddSingleton(provider => new Lazy<DemoAccountSeeder>(provider.GetRequiredService<DemoAccountSeeder>));
+    builder.Services.AddSingleton<DemoAccountSeedStatus>();
+    builder.Services.AddHostedService<DemoAccountSeedService>(); // only when Seed:DemoAccounts is true (#237)
+    builder.Services.AddHealthChecks().AddCheck<DemoAccountSeedHealthCheck>("demo-accounts");
 
     WebApplication app = builder.Build();
 
@@ -40,13 +58,20 @@ try
     // Course rule #7: the OpenAPI document and Scalar only in Development
     if (app.Environment.IsDevelopment())
     {
-        app.MapOpenApi();
-        app.MapScalarApiReference();
+        app.MapOpenApi().AllowAnonymous();
+        app.MapScalarApiReference().AllowAnonymous();
     }
 
     app.UseExceptionHandler(); // an unexpected error is a problem-details 500, without the exception's text
-    app.MapHealthChecks("/health");
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    app.MapHealthChecks("/health").AllowAnonymous();
     app.MapControllers();
+
+    // A path with no endpoint answers 404, not 401: the fallback policy of AddFitLifeAuthorization() also covers
+    // requests that match no endpoint, e.g. /openapi/v1.json outside Development
+    app.MapFallback("{*path}", NotFound).AllowAnonymous();
 
     // The startup line: which service and which release is running (the version is also a Loki label)
     if (app.Logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information))
@@ -73,4 +98,9 @@ public partial class Program
 {
     /// <summary>Only the top-level statements create the app.</summary>
     protected Program() { }
+
+    private static IResult NotFound()
+    {
+        return Results.NotFound();
+    }
 }

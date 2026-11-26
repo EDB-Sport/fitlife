@@ -1,7 +1,7 @@
 # Identity (`src/IdentityService/`)
 
 > From `docs/templates/CONTEXT.md`. Keep it under about 80 lines, and update it in the same PR that changes the model.
-> **Status: accounts and tokens (#233, #234, #235).** `POST /accounts` creates an account with the role Medlem. `POST /tokens` logs in and gives a JWT with the account's id and roles. The context map (`docs/domain/CONTEXT-MAP.md`) is decided in ADR 007.
+> **Status: accounts, tokens, demo accounts and the list of accounts (#233, #234, #235, #237, #364).** `POST /accounts` creates an account with the role Medlem. `POST /tokens` logs in and gives a JWT with the account's id and roles. `GET /accounts` lists every account for an Admin. With `Seed:DemoAccounts` true, one demo account per role is seeded after start-up. The context map (`docs/domain/CONTEXT-MAP.md`) is decided in ADR 007.
 
 ## Purpose
 
@@ -27,8 +27,10 @@ Words from other contexts that we do **not** use here:
 | Rule | Test |
 |---|---|
 | A new account has the role Medlem | `AccountTests.Create_WithAnEmailAndAPasswordHash_HasRoleMedlem` |
+| A demo account has exactly the one role it is created with | `AccountTests.Create_WithARole_HasOnlyThatRole` |
 | An account has an e-mail address and a password hash, never the password | `AccountTests.Create_WithoutAPasswordHash_Throws`, `Create_WithoutAnEmail_Throws` |
 | A role is exactly Medlem, Træner or Admin, with the glossary's names | `RoleTests.All_IsMedlemTraenerAndAdmin_WithTheGlossaryNames`, `FromName_WithAnotherName_Throws` |
+| The names of `Role.All` are the role claim values of `FitLifeRoles`, so Identity and the library can't drift | `RoleTests.Role_All_MatchesFitLifeRoles` |
 | E-mail addresses that differ only in letter case are the same e-mail address; a unique index guards it | `MongoAccountRepositoryTests.AddAsync_WithTheSameEmailInAnotherLetterCase_IsRejected`, `FindByEmailAsync_WithAnotherLetterCase_ReturnsTheAccount` |
 
 ## Commands, queries and events
@@ -37,6 +39,8 @@ Words from other contexts that we do **not** use here:
 |---|---|---|---|
 | Command | `CreateAccountCommand` (`CreateAccountHandler`) | `POST /accounts` | Hashes the password with `PasswordHasher<Account>` and stores a new account with the role Medlem. `EmailAlreadyTaken` (409) when another account has the e-mail address in any letter case. The password and the hash are never in a response or a log line |
 | Command | `LogInCommand` (`LogInHandler`) | `POST /tokens` | Checks the password against the stored hash and, with `TokenWriter`, signs a JWT with the `FitLifeJwt` values: `sub` = the account's id, one `role` claim per role, valid for 60 minutes from `TimeProvider`'s now. An unknown e-mail address and a wrong password give the same 401. The key is read from `Jwt:SigningKey` when a token is written, so the service starts without one |
+| Query | `ListAccountsQuery` (`ListAccountsHandler`) | `GET /accounts` | Every account as `{ id, email, roles }`, ordered by e-mail address. Needs a token with the role Admin: 401 without a token, 403 without Admin. Never the password or the hash. Identity checks tokens closed by default (`AddFitLifeJwtAuthentication()`, `AddFitLifeAuthorization()`); `POST /accounts`, `POST /tokens`, `/health` and, in Development, the OpenAPI document and Scalar are marked open |
+| Seed | `DemoAccountSeeder` (`DemoAccountSeedService`) | – | Only when `Seed:DemoAccounts` is `true`: after start-up, adds `medlem@`, `traener@` and `admin@fitlife.example`, each with its one role and a password from `Seed:MedlemPassword`, `Seed:TraenerPassword` or `Seed:AdminPassword`. An account that exists is left as it is. `/health` is unhealthy until the seed has finished; a failed seed is logged as an error and the service keeps running |
 
 Identity publishes no events: Membership reads the account's id from the token.
 

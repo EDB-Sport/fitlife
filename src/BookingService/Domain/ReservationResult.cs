@@ -17,4 +17,7 @@ public enum ReservationResult
 
     /// <summary>The class session is cancelled, so no reservation was made.</summary>
     ClassSessionCancelled,
+
+    /// <summary>The class session has started (or is over), so no reservation was made.</summary>
+    ClassSessionStarted,
 }

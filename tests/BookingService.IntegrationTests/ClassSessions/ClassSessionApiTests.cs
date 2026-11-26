@@ -35,7 +35,7 @@ public sealed class ClassSessionApiTests
         ClassSessionResponse[]? classSessions = await client.GetFromJsonAsync<ClassSessionResponse[]>(new Uri($"/class-sessions?centerId={centerId}", UriKind.Relative)).ConfigureAwait(false);
 
         // Assert
-        Assert.That(classSessions, Is.EqualTo(new[] { new ClassSessionResponse(halfFull.Id, centerId, halfFull.ClassTypeId, halfFull.StartTime, Capacity: 2, FreeSeats: 1, IsCancelled: false) }));
+        Assert.That(classSessions, Is.EqualTo(new[] { new ClassSessionResponse(halfFull.Id, centerId, "", halfFull.ClassTypeId, "", "Mette", halfFull.StartTime, DurationMinutes: 60, Capacity: 2, FreeSeats: 1, IsCancelled: false) }));
     }
 
     [Test]
@@ -53,7 +53,7 @@ public sealed class ClassSessionApiTests
         ClassSessionResponse[]? classSessions = await client.GetFromJsonAsync<ClassSessionResponse[]>(new Uri($"/class-sessions?centerId={centerId}", UriKind.Relative)).ConfigureAwait(false);
 
         // Assert
-        Assert.That(classSessions, Is.EqualTo(new[] { new ClassSessionResponse(cancelled.Id, centerId, cancelled.ClassTypeId, cancelled.StartTime, Capacity: 2, FreeSeats: 0, IsCancelled: true) }));
+        Assert.That(classSessions, Is.EqualTo(new[] { new ClassSessionResponse(cancelled.Id, centerId, "", cancelled.ClassTypeId, "", "Mette", cancelled.StartTime, DurationMinutes: 60, Capacity: 2, FreeSeats: 0, IsCancelled: true) }));
     }
 
     [Test]

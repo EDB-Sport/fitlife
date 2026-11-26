@@ -22,10 +22,14 @@ done
 root=$(cd "$(dirname "$0")/../.." && pwd)
 image="fitlife-check/$(tr '[:upper:]' '[:lower:]' <<<"$service"):local"
 container="fitlife-check-$$"
-trap 'docker rm -f "$container" >/dev/null 2>&1' EXIT
 
-if ! docker build -q -f "$root/src/$service/Dockerfile" -t "$image" "$root" >/dev/null; then
-  echo "FAIL  docker build -f src/$service/Dockerfile . failed"
+# The build's output is kept in a file: quiet when it works, the last 40 lines when it fails, so the
+# compiler error is in the log (#423). -q would hide it: BuildKit then prints only "failed to solve".
+build_log=$(mktemp)
+trap 'docker rm -f "$container" >/dev/null 2>&1; rm -f "$build_log"' EXIT
+if ! docker build --progress=plain -f "$root/src/$service/Dockerfile" -t "$image" "$root" >"$build_log" 2>&1; then
+  echo "FAIL  docker build -f src/$service/Dockerfile . failed. The last 40 lines of its output:"
+  tail -40 "$build_log"
   exit 1
 fi
 echo "PASS  the image builds with the repo root as context"

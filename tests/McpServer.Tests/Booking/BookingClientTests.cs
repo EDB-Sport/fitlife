@@ -130,6 +130,28 @@ public sealed class BookingClientTests
     }
 
     [Test]
+    public async Task GetClassSessionsAsync_WhenTheConnectionBreaksWhileReadingTheAnswer_ThrowsBookingUnavailable()
+    {
+        // Arrange: Booking answered 200, then the connection ended in the middle of the body. .NET throws an HttpIOException (an IOException)
+        using var gateway = StubGateway.ThatBreaksWhileReadingTheBody(new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely."));
+        using ServiceProvider services = Services(gateway);
+
+        // Act & Assert
+        await Assert.ThatAsync(() => Get(services, centerId: null), Throws.TypeOf<BookingUnavailableException>()).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task GetClassSessionsAsync_WhenTheTimeoutHitsWhileReadingTheAnswer_ThrowsBookingUnavailable()
+    {
+        // Arrange: the timeout fires while the body is read, and the read stream throws a plain OperationCanceledException, not a TaskCanceledException
+        using var gateway = StubGateway.ThatBreaksWhileReadingTheBody(new OperationCanceledException("The read was cancelled."));
+        using ServiceProvider services = Services(gateway);
+
+        // Act & Assert
+        await Assert.ThatAsync(() => Get(services, centerId: null), Throws.TypeOf<BookingUnavailableException>()).ConfigureAwait(false);
+    }
+
+    [Test]
     public async Task GetClassSessionsAsync_WhenTheCallerCancels_StaysACancellation()
     {
         // Arrange
@@ -179,6 +201,7 @@ public sealed class BookingClientTests
         private readonly HttpStatusCode _status;
         private readonly string _body;
         private readonly Exception? _failure;
+        private readonly Exception? _failureWhileReadingTheBody;
 
         public StubGateway(HttpStatusCode status, string body)
         {
@@ -186,10 +209,18 @@ public sealed class BookingClientTests
             _body = body;
         }
 
-        private StubGateway(Exception failure)
+        private StubGateway(Exception failure, bool whileReadingTheBody)
         {
+            _status = HttpStatusCode.OK;
             _body = string.Empty;
-            _failure = failure;
+            if (whileReadingTheBody)
+            {
+                _failureWhileReadingTheBody = failure;
+            }
+            else
+            {
+                _failure = failure;
+            }
         }
 
         public HttpMethod? Method { get; private set; }
@@ -200,12 +231,18 @@ public sealed class BookingClientTests
 
         public static StubGateway ThatCantBeReached()
         {
-            return new StubGateway(new HttpRequestException("No connection could be made."));
+            return new StubGateway(new HttpRequestException("No connection could be made."), whileReadingTheBody: false);
         }
 
         public static StubGateway ThatDoesntAnswer()
         {
-            return new StubGateway(new TaskCanceledException("The request timed out.", new TimeoutException()));
+            return new StubGateway(new TaskCanceledException("The request timed out.", new TimeoutException()), whileReadingTheBody: false);
+        }
+
+        /// <summary>Answers 200 with a body whose stream throws the failure when it is read.</summary>
+        public static StubGateway ThatBreaksWhileReadingTheBody(Exception failure)
+        {
+            return new StubGateway(failure, whileReadingTheBody: true);
         }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -223,7 +260,61 @@ public sealed class BookingClientTests
                 throw _failure;
             }
 
+            if (_failureWhileReadingTheBody is not null)
+            {
+                var broken = new StreamContent(new FailingStream(_failureWhileReadingTheBody));
+                broken.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+                return Task.FromResult(new HttpResponseMessage(_status) { Content = broken });
+            }
+
             return Task.FromResult(new HttpResponseMessage(_status) { Content = new StringContent(_body, Encoding.UTF8, "application/json") });
+        }
+    }
+
+    /// <summary>A stream whose every read throws, as a connection that ends or times out in the middle of the body.</summary>
+    private sealed class FailingStream(Exception failure) : Stream
+    {
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            throw failure;
+        }
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            throw failure;
+        }
+
+        public override void Flush()
+        {
+        }
+
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override void SetLength(long value)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            throw new NotSupportedException();
         }
     }
 }

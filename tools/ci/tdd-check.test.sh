@@ -353,6 +353,15 @@ expect "code after a one-line block comment is code" fail "$(comment_pr '/* x */
 expect "code after a closing */ is code" fail "$(comment_pr '/* x\n*/ return 1;')" "no test under tests/ was added or changed"
 expect "an unindented ++x; line is code" fail "$(comment_pr '++x;')" "no test under tests/ was added or changed"
 expect "a // inside a string is not a comment" fail "$(comment_pr 'var u = "http://x";')" "no test under tests/ was added or changed"
+# A multi-line string (#484): a line inside it that starts with // is string content, not a comment.
+string_pr() { # string_pr <opening of the string> <closing>: a base file with a multi-line string, the PR changing a //-line inside it
+  local repo; repo=$(fixture)
+  printf 'public static class Calculator { public static string Text() => %s\n// old\n%s; }\n' "$1" "$2" > "$repo/src/Calculator.cs"; commit "$repo" "string"
+  sed 's|^// old$|// new|' "$repo/src/Calculator.cs" > "$repo/src/Calculator.tmp" && mv "$repo/src/Calculator.tmp" "$repo/src/Calculator.cs"; commit "$repo" "change the string"
+  echo "$repo"
+}
+expect "a changed // line inside a raw string is a code change" fail "$(string_pr '"""' '"""')" "no test under tests/ was added or changed"
+expect "a changed // line inside a verbatim string is a code change" fail "$(string_pr '@"' '"')" "no test under tests/ was added or changed"
 libs_comment_pr() { # a comment added to libs/Clock.cs, which is production code since #379
   local repo; repo=$(fixture)
   { echo '// Stryker disable once Boolean'; cat "$repo/libs/Clock.cs"; } > "$repo/libs/Clock.tmp" && mv "$repo/libs/Clock.tmp" "$repo/libs/Clock.cs"; commit "$repo" "comment"

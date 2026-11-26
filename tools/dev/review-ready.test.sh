@@ -28,6 +28,7 @@ case "$*" in
   "pr list "*) src=open-prs.json ;;
   "api repos/EDB-Sport/fitlife/compare/"*) src=compare.json ;;
   "api repos/EDB-Sport/fitlife/rules/branches/"*) src=ruleset.json ;;
+  "api repos/EDB-Sport/fitlife/contents/"*) p=${2%%\?*}; src="workflow-$(basename "$p")" ;;
   *) echo "fake gh: unexpected call: $*" >&2; exit 9 ;;
 esac
 if [ -n "$jq_filter" ]; then jq -r "$jq_filter" "$dir/$src"; else cat "$dir/$src"; fi
@@ -57,6 +58,29 @@ JSON
 JSON
   echo '{"ahead_by":0,"behind_by":0,"files":[]}' > "$fx/compare.json"
   echo '[]' > "$fx/open-prs.json"
+  # The workflows on develop, as the contents API serves them (raw YAML): ci.yml produces required
+  # checks (build, test), image-scan.yml produces none of the required ones.
+  cat > "$fx/workflow-ci.yml" <<'YAML'
+name: CI
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+  test:
+    runs-on: ubuntu-latest
+  mutation:
+    runs-on: ubuntu-latest
+YAML
+  cat > "$fx/workflow-image-scan.yml" <<'YAML'
+name: Image scan
+on:
+  pull_request:
+jobs:
+  image-scan-plan:
+    runs-on: ubuntu-latest
+  image-scan:
+    runs-on: ubuntu-latest
+YAML
 }
 
 # edit <fixture file> <jq filter>: changes one fixture in the current case
@@ -130,6 +154,25 @@ expect "behind develop, no workflow change: ready, with an info line" 0 "info: 3
 
 new_case; edit compare.json '.ahead_by=3 | .files=[{"filename":".github/workflows/ci.yml"},{"filename":"src/x.cs"}]'
 expect "workflow changed on develop after the merge base: CI is stale, not ready" 1 "not ready: CI on the head is stale: develop changed .github/workflows/ci.yml"
+
+new_case; edit compare.json '.ahead_by=3 | .files=[{"filename":".github/workflows/image-scan.yml"}]'
+expect "workflow with no required check changed on develop: not a reason" 0 "ready for review"
+
+new_case; printf 'jobs:\n  scan:\n    name: test\n    runs-on: ubuntu-latest\n' > "$fx/workflow-image-scan.yml"; edit compare.json '.ahead_by=3 | .files=[{"filename":".github/workflows/image-scan.yml"}]'
+expect "job named after a required check (name: test) counts: stale, not ready" 1 "not ready: CI on the head is stale: develop changed .github/workflows/image-scan.yml"
+
+new_case; edit compare.json '.ahead_by=3 | .files=[{"filename":".github/workflows/image-scan.yml"},{"filename":".github/workflows/ci.yml"}]'
+expect "only the workflow that produces a required check is named" 1 "not ready: CI on the head is stale: develop changed .github/workflows/ci.yml since"
+
+new_case; edit compare.json '.ahead_by=3 | .files=[{"filename":".github/workflows/ci.yml"}]'; rm "$fx/workflow-ci.yml"
+out=$(GH="$fake" FAKE_GH_DIR="$fx" "$check" 1 2>&1); code=$?
+if [ "$code" -eq 2 ] && grep -qF 'could not read .github/workflows/ci.yml on develop' <<<"$out"; then
+  echo "PASS  changed workflow cannot be read on develop: exit 2, not ready"
+else
+  echo "FAIL  changed workflow cannot be read: expected exit 2 naming the file, got $code"
+  sed 's/^/      /' <<<"$out"
+  failures=$((failures + 1))
+fi
 
 new_case; edit pr.json '.mergeable="CONFLICTING" | (.statusCheckRollup[] | select(.name=="test") | .conclusion) = "FAILURE"'
 out=$(GH="$fake" FAKE_GH_DIR="$fx" "$check" 1 2>&1)

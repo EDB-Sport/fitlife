@@ -1,0 +1,100 @@
+{
+  "workflow_runs": [
+    {
+      "id": 45605155125,
+      "name": "release",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "main",
+      "display_title": "Merge pull request #331 from EDB-Sport/release/0.1.0",
+      "created_at": "2026-11-25T11:31:01Z",
+      "updated_at": "2026-11-25T11:31:09Z",
+      "html_url": "https://github.com/EDB-Sport/fitlife/actions/runs/45605155125"
+    },
+    {
+      "id": 45594481378,
+      "name": "release",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "release/0.1.0",
+      "display_title": "Release v0.1.0: container memory in 0.1 GB steps, so ACI accepts the group",
+      "created_at": "2026-11-25T10:23:13Z",
+      "updated_at": "2026-11-25T10:23:25Z",
+      "html_url": "https://github.com/EDB-Sport/fitlife/actions/runs/45594481378"
+    },
+    {
+      "id": 45586012271,
+      "name": "release",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "main",
+      "display_title": "Merge pull request #309 from EDB-Sport/release/0.1.0",
+      "created_at": "2026-11-25T09:30:14Z",
+      "updated_at": "2026-11-25T09:33:16Z",
+      "html_url": "https://github.com/EDB-Sport/fitlife/actions/runs/45586012271"
+    },
+    {
+      "id": 45585839383,
+      "name": "release",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "hotfix/bookingservice-0.1.1",
+      "display_title": "Hotfix BookingService 0.1.1: a runtime image without HIGH or CRITICAL findings",
+      "created_at": "2026-11-25T09:29:09Z",
+      "updated_at": "2026-11-25T09:29:17Z",
+      "html_url": "https://github.com/EDB-Sport/fitlife/actions/runs/45585839383"
+    },
+    {
+      "id": 45584390631,
+      "name": "release",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "hotfix/bookingservice-0.1.1",
+      "display_title": "Hotfix BookingService 0.1.1: a runtime image without HIGH or CRITICAL findings",
+      "created_at": "2026-11-25T09:20:02Z",
+      "updated_at": "2026-11-25T09:21:34Z",
+      "html_url": "https://github.com/EDB-Sport/fitlife/actions/runs/45584390631"
+    },
+    {
+      "id": 45583744130,
+      "name": "release",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "release/0.1.0",
+      "display_title": "Release v0.1.0: runtime image without the Trivy findings",
+      "created_at": "2026-11-25T09:15:53Z",
+      "updated_at": "2026-11-25T09:16:30Z",
+      "html_url": "https://github.com/EDB-Sport/fitlife/actions/runs/45583744130"
+    },
+    {
+      "id": 45582840927,
+      "name": "release",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_branch": "main",
+      "display_title": "Merge pull request #299 from EDB-Sport/release/0.1.0",
+      "created_at": "2026-11-25T09:10:13Z",
+      "updated_at": "2026-11-25T09:12:25Z",
+      "html_url": "https://github.com/EDB-Sport/fitlife/actions/runs/45582840927"
+    },
+    {
+      "id": 45580556203,
+      "name": "release",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "release/0.1.0",
+      "display_title": "Release v0.1.0",
+      "created_at": "2026-11-25T08:55:24Z",
+      "updated_at": "2026-11-25T08:55:58Z",
+      "html_url": "https://github.com/EDB-Sport/fitlife/actions/runs/45580556203"
+    }
+  ]
+}

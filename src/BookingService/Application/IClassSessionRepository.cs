@@ -22,10 +22,10 @@ public interface IClassSessionRepository
     Task AddAsync(ClassSession classSession, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Stores the changes to a class session read with <see cref="GetByIdAsync"/> in the same scope. Returns false, and stores
-    /// nothing, when another request saved the class session in the meantime: then the caller reads it again.
+    /// Stores the changes to a class session read with <see cref="GetByIdAsync"/>. When another request saved the class session
+    /// in the meantime, nothing is stored and <see cref="ConcurrencyConflictException"/> is thrown: then the caller reads it again.
     /// </summary>
     /// <param name="classSession">The changed class session.</param>
     /// <param name="cancellationToken">Stops the write.</param>
-    Task<bool> SaveAsync(ClassSession classSession, CancellationToken cancellationToken);
+    Task SaveAsync(ClassSession classSession, CancellationToken cancellationToken);
 }

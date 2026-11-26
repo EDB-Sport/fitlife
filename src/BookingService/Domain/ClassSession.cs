@@ -31,6 +31,9 @@ public sealed class ClassSession
     /// <summary>The class session's id.</summary>
     public Guid Id { get; }
 
+    /// <summary>The stored version this copy was read at or saved as, set by the repository; 0 before it is stored.</summary>
+    public int Version { get; internal set; }
+
     /// <summary>Its centre, class type, instructor and duration (Holdoplysninger).</summary>
     public ClassSessionDetails Details { get; }
 

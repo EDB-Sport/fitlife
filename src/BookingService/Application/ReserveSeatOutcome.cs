@@ -15,6 +15,6 @@ public enum ReserveSeatOutcome
     /// <summary>There is no such class session.</summary>
     ClassSessionNotFound,
 
-    /// <summary>Another request saved the class session first. Nothing was saved.</summary>
-    ChangedMeanwhile,
+    /// <summary>Another request saved the class session first, also on the second try. Nothing was saved.</summary>
+    ConcurrentChange,
 }

@@ -4,7 +4,8 @@ namespace BookingService.Application;
 
 /// <summary>
 /// Handles <see cref="ReserveSeatCommand"/> (#260): asks Membership who the member is and whether the membership is active, then
-/// lets <see cref="ClassSession.Reserve"/> decide, and saves once, only when the seat was given. No booking rule lives here.
+/// lets <see cref="ClassSession.Reserve"/> decide, and saves only when the seat was given. A refused save is tried once more on a
+/// freshly read class session (#245). No booking rule lives here.
 /// </summary>
 public sealed class ReserveSeatCommandHandler
 {
@@ -41,19 +42,40 @@ public sealed class ReserveSeatCommandHandler
             return Stopped(ReserveSeatOutcome.MembershipNotActive, member.MemberId);
         }
 
-        ClassSession? classSession = await _classSessions.GetByIdAsync(command.ClassSessionId, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return await ReserveAsync(command.ClassSessionId, member.MemberId, cancellationToken).ConfigureAwait(false);
+        }
+        catch (ConcurrencyConflictException)
+        {
+            // Another request saved first: read the class session again and let it decide on what is stored now
+        }
+
+        try
+        {
+            return await ReserveAsync(command.ClassSessionId, member.MemberId, cancellationToken).ConfigureAwait(false);
+        }
+        catch (ConcurrencyConflictException)
+        {
+            return Stopped(ReserveSeatOutcome.ConcurrentChange, member.MemberId);
+        }
+    }
+
+    private async Task<ReserveSeatResult> ReserveAsync(Guid classSessionId, Guid memberId, CancellationToken cancellationToken)
+    {
+        ClassSession? classSession = await _classSessions.GetByIdAsync(classSessionId, cancellationToken).ConfigureAwait(false);
         if (classSession is null)
         {
-            return Stopped(ReserveSeatOutcome.ClassSessionNotFound, member.MemberId);
+            return Stopped(ReserveSeatOutcome.ClassSessionNotFound, memberId);
         }
 
-        ReservationResult reservation = classSession.Reserve(member.MemberId, _clock);
-        if (reservation == ReservationResult.Made && !await _classSessions.SaveAsync(classSession, cancellationToken).ConfigureAwait(false))
+        ReservationResult reservation = classSession.Reserve(memberId, _clock);
+        if (reservation == ReservationResult.Made)
         {
-            return Stopped(ReserveSeatOutcome.ChangedMeanwhile, member.MemberId);
+            await _classSessions.SaveAsync(classSession, cancellationToken).ConfigureAwait(false);
         }
 
-        return new ReserveSeatResult(ReserveSeatOutcome.Answered, reservation, member.MemberId);
+        return new ReserveSeatResult(ReserveSeatOutcome.Answered, reservation, memberId);
     }
 
     private static ReserveSeatResult Stopped(ReserveSeatOutcome outcome, Guid memberId)

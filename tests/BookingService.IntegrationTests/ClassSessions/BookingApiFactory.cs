@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net.Http.Headers;
 using BookingService.Application;
 using BookingService.Domain;
 using BookingService.Repositories;
@@ -40,6 +41,9 @@ internal sealed class BookingApiFactory : WebApplicationFactory<Program>
 
     public FakeTimeProvider Clock { get; }
 
+    /// <summary>Gets what Membership answers; a client from <c>CreateClient()</c> carries a Medlem token (#260).</summary>
+    public FakeMembershipClient Membership { get; } = new();
+
     /// <summary>Stores a class session through the service's own repository.</summary>
     public async Task AddAsync(ClassSession classSession)
     {
@@ -63,11 +67,20 @@ internal sealed class BookingApiFactory : WebApplicationFactory<Program>
         builder.ConfigureTestServices(services =>
         {
             services.Replace(ServiceDescriptor.Singleton<TimeProvider>(Clock));
+            services.Replace(ServiceDescriptor.Singleton<IMembershipClient>(Membership));
             if (_everySaveIsStale)
             {
                 services.Replace(ServiceDescriptor.Scoped<IClassSessionRepository>(provider =>
                     new StaleSaveRepository(ActivatorUtilities.CreateInstance<ClassSessionRepository>(provider))));
             }
         });
+    }
+
+    /// <summary>Every client logs in as a member, as the member portal does; a test without a token clears the header.</summary>
+    protected override void ConfigureClient(HttpClient client)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+        base.ConfigureClient(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", TestTokens.For(Guid.NewGuid()));
     }
 }

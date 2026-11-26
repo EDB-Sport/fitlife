@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using BookingService.Api;
+using BookingService.Application;
 using BookingService.Domain;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Time.Testing;
@@ -71,7 +72,7 @@ public sealed class ClassSessionApiTests
             using HttpClient client = factory.CreateClient();
 
             // Act
-            using HttpResponseMessage response = await client.PostAsJsonAsync(ReservationsOf(classSession), new ReservationRequest(memberId)).ConfigureAwait(false);
+            using HttpResponseMessage response = await client.PostAsync(ReservationsOf(classSession), content: null).ConfigureAwait(false);
             status = response.StatusCode;
             location = response.Headers.Location;
         }
@@ -99,7 +100,7 @@ public sealed class ClassSessionApiTests
         using HttpClient client = factory.CreateClient();
 
         // Act
-        using HttpResponseMessage response = await client.PostAsJsonAsync(ReservationsOf(classSession), new ReservationRequest(Guid.NewGuid())).ConfigureAwait(false);
+        using HttpResponseMessage response = await client.PostAsync(ReservationsOf(classSession), content: null).ConfigureAwait(false);
 
         // Assert
         Assert.That(await ProblemOfAsync(response).ConfigureAwait(false), Is.EqualTo((HttpStatusCode.Conflict, "application/problem+json", (int?)409)));
@@ -113,18 +114,19 @@ public sealed class ClassSessionApiTests
         ClassSession classSession = ClassSessionAt(Guid.NewGuid(), capacity: 2, Now.AddDays(1));
         var memberId = Guid.NewGuid();
         classSession.Reserve(memberId, factory.Clock);
+        factory.Membership.Answer = MemberLookup.Found(memberId, isActive: true);
         await factory.AddAsync(classSession).ConfigureAwait(false);
         using HttpClient client = factory.CreateClient();
 
         // Act
-        using HttpResponseMessage response = await client.PostAsJsonAsync(ReservationsOf(classSession), new ReservationRequest(memberId)).ConfigureAwait(false);
+        using HttpResponseMessage response = await client.PostAsync(ReservationsOf(classSession), content: null).ConfigureAwait(false);
 
         // Assert
         Assert.That(await ProblemOfAsync(response).ConfigureAwait(false), Is.EqualTo((HttpStatusCode.Conflict, "application/problem+json", (int?)409)));
     }
 
     [Test]
-    public async Task PostReservation_MoreThanFourWeeksAhead_Returns422ProblemDetails()
+    public async Task PostReservation_MoreThanFourWeeksAhead_Returns409ProblemDetails()
     {
         // Arrange
         using BookingApiFactory factory = Factory();
@@ -133,10 +135,10 @@ public sealed class ClassSessionApiTests
         using HttpClient client = factory.CreateClient();
 
         // Act
-        using HttpResponseMessage response = await client.PostAsJsonAsync(ReservationsOf(classSession), new ReservationRequest(Guid.NewGuid())).ConfigureAwait(false);
+        using HttpResponseMessage response = await client.PostAsync(ReservationsOf(classSession), content: null).ConfigureAwait(false);
 
         // Assert
-        Assert.That(await ProblemOfAsync(response).ConfigureAwait(false), Is.EqualTo((HttpStatusCode.UnprocessableEntity, "application/problem+json", (int?)422)));
+        Assert.That(await ProblemOfAsync(response).ConfigureAwait(false), Is.EqualTo((HttpStatusCode.Conflict, "application/problem+json", (int?)409)));
     }
 
     [Test]
@@ -147,7 +149,7 @@ public sealed class ClassSessionApiTests
         using HttpClient client = factory.CreateClient();
 
         // Act
-        using HttpResponseMessage response = await client.PostAsJsonAsync(new Uri($"/class-sessions/{Guid.NewGuid()}/reservations", UriKind.Relative), new ReservationRequest(Guid.NewGuid())).ConfigureAwait(false);
+        using HttpResponseMessage response = await client.PostAsync(new Uri($"/class-sessions/{Guid.NewGuid()}/reservations", UriKind.Relative), content: null).ConfigureAwait(false);
 
         // Assert
         Assert.That(await ProblemOfAsync(response).ConfigureAwait(false), Is.EqualTo((HttpStatusCode.NotFound, "application/problem+json", (int?)404)));
@@ -164,6 +166,7 @@ public sealed class ClassSessionApiTests
         var waitingMemberId = Guid.NewGuid();
         classSession.Reserve(memberId, factory.Clock);
         classSession.JoinWaitlist(waitingMemberId, factory.Clock);
+        factory.Membership.Answer = MemberLookup.Found(waitingMemberId, isActive: true);
         await factory.AddAsync(classSession).ConfigureAwait(false);
         using HttpClient client = factory.CreateClient();
 
@@ -171,7 +174,7 @@ public sealed class ClassSessionApiTests
         using HttpResponseMessage response = await client.DeleteAsync(new Uri($"/class-sessions/{classSession.Id}/reservations/{memberId}", UriKind.Relative)).ConfigureAwait(false);
 
         // Assert
-        using HttpResponseMessage again = await client.PostAsJsonAsync(ReservationsOf(classSession), new ReservationRequest(waitingMemberId)).ConfigureAwait(false);
+        using HttpResponseMessage again = await client.PostAsync(ReservationsOf(classSession), content: null).ConfigureAwait(false);
         Assert.Multiple(() =>
         {
             Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
@@ -317,7 +320,7 @@ public sealed class ClassSessionApiTests
         using HttpClient client = factory.CreateClient();
 
         // Act
-        using HttpResponseMessage response = await client.PostAsJsonAsync(ReservationsOf(classSession), new ReservationRequest(Guid.NewGuid())).ConfigureAwait(false);
+        using HttpResponseMessage response = await client.PostAsync(ReservationsOf(classSession), content: null).ConfigureAwait(false);
 
         // Assert
         Assert.That(await ProblemOfAsync(response).ConfigureAwait(false), Is.EqualTo((HttpStatusCode.Conflict, "application/problem+json", (int?)409)));
@@ -333,7 +336,7 @@ public sealed class ClassSessionApiTests
         using HttpClient client = factory.CreateClient();
 
         // Act
-        using HttpResponseMessage response = await client.PostAsJsonAsync(ReservationsOf(classSession), new ReservationRequest(Guid.NewGuid())).ConfigureAwait(false);
+        using HttpResponseMessage response = await client.PostAsync(ReservationsOf(classSession), content: null).ConfigureAwait(false);
 
         // Assert
         Assert.That(await ProblemOfAsync(response).ConfigureAwait(false), Is.EqualTo((HttpStatusCode.Conflict, "application/problem+json", (int?)409)));

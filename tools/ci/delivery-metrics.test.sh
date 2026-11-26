@@ -3,6 +3,7 @@
 # deploy.yml runs, on recorded API answers (tools/ci/delivery-metrics.fixtures/, the run history of v0.1.0 as
 # recorded on 2026-11-26) and on made-up ones. A stub `gh` serves the fixtures, so nothing reaches GitHub.
 # Usage: tools/ci/delivery-metrics.test.sh   (exit code 0 = every case passes)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -95,6 +96,4 @@ check "the workflow's token writes nothing" bash -c 'test -f "$1" && ! grep -qE 
 check "the workflow writes the script's table to the job summary" \
   grep -qF 'tools/ci/delivery-metrics.sh "$GITHUB_REPOSITORY" >> "$GITHUB_STEP_SUMMARY"' "$workflow"
 
-echo
-if [ "$failures" -eq 0 ]; then echo "All delivery-metrics.sh cases pass."; else echo "$failures case(s) failed."; fi
 exit "$failures"

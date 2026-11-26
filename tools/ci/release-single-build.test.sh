@@ -2,6 +2,7 @@
 # Checks the `images` job in .github/workflows/release.yml for the rules of issue #282: each image is
 # built once, and the image pushed to Docker Hub is the one Trivy scanned (METHODOLOGY section 10).
 # Usage: tools/ci/release-single-build.test.sh   (from anywhere in the repo; exit 0 = all pass)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)" || exit 2

@@ -2,6 +2,7 @@
 # Tests for tools/ci/check-dockerfile-restore-order.sh (#357). Fixture Dockerfiles cover the good and the bad
 # shapes; the last case runs the check on the repo's own service Dockerfiles.
 # Usage: tools/ci/check-dockerfile-restore-order.test.sh   (exit code 0 = every case passes)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -152,10 +153,4 @@ expect 1 "a .cs file in a multi-source COPY before the restore: fails" "$mixed"
 expect 1 "no dotnet restore in the Dockerfile: fails" "$no_restore"
 expect 0 "every service Dockerfile in the repo restores before it copies source" "$root"/src/*/Dockerfile
 
-echo
-if [ "$failures" -eq 0 ]; then
-  echo "All check-dockerfile-restore-order.sh cases pass."
-else
-  echo "$failures case(s) failed."
-  exit 1
-fi
+[ "$failures" -eq 0 ] || exit 1

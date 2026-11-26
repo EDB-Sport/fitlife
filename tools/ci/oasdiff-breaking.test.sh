@@ -2,6 +2,7 @@
 # Tests for tools/ci/oasdiff-breaking.sh (issue #91), in a throwaway git repo:
 # a removed endpoint fails, an added endpoint passes, a service with no tag is skipped.
 # Needs git and Docker (oasdiff runs from its pinned image). Usage: tools/ci/oasdiff-breaking.test.sh
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 script="$(cd "$(dirname "$0")" && pwd)/oasdiff-breaking.sh"
@@ -65,6 +66,4 @@ else
   failures=$((failures + 1))
 fi
 
-echo
-if [ "$failures" -eq 0 ]; then echo "oasdiff-breaking.sh works."; else echo "$failures check(s) failed."; fi
 exit "$failures"

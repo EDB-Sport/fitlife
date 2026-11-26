@@ -28,9 +28,7 @@ git add contracts/openapi/
 expect pass "the same change with the regenerated contract passes"
 
 # An event record change, without committing the regenerated schema (#491)
-perl -0pi -e 's/(public static string RoutingKey)/public string? ContractCheck { get; init; }
-
-    $1/' libs/FitLife.Messaging/Events/ReservationMade.cs
+perl -0pi -e 's/(: IIntegrationEvent\n\{\n)/$1    \/\/\/ <summary>Gets a field the acceptance check adds.<\/summary>\n    public string? ContractCheck { get; init; }\n\n/' libs/FitLife.Messaging/Events/ReservationMade.cs
 expect fail "an event record change without the regenerated schema fails"
 
 # The same change with the regenerated schema committed (staged)

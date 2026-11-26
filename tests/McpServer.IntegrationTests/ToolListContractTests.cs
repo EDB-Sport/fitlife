@@ -16,18 +16,19 @@ public sealed class ToolListContractTests
         // Arrange
         using var factory = new McpFactory();
         using HttpClient http = factory.CreateClient();
-        await using McpClient client = await McpFactory.ConnectAsync(http).ConfigureAwait(false);
+        await using HttpClientTransport transport = McpFactory.TransportFor(http);
+        await using McpClient client = await McpClient.CreateAsync(transport).ConfigureAwait(false);
         string path = Path.Combine(RepoRoot(), "contracts", "mcp", "tools.json");
 
         // Act
         IList<McpClientTool> tools = await client.ListToolsAsync().ConfigureAwait(false);
 
         // Assert
-        JsonNode running = new JsonObject
+        var running = new JsonObject
         {
             ["tools"] = new JsonArray([.. tools.OrderBy(tool => tool.Name, StringComparer.Ordinal).Select(Describe)]),
         };
-        JsonNode? committed = JsonNode.Parse(await File.ReadAllTextAsync(path).ConfigureAwait(false));
+        var committed = JsonNode.Parse(await File.ReadAllTextAsync(path).ConfigureAwait(false));
         Assert.That(
             JsonNode.DeepEquals(running, committed),
             Is.True,
@@ -36,9 +37,12 @@ public sealed class ToolListContractTests
 
     private static JsonObject Describe(McpClientTool tool)
     {
-        IEnumerable<string> inputs = tool.ProtocolTool.InputSchema.TryGetProperty("properties", out JsonElement properties)
-            ? properties.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal)
-            : [];
+        IEnumerable<string> inputs = [];
+        if (tool.ProtocolTool.InputSchema.TryGetProperty("properties", out JsonElement properties))
+        {
+            inputs = properties.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal);
+        }
+
         return new JsonObject
         {
             ["name"] = tool.Name,

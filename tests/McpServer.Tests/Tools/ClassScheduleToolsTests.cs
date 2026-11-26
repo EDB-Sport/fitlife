@@ -1,7 +1,8 @@
+using System.Text.Json;
 using McpServer.Booking;
 using McpServer.Tools;
 using Microsoft.Extensions.Logging.Abstractions;
-using ModelContextProtocol;
+using ModelContextProtocol.Protocol;
 using Moq;
 
 namespace McpServer.Tests.Tools;
@@ -46,10 +47,11 @@ public sealed class ClassScheduleToolsTests
         var tools = new ClassScheduleTools(booking.Object, NullLogger<ClassScheduleTools>.Instance);
 
         // Act
-        IReadOnlyList<ClassSession> result = await tools.ListClassSessions(CenterId, CancellationToken.None).ConfigureAwait(false);
+        CallToolResult result = await tools.ListClassSessions(CenterId, CancellationToken.None).ConfigureAwait(false);
 
         // Assert
-        Assert.That(result, Is.EqualTo(fromBooking));
+        Assert.That(result.IsError, Is.Not.True);
+        Assert.That(JsonSerializer.Deserialize<ClassSession[]>(Text(result), JsonSerializerOptions.Web), Is.EqualTo(fromBooking));
     }
 
     [Test]
@@ -61,14 +63,14 @@ public sealed class ClassScheduleToolsTests
         var tools = new ClassScheduleTools(booking.Object, NullLogger<ClassScheduleTools>.Instance);
 
         // Act
-        IReadOnlyList<ClassSession> result = await tools.ListClassSessions(centerId: null, CancellationToken.None).ConfigureAwait(false);
+        CallToolResult result = await tools.ListClassSessions(centerId: null, CancellationToken.None).ConfigureAwait(false);
 
         // Assert
-        Assert.That(result, Is.EqualTo(new[] { EarlierSession }));
+        Assert.That(JsonSerializer.Deserialize<ClassSession[]>(Text(result), JsonSerializerOptions.Web), Is.EqualTo(new[] { EarlierSession }));
     }
 
     [Test]
-    public void ListClassSessions_WhenBookingCantBeReached_ReturnsAnErrorWithoutAStackTrace()
+    public async Task ListClassSessions_WhenBookingCantBeReached_ReturnsAnErrorWithoutAStackTrace()
     {
         // Arrange: the inner exception carries details that must not reach the AI assistant
         const string Detail = "connection refused by gateway.internal:80";
@@ -78,10 +80,16 @@ public sealed class ClassScheduleToolsTests
         var tools = new ClassScheduleTools(booking.Object, NullLogger<ClassScheduleTools>.Instance);
 
         // Act
-        McpException? error = Assert.ThrowsAsync<McpException>(() => tools.ListClassSessions(centerId: null, CancellationToken.None));
+        CallToolResult result = await tools.ListClassSessions(centerId: null, CancellationToken.None).ConfigureAwait(false);
 
-        // Assert: the SDK turns an McpException into a tool error with exactly its message
-        Assert.That(error?.Message, Is.EqualTo("The class schedule can't be fetched right now. Try again later."));
-        Assert.That(error?.Message, Does.Not.Contain(Detail).And.Not.Contain(" at "));
+        // Assert
+        Assert.That(result.IsError, Is.True);
+        Assert.That(Text(result), Is.EqualTo("The class schedule can't be fetched right now. Try again later."));
+        Assert.That(Text(result), Does.Not.Contain(Detail).And.Not.Contain(" at "));
+    }
+
+    private static string Text(CallToolResult result)
+    {
+        return result.Content.OfType<TextContentBlock>().Single().Text;
     }
 }

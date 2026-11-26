@@ -97,37 +97,37 @@ public sealed class BookingClientTests
     [TestCase(HttpStatusCode.InternalServerError)]
     [TestCase(HttpStatusCode.BadGateway)]
     [TestCase(HttpStatusCode.NotFound)]
-    public void GetClassSessionsAsync_WhenBookingAnswersAnError_ThrowsBookingUnavailable(HttpStatusCode status)
+    public async Task GetClassSessionsAsync_WhenBookingAnswersAnError_ThrowsBookingUnavailable(HttpStatusCode status)
     {
         // Arrange
         using var gateway = new StubGateway(status, "{}");
         using ServiceProvider services = Services(gateway);
 
         // Act & Assert
-        Assert.ThrowsAsync<BookingUnavailableException>(() => Get(services, centerId: null));
+        await Assert.ThatAsync(() => Get(services, centerId: null), Throws.TypeOf<BookingUnavailableException>()).ConfigureAwait(false);
     }
 
     [Test]
-    public void GetClassSessionsAsync_WhenBookingCantBeReached_ThrowsBookingUnavailable()
+    public async Task GetClassSessionsAsync_WhenBookingCantBeReached_ThrowsBookingUnavailable()
     {
         // Arrange
         using var gateway = StubGateway.ThatCantBeReached();
         using ServiceProvider services = Services(gateway);
 
         // Act & Assert
-        Assert.ThrowsAsync<BookingUnavailableException>(() => Get(services, centerId: null));
+        await Assert.ThatAsync(() => Get(services, centerId: null), Throws.TypeOf<BookingUnavailableException>()).ConfigureAwait(false);
     }
 
     [TestCase("not json")]
     [TestCase("null")]
-    public void GetClassSessionsAsync_WhenTheAnswerCantBeRead_ThrowsBookingUnavailable(string body)
+    public async Task GetClassSessionsAsync_WhenTheAnswerCantBeRead_ThrowsBookingUnavailable(string body)
     {
         // Arrange
         using var gateway = new StubGateway(HttpStatusCode.OK, body);
         using ServiceProvider services = Services(gateway);
 
         // Act & Assert
-        Assert.ThrowsAsync<BookingUnavailableException>(() => Get(services, centerId: null));
+        await Assert.ThatAsync(() => Get(services, centerId: null), Throws.TypeOf<BookingUnavailableException>()).ConfigureAwait(false);
     }
 
     private static Task<IReadOnlyList<ClassSession>> Get(ServiceProvider services, Guid? centerId)
@@ -181,7 +181,12 @@ public sealed class BookingClientTests
         {
             Method = request.Method;
             Uri = request.RequestUri;
-            CorrelationId = request.Headers.TryGetValues(CorrelationContext.HeaderName, out IEnumerable<string>? values) ? values.Single() : null;
+            CorrelationId = null;
+            if (request.Headers.TryGetValues(CorrelationContext.HeaderName, out IEnumerable<string>? values))
+            {
+                CorrelationId = values.Single();
+            }
+
             if (_cantBeReached)
             {
                 throw new HttpRequestException("No connection could be made.");

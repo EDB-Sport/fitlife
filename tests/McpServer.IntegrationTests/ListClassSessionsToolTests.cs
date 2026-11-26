@@ -28,10 +28,11 @@ public sealed class ListClassSessionsToolTests
             IsCancelled: false);
         using var factory = new McpFactory(new StubBookingClient(_ => [session]));
         using HttpClient http = factory.CreateClient();
-        await using McpClient client = await McpFactory.ConnectAsync(http).ConfigureAwait(false);
+        await using HttpClientTransport transport = McpFactory.TransportFor(http);
+        await using McpClient client = await McpClient.CreateAsync(transport).ConfigureAwait(false);
 
         // Act
-        CallToolResult result = await client.CallToolAsync("list_class_sessions", new Dictionary<string, object?> { ["centerId"] = CenterId }).ConfigureAwait(false);
+        CallToolResult result = await client.CallToolAsync("list_class_sessions", new Dictionary<string, object?>(StringComparer.Ordinal) { ["centerId"] = CenterId }).ConfigureAwait(false);
 
         // Assert
         Assert.That(result.IsError, Is.Not.True);
@@ -48,7 +49,8 @@ public sealed class ListClassSessionsToolTests
         // Arrange
         using var factory = new McpFactory(new StubBookingClient(_ => throw new BookingUnavailableException("Booking can't be reached.", new HttpRequestException("connection refused by gateway.internal:80"))));
         using HttpClient http = factory.CreateClient();
-        await using McpClient client = await McpFactory.ConnectAsync(http).ConfigureAwait(false);
+        await using HttpClientTransport transport = McpFactory.TransportFor(http);
+        await using McpClient client = await McpClient.CreateAsync(transport).ConfigureAwait(false);
 
         // Act
         CallToolResult result = await client.CallToolAsync("list_class_sessions").ConfigureAwait(false);

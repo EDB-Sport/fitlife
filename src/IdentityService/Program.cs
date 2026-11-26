@@ -70,8 +70,8 @@ try
     app.MapControllers();
 
     // A path with no endpoint answers 404, not 401: the fallback policy of AddFitLifeAuthorization() also covers
-    // requests that match no endpoint, e.g. /openapi/v1.json outside Development
-    app.MapFallback("{*path}", NotFound).AllowAnonymous();
+    // requests that match no endpoint, e.g. /openapi/v1.json outside Development (#440)
+    app.MapFitLifeNotFoundFallback();
 
     // The startup line: which service and which release is running (the version is also a Loki label)
     if (app.Logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information))
@@ -98,9 +98,4 @@ public partial class Program
 {
     /// <summary>Only the top-level statements create the app.</summary>
     protected Program() { }
-
-    private static IResult NotFound()
-    {
-        return Results.NotFound();
-    }
 }

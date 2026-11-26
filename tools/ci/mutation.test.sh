@@ -162,6 +162,20 @@ write_tests "$add_async_test"
 commit "AddAsync with its test"
 expect pass "a ConfigureAwait(false) mutant isn't counted" "final mutation score is 100"
 
+# 3c. The arithmetic mutant in Task.FromResult(left + right).ConfigureAwait(false) must still be counted (#322):
+#     a test with a weak assertion leaves it alive. Ignoring the whole ConfigureAwait(...) call would hide it.
+add_async_weak_test='
+    [Test]
+    public async Task AddAsync_TwoNumbers_ReturnsNonZero()
+    {
+        Assert.That(await Calculator.AddAsync(2, 3), Is.Not.EqualTo(0));
+    }'
+setup_repo
+write_calculator "$add_async"
+write_tests "$add_async_weak_test"
+commit "AddAsync with a weak test"
+expect fail "the arithmetic mutant inside ConfigureAwait is still counted" "break threshold"
+
 # 4. Without a base to compare with, the script refuses to run
 cd "$work" || exit 1
 if out=$(env -u SINCE "$script" 2>&1); then

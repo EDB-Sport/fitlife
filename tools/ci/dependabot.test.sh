@@ -12,6 +12,16 @@ if [ ! -f "$file" ]; then
   exit 1
 fi
 
+# Without PyYAML: skip on a laptop, fail in CI (CI=true on GitHub Actions), so ci-scripts never passes untested (#449)
+if ! python3 -I -c 'import yaml' 2>/dev/null; then
+  if [ "${CI:-}" = true ]; then
+    echo "FAIL  PyYAML is not installed, so this test can't run in CI (pip install pyyaml)"
+    exit 1
+  fi
+  echo "SKIP: PyYAML not installed (pip install pyyaml)"
+  exit 0
+fi
+
 python3 -I - "$file" <<'PY'
 import sys
 import yaml

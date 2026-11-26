@@ -19,6 +19,24 @@ public sealed class AccountTests
     }
 
     [Test]
+    public void Create_WithARole_HasOnlyThatRole()
+    {
+        // Arrange & Act
+        var account = Account.Create(Email, PasswordHash, Role.Traener);
+
+        // Assert
+        Assert.That(account.Roles, Is.EqualTo(new[] { Role.Traener }));
+    }
+
+    [Test]
+    public void Create_WithoutARole_Throws()
+    {
+        // Arrange & Act & Assert
+        // ! The test passes null on purpose, to check the guard.
+        Assert.That(() => Account.Create(Email, PasswordHash, null!), Throws.ArgumentNullException);
+    }
+
+    [Test]
     public void Create_WithAnEmailAndAPasswordHash_KeepsBoth()
     {
         // Arrange & Act

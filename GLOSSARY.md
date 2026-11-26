@@ -34,7 +34,7 @@ People and agents use these words, and only these words, in code, tests, issues,
 | Booking | A member's seat on one class session | `Reservation` | Reservation | Booking | Entity | Booking (as a name in code), Signup, Enrollment, Tilmelding |
 | Ventelisteplads | A member's place in the queue for a full class session, first come first served | `WaitlistEntry` | – | Booking | Entity | Queue, Standby, Waiting |
 | Sen afmelding | A cancellation less than two hours before the class session starts. Statistics only, no consequence. A seat from the waitlist is never late | `ReservationCancelled.IsLateCancellation` | – | Booking | Term | Late cancel, No-show |
-| Instruktør | The trainer who leads a class session. Booking only knows the instructor's id and name | `Instructor` | Person | Booking | Value object | Trainer, Coach, Teacher |
+| Instruktør | The trainer who leads a class session. Booking only knows the instructor's name, which isn't blank; an id comes when a Træner needs to see their own class sessions | `Instructor` | Person | Booking | Value object | Trainer, Coach, Teacher |
 | Personlig træner | A trainer in a personal training programme with one member (NEXT) | `PersonalTrainer` | Person | Training | Entity | Instructor, Coach, PT |
 | Træningspas | One completed training session in a personal training programme (NEXT) | `TrainingSession` | ExerciseAction | Training | Entity | Session, Workout, Visit |
 | PT-forløb | A personal training programme: one member's series of training sessions with their personal trainer, with follow-up (NEXT) | `TrainingProgram` | ExercisePlan | Training | Aggregate root | Course, Plan, Package |
@@ -47,6 +47,8 @@ People and agents use these words, and only these words, in code, tests, issues,
 | Ventelisteplads udløbet | The waitlist closed 2 hours before start, and a member's waitlist entry was removed without a seat | `WaitlistEntryExpired` | – | Booking | Domain event | WaitlistEntryRemoved, WaitlistEntryDeleted, QueueExpired |
 | Hold aflyst | A class session will not take place | `ClassSessionCancelled` | – | Booking | Domain event | ClassDeleted, SessionRemoved |
 | Hold ændret | A class session got a new time or place | `ClassSessionChanged` | – | Booking | Domain event | ClassUpdated, SessionEdited |
+| Indmeldelse | A person with an account joins FitLife with their token and gets a member and a membership (UC5). The membership starts as Betaling mangler (`PaymentMissing`) and becomes Aktiv when the first fee is paid | `JoinMembershipCommand` | JoinAction | Membership | Command | Signup, Registration, Subscribe, Enroll |
+| Betalingsudbyder | The external payment provider that charges the membership fee. Outside FitLife Digital, behind an anticorruption layer; a Postman Mock Server in the PoC | `IPaymentProvider` | – | Membership | Domain service | Payment gateway, PSP, Acquirer |
 | Medlemskab pauset | A membership is on pause for a period | `MembershipPaused` | – | Membership | Domain event | MembershipFrozen, Suspended |
 | Medlemskab opsagt | A member has given notice; the membership ends after the notice period | `MembershipCancelled` | – | Membership | Domain event | MembershipDeleted, Unsubscribed |
 | Betaling fejlet | A charge for the membership fee did not go through | `PaymentFailed` | – | Membership | Domain event | ChargeError, PaymentDeclined |

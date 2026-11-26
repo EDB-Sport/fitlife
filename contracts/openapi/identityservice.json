@@ -5,6 +5,174 @@
     "version": "1.0.0"
   },
   "paths": {
+    "/accounts/{id}/roles/traener": {
+      "put": {
+        "tags": [
+          "AccountRoles"
+        ],
+        "summary": "Gives the account the role Træner. It applies from the account's next log-in.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The account.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The account has the role Træner, also when it had it already."
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No account has the id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "AccountRoles"
+        ],
+        "summary": "Takes the role Træner from the account. It applies from the account's next log-in.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The account.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The account doesn't have the role Træner, also when it never had it."
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No account has the id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Træner is the account's only role, and an account always keeps one.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/accounts": {
       "post": {
         "tags": [
@@ -69,6 +237,120 @@
             }
           }
         }
+      },
+      "get": {
+        "tags": [
+          "ListAccounts"
+        ],
+        "summary": "Lists every account with its id, e-mail address and roles, ordered by e-mail address. Needs a token with the role Admin.",
+        "responses": {
+          "200": {
+            "description": "Every account. Never a password or its hash.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccountResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccountResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccountResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid token."
+          },
+          "403": {
+            "description": "The token doesn't have the role Admin."
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/tokens": {
+      "post": {
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "Logs in with an e-mail address and a password, and gives a token with the account's id and roles. No token needed.",
+        "requestBody": {
+          "description": "Stops the request.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogInRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogInRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The token, valid for 60 minutes.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The e-mail address or the password is missing.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No account has the e-mail address, or the password is wrong. Both give the same answer.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
       }
     }
   },
@@ -99,7 +381,7 @@
             "description": "The glossary's names of the account's roles."
           }
         },
-        "description": "A new account. Never the password or its hash."
+        "description": "An account, as POST /accounts and GET /accounts answer. Never the password or its hash."
       },
       "CreateAccountRequest": {
         "required": [
@@ -118,6 +400,24 @@
           }
         },
         "description": "A person asks for an account."
+      },
+      "LogInRequest": {
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "The e-mail address of the account, in any letter case."
+          },
+          "password": {
+            "type": "string",
+            "description": "The password of the account."
+          }
+        },
+        "description": "A person logs in."
       },
       "ProblemDetails": {
         "type": "object",
@@ -156,6 +456,25 @@
             ]
           }
         }
+      },
+      "TokenResponse": {
+        "required": [
+          "accessToken",
+          "expiresAt"
+        ],
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "The JWT to send as `Authorization: Bearer` to the other services."
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "When the token stops being accepted: 60 minutes after it was written.",
+            "format": "date-time"
+          }
+        },
+        "description": "The token for a logged-in account."
       },
       "ValidationProblemDetails": {
         "type": "object",
@@ -204,11 +523,27 @@
           }
         }
       }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
     }
   },
   "tags": [
     {
+      "name": "AccountRoles"
+    },
+    {
       "name": "Accounts"
+    },
+    {
+      "name": "ListAccounts"
+    },
+    {
+      "name": "Tokens"
     }
   ]
 }

@@ -11,7 +11,7 @@ internet --HTTPS 443--> caddy --:80--> nginx --/api/<context>/--> service       
 | Container | Port inside the group | Notes |
 |---|---|---|
 | `caddy` | 443 (public), 8081 | Let's Encrypt certificate for `edb-fitlife.switzerlandnorth.azurecontainer.io`, kept on the `caddy-data` file share. Only 443 is public: `http://` is not answered. |
-| `nginx` | 80 | The same template as compose: `deploy/compose/nginx/default.conf.template`, mounted as a secret volume. |
+| `nginx` | 80 | The same template as compose: `deploy/compose/nginx/default.conf.template`, mounted as a secret volume. It limits log-in (`POST /api/identity/tokens`) per client address and answers 429 above it (`LOGIN_RATE_LIMIT`, `LOGIN_RATE_BURST` in `modules/containers.bicep`); the address is taken from Caddy's `X-Forwarded-For`, trusted only from 127.0.0.1 (#366). |
 | `<context>-svc` | 5001 booking, 5002 membership, 5003 identity | One service in the thin slice (`serviceContext`). The others' routes answer 502. |
 | `member-portal` | 5101 | The Blazor UI. Only in the group once it has a release (`includeMemberPortal`, set when `UI_IMAGE_TAG` is). Until then Nginx answers 502 on `/` (#198). |
 | `mongodb` | 27017 | One database and one user per service, created by the compose init script `deploy/compose/mongodb/init/01-service-users.js`. Data on the `mongodb-data` file share. |

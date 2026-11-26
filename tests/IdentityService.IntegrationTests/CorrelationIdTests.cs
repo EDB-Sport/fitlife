@@ -14,7 +14,7 @@ public sealed class CorrelationIdTests
     {
         // Arrange
         using var logs = new ScopeCapturingLoggerProvider();
-        using var app = new WebApplicationFactory<Program>();
+        using var app = new TestKeyFactory();
         using WebApplicationFactory<Program> factory = app.WithWebHostBuilder(host => host
             .UseSetting("Logging:LogLevel:Microsoft.AspNetCore", "Information")
             .ConfigureServices(services => services.AddSingleton<ILoggerProvider>(logs)));

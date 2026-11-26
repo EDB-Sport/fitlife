@@ -3,6 +3,7 @@
 # version (or a digest), and the same image has the same version in Dockerfiles, compose files, Bicep and
 # Testcontainers builders. The .NET runtime image (aspnet) may float (ADR 004).
 # Usage: tools/ci/image-versions.test.sh   (exit code 0 = all cases pass)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 check="$(cd "$(dirname "$0")" && pwd)/image-versions.sh"
@@ -163,9 +164,4 @@ else
   echo "FAIL  the repository passes"; sed 's/^/        /' <<<"$out"; failures=$((failures + 1))
 fi
 
-echo
-if [ "$failures" -gt 0 ]; then
-  echo "image-versions.test.sh: $failures case(s) failed" >&2
-  exit 1
-fi
-echo "image-versions.test.sh: all cases passed"
+[ "$failures" -eq 0 ] || exit 1

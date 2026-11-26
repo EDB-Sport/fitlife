@@ -2,6 +2,7 @@
 # Tests for tools/ci/api-tests.sh (issue #22). Each case runs the script in a fixture repo with stub
 # `docker` and `newman` commands that log their arguments, so no Docker or Node is needed.
 # Usage: tools/ci/api-tests.test.sh   (exit code 0 = every case passes)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -127,10 +128,4 @@ check "API_TESTS_BUILD=0 doesn't build" has_call '^docker compose up -d --wait \
 timed=$(grep -rlE 'responseTime' "$here/../../tests/postman" --include='*.postman_collection.json' || true)
 check "no collection asserts a response time" [ -z "$timed" ]
 
-echo
-if [ "$failures" -eq 0 ]; then
-  echo "All api-tests.sh cases pass."
-else
-  echo "$failures case(s) failed."
-fi
 exit "$failures"

@@ -2,6 +2,7 @@
 # Tests for tools/ci/diff-scan.sh (issue #5, docs/CSHARP_SETUP_TODO.md section 10).
 # Each case builds a throwaway git repo: a base commit, then a head commit with the change.
 # Usage: tools/ci/diff-scan.test.sh   (exit code 0 = all cases pass)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 scan="$(cd "$(dirname "$0")" && pwd)/diff-scan.sh"
@@ -189,8 +190,4 @@ else
   failures=$((failures + 1))
 fi
 
-if [ "$failures" -gt 0 ]; then
-  echo "$failures case(s) failed"
-  exit 1
-fi
-echo "All cases passed"
+[ "$failures" -eq 0 ] || exit 1

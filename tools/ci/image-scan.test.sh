@@ -3,6 +3,7 @@
 # changes, and .github/workflows/image-scan.yml, which builds each picked image once and scans it with Trivy.
 # The plan cases run on a throwaway repo root with two stub Dockerfiles, so no Docker is needed.
 # Usage: tools/ci/image-scan.test.sh   (exit code 0 = every case passes)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -101,10 +102,4 @@ else
   check "the Trivy action is pinned to a commit SHA" grep -qE 'uses: aquasecurity/trivy-action@[0-9a-f]{40} # v' "$workflow"
 fi
 
-echo
-if [ "$failures" -eq 0 ]; then
-  echo "All image-scan cases pass."
-else
-  echo "$failures case(s) failed."
-fi
 exit "$failures"

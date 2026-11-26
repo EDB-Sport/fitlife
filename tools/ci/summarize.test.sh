@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Tests for tools/ci/summarize.sh (issue #132): a failing CI step writes a short summary, a passing one doesn't.
 # Usage: tools/ci/summarize.test.sh   (exit code 0 = every case passes)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -72,6 +73,4 @@ done
 check "api-tests runs through summarize.sh" grep -qE "run: tools/ci/summarize\.sh api-tests " "$root/.github/workflows/api-tests.yml"
 check "AGENTS.md says to read the run summary first" grep -qF "gh run view --log-failed" "$root/AGENTS.md"
 
-echo
-if [ "$failures" -eq 0 ]; then echo "All summarize.sh cases pass."; else echo "$failures case(s) failed."; fi
 exit "$failures"

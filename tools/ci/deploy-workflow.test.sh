@@ -4,6 +4,7 @@
 # release.yml now calls deploy.yml as a reusable workflow after the tags job, in the push context of main,
 # and workflow_dispatch stays for a manual deploy or a rollback.
 # Usage: tools/ci/deploy-workflow.test.sh   (from the repo root, or anywhere in the repo; exit 0 = all pass)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)" || exit 2
@@ -60,8 +61,5 @@ if callers:
           f"release.yml's {name} job grants what azure/login needs (id-token: write, contents: read) and no more")
     check(job.get("secrets") == "inherit", f"release.yml's {name} job passes the production secrets on")
 
-if failures:
-    print(f"{len(failures)} case(s) failed.")
-    sys.exit(1)
-print("deploy.yml runs after a release, on main.")
+sys.exit(1 if failures else 0)
 PY

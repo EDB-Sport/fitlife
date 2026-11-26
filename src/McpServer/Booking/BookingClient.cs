@@ -34,10 +34,16 @@ public sealed class BookingClient(HttpClient http) : IBookingClient
             // No connection, or an error status (GetFromJsonAsync checks it)
             throw new BookingUnavailableException("Booking can't be reached, or answered an error.", exception);
         }
-        catch (TaskCanceledException exception) when (!cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
         {
-            // Booking didn't answer in time: HttpClient's timeout. The caller's own cancellation passes on untouched
+            // Booking didn't answer in time: HttpClient's timeout, as a TaskCanceledException while it waits for the answer
+            // and as a plain OperationCanceledException while the body is read. The caller's own cancellation passes on untouched
             throw new BookingUnavailableException("Booking didn't answer in time.", exception);
+        }
+        catch (IOException exception)
+        {
+            // The connection ended in the middle of the body (HttpIOException is an IOException)
+            throw new BookingUnavailableException("The connection to Booking ended before the answer was read.", exception);
         }
         catch (JsonException exception)
         {

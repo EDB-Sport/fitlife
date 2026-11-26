@@ -25,7 +25,7 @@ This table is a reference, not a second spec. When an issue and the table disagr
 | `DELETE /class-sessions/{id}/reservations/mine` (planned) | BookingService | – | yes | – | – | [#262](https://github.com/EDB-Sport/fitlife/issues/262) |
 | `DELETE /class-sessions/{id}/waitlist/mine` (planned) | BookingService | – | yes | – | – | [#264](https://github.com/EDB-Sport/fitlife/issues/264) |
 | `GET /reservations/mine` (planned) | BookingService | – | yes | – | – | [#265](https://github.com/EDB-Sport/fitlife/issues/265) |
-| `POST /class-sessions` (planned) | BookingService | – | – | yes | yes | [#238](https://github.com/EDB-Sport/fitlife/issues/238) |
+| `POST /class-sessions` | BookingService | – | – | yes | yes | [#238](https://github.com/EDB-Sport/fitlife/issues/238) |
 | `POST /class-sessions/{id}/cancellation` (planned) | BookingService | – | – | yes | yes | [#239](https://github.com/EDB-Sport/fitlife/issues/239) |
 | `PUT /class-sessions/{id}/start` (planned) | BookingService | – | – | yes | yes | [#241](https://github.com/EDB-Sport/fitlife/issues/241) |
 | `POST /members` | MembershipService | – | yes | yes | yes | [#170](https://github.com/EDB-Sport/fitlife/issues/170), any role in [#368](https://github.com/EDB-Sport/fitlife/issues/368) |

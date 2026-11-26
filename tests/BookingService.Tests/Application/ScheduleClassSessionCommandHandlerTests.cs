@@ -7,6 +7,7 @@ using Moq;
 namespace BookingService.Tests.Application;
 
 /// <summary>A Træner or an Admin schedules a class session (#238).</summary>
+[FixtureLifeCycle(LifeCycle.InstancePerTestCase)]
 public sealed class ScheduleClassSessionCommandHandlerTests
 {
     private static readonly DateTimeOffset Now = new(2026, 11, 26, 12, 0, 0, TimeSpan.Zero);
@@ -14,16 +15,13 @@ public sealed class ScheduleClassSessionCommandHandlerTests
     private static readonly ClassType Yoga = new(Guid.NewGuid(), "Yoga");
     private static readonly ScheduleClassSessionCommand Valid = new(Center.Id, Yoga.Id, "Mette", Now.AddDays(1), DurationMinutes: 60, Capacity: 20);
 
-    private FakeTimeProvider _clock = null!;
-    private Mock<IClassSessionRepository> _classSessions = null!;
-    private Mock<IReferenceDataRepository> _referenceData = null!;
+    private readonly FakeTimeProvider _clock = new(Now);
+    private readonly Mock<IClassSessionRepository> _classSessions = new();
+    private readonly Mock<IReferenceDataRepository> _referenceData = new();
 
     [SetUp]
     public void StoreTheReferenceData()
     {
-        _clock = new FakeTimeProvider(Now);
-        _classSessions = new Mock<IClassSessionRepository>();
-        _referenceData = new Mock<IReferenceDataRepository>();
         _referenceData.Setup(repository => repository.ListCentersAsync(It.IsAny<CancellationToken>())).ReturnsAsync([Center]);
         _referenceData.Setup(repository => repository.ListClassTypesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([Yoga]);
     }
@@ -39,7 +37,7 @@ public sealed class ScheduleClassSessionCommandHandlerTests
         ScheduleClassSessionResult result = await Handler().Handle(command, CancellationToken.None).ConfigureAwait(false);
 
         // Assert
-        AssertRejected(result, ScheduleClassSessionOutcome.StartNotInTheFuture);
+        Assert.That((result, _classSessions.Invocations.Count), Is.EqualTo((Rejected(ScheduleClassSessionOutcome.StartNotInTheFuture), 0)));
     }
 
     [Test]
@@ -49,7 +47,7 @@ public sealed class ScheduleClassSessionCommandHandlerTests
         ScheduleClassSessionResult result = await Handler().Handle(Valid with { Capacity = 0 }, CancellationToken.None).ConfigureAwait(false);
 
         // Assert
-        AssertRejected(result, ScheduleClassSessionOutcome.CapacityUnderOne);
+        Assert.That((result, _classSessions.Invocations.Count), Is.EqualTo((Rejected(ScheduleClassSessionOutcome.CapacityUnderOne), 0)));
     }
 
     [Test]
@@ -59,7 +57,7 @@ public sealed class ScheduleClassSessionCommandHandlerTests
         ScheduleClassSessionResult result = await Handler().Handle(Valid with { DurationMinutes = 0 }, CancellationToken.None).ConfigureAwait(false);
 
         // Assert
-        AssertRejected(result, ScheduleClassSessionOutcome.DurationUnderOneMinute);
+        Assert.That((result, _classSessions.Invocations.Count), Is.EqualTo((Rejected(ScheduleClassSessionOutcome.DurationUnderOneMinute), 0)));
     }
 
     [TestCase("")]
@@ -70,7 +68,7 @@ public sealed class ScheduleClassSessionCommandHandlerTests
         ScheduleClassSessionResult result = await Handler().Handle(Valid with { InstructorName = instructorName }, CancellationToken.None).ConfigureAwait(false);
 
         // Assert
-        AssertRejected(result, ScheduleClassSessionOutcome.InstructorNameMissing);
+        Assert.That((result, _classSessions.Invocations.Count), Is.EqualTo((Rejected(ScheduleClassSessionOutcome.InstructorNameMissing), 0)));
     }
 
     [Test]
@@ -80,7 +78,7 @@ public sealed class ScheduleClassSessionCommandHandlerTests
         ScheduleClassSessionResult result = await Handler().Handle(Valid with { CenterId = Guid.NewGuid() }, CancellationToken.None).ConfigureAwait(false);
 
         // Assert
-        AssertRejected(result, ScheduleClassSessionOutcome.CenterNotFound);
+        Assert.That((result, _classSessions.Invocations.Count), Is.EqualTo((Rejected(ScheduleClassSessionOutcome.CenterNotFound), 0)));
     }
 
     [Test]
@@ -90,7 +88,7 @@ public sealed class ScheduleClassSessionCommandHandlerTests
         ScheduleClassSessionResult result = await Handler().Handle(Valid with { ClassTypeId = Guid.NewGuid() }, CancellationToken.None).ConfigureAwait(false);
 
         // Assert
-        AssertRejected(result, ScheduleClassSessionOutcome.ClassTypeNotFound);
+        Assert.That((result, _classSessions.Invocations.Count), Is.EqualTo((Rejected(ScheduleClassSessionOutcome.ClassTypeNotFound), 0)));
     }
 
     [Test]
@@ -117,11 +115,11 @@ public sealed class ScheduleClassSessionCommandHandlerTests
         ScheduleClassSessionResult result = await Handler().Handle(Valid, CancellationToken.None).ConfigureAwait(false);
 
         // Assert
-        ClassSessionSummary summary = result.ClassSession!;
+        Guid id = result.ClassSession?.Id ?? Guid.Empty;
         var expected = new ClassSessionSummary(
-            summary.Id, Center.Id, Center.Name, Yoga.Id, Yoga.Name, "Mette", Now.AddDays(1), 60, 20, FreeSeats: 20, IsCancelled: false);
+            id, Center.Id, Center.Name, Yoga.Id, Yoga.Name, "Mette", Now.AddDays(1), 60, 20, FreeSeats: 20, IsCancelled: false);
         Assert.That(
-            (result.Outcome, summary, summary.Id == Guid.Empty),
+            (result.Outcome, result.ClassSession, id == Guid.Empty),
             Is.EqualTo((ScheduleClassSessionOutcome.Scheduled, expected, false)));
     }
 
@@ -138,13 +136,9 @@ public sealed class ScheduleClassSessionCommandHandlerTests
         Assert.That(result.Outcome, Is.EqualTo(ScheduleClassSessionOutcome.Scheduled));
     }
 
-    private void AssertRejected(ScheduleClassSessionResult result, ScheduleClassSessionOutcome outcome)
+    private static ScheduleClassSessionResult Rejected(ScheduleClassSessionOutcome outcome)
     {
-        Assert.Multiple(() =>
-        {
-            Assert.That(result, Is.EqualTo(new ScheduleClassSessionResult(outcome, ClassSession: null)));
-            _classSessions.Verify(repository => repository.AddAsync(It.IsAny<ClassSession>(), It.IsAny<CancellationToken>()), Times.Never);
-        });
+        return new ScheduleClassSessionResult(outcome, ClassSession: null);
     }
 
     private ScheduleClassSessionCommandHandler Handler()

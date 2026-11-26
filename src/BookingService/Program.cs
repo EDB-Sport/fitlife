@@ -29,6 +29,7 @@ try
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddRepositories();
     builder.Services.AddScoped<GetClassSessionsQueryHandler>(); // the class schedule (#254)
+    builder.Services.AddScoped<ScheduleClassSessionCommandHandler>(); // Træner or Admin (#238)
     if (builder.Configuration.GetValue<bool>("Seed:Enabled"))
     {
         builder.Services.AddHostedService<ClassSessionSeeder>();
@@ -38,7 +39,7 @@ try
     builder.Services.AddMembershipClient();
     builder.Services.AddScoped<ReserveSeatCommandHandler>();
 
-    // The member's token (#183, #260): POST reservations needs the role Medlem; the class schedule and /health stay open
+    // The member's token (#183, #260): POST reservations needs the role Medlem, POST class-sessions Træner or Admin (#238); reading the class schedule and /health stay open
     builder.Services.AddFitLifeJwtAuthentication();
     builder.Services.AddAuthorization();
 

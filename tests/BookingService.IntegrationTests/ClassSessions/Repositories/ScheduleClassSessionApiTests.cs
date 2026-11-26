@@ -9,7 +9,7 @@ using Microsoft.Extensions.Time.Testing;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
-namespace BookingService.IntegrationTests.ClassSessions;
+namespace BookingService.IntegrationTests.ClassSessions.Repositories;
 
 /// <summary>A Træner or an Admin schedules a class session with <c>POST /class-sessions</c> (#238).</summary>
 public sealed class ScheduleClassSessionApiTests
@@ -33,7 +33,7 @@ public sealed class ScheduleClassSessionApiTests
         ClassSessionResponse? created = await response.Content.ReadFromJsonAsync<ClassSessionResponse>().ConfigureAwait(false);
         List<ClassSessionResponse>? schedule = await client.GetFromJsonAsync<List<ClassSessionResponse>>(ClassSessions).ConfigureAwait(false);
         var expected = new ClassSessionResponse(
-            created!.Id, CenterId, "FitLife Center 1", ClassTypeId, "Yoga", "Mette", Now.AddDays(1), 60, 20, FreeSeats: 20, IsCancelled: false);
+            created?.Id ?? Guid.Empty, CenterId, "FitLife Center 1", ClassTypeId, "Yoga", "Mette", Now.AddDays(1), 60, 20, FreeSeats: 20, IsCancelled: false);
         Assert.Multiple(() =>
         {
             Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
@@ -136,18 +136,18 @@ public sealed class ScheduleClassSessionApiTests
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
     }
 
-    [TestCase(true, false, "No such center.")]
-    [TestCase(false, true, "No such class type.")]
-    public async Task PostClassSession_WithAnUnknownId_ReturnsNotFound(bool unknownCenter, bool unknownClassType, string title)
+    [TestCase(true, "No such center.")]
+    [TestCase(false, "No such class type.")]
+    public async Task PostClassSession_WithAnUnknownId_ReturnsNotFound(bool unknownCenter, string title)
     {
         // Arrange
         using BookingApiFactory factory = await FactoryAsync().ConfigureAwait(false);
         using HttpClient client = ClientWithRole(factory, FitLifeRoles.Traener);
-        ScheduleClassSessionRequest request = Request() with
+        ScheduleClassSessionRequest request = Request() with { ClassTypeId = Guid.NewGuid() };
+        if (unknownCenter)
         {
-            CenterId = unknownCenter ? Guid.NewGuid() : CenterId,
-            ClassTypeId = unknownClassType ? Guid.NewGuid() : ClassTypeId,
-        };
+            request = Request() with { CenterId = Guid.NewGuid() };
+        }
 
         // Act
         using HttpResponseMessage response = await client.PostAsJsonAsync(ClassSessions, request).ConfigureAwait(false);

@@ -8,9 +8,10 @@
     "/class-sessions": {
       "get": {
         "tags": [
-          "ClassSessions"
+          "ClassSchedule"
         ],
-        "summary": "Lists the class sessions of a centre, or of every centre, with their free seats; a cancelled one has none. No login needed.",
+        "summary": "Lists the upcoming class sessions of a centre, or of every centre, by start, with names and free seats. No login needed.",
+        "description": "Only class sessions that start after now. A cancelled one has no free seats. An unknown centre or class type has an empty name.",
         "parameters": [
           {
             "name": "centerId",
@@ -60,7 +61,7 @@
         "tags": [
           "ClassSessions"
         ],
-        "summary": "Reserves a seat for the member.",
+        "summary": "Reserves a seat for the member behind the token (#260). Membership says who the member is and whether they may book.",
         "parameters": [
           {
             "name": "id",
@@ -73,22 +74,6 @@
             }
           }
         ],
-        "requestBody": {
-          "description": "Stops the request.",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ReservationRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ReservationRequest"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "201": {
             "description": "Created",
@@ -110,6 +95,36 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token has no role Medlem, or the account has no active membership (code MembershipNotActive).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -121,7 +136,7 @@
             }
           },
           "409": {
-            "description": "The class session is full or cancelled, or the member already has a seat.",
+            "description": "The class session rejected the reservation; code is the reason, e.g. ClassSessionFull or TooFarAhead.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -130,8 +145,8 @@
               }
             }
           },
-          "422": {
-            "description": "The class session starts more than 4 weeks from now.",
+          "503": {
+            "description": "Membership didn't answer (code MembershipUnavailable).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -283,8 +298,12 @@
         "required": [
           "id",
           "centerId",
+          "centerName",
           "classTypeId",
+          "classTypeName",
+          "instructorName",
           "startTime",
+          "durationMinutes",
           "capacity",
           "freeSeats",
           "isCancelled"
@@ -301,15 +320,36 @@
             "description": "The centre it takes place in.",
             "format": "uuid"
           },
+          "centerName": {
+            "type": "string",
+            "description": "The centre's name; empty when Booking doesn't know the centre."
+          },
           "classTypeId": {
             "type": "string",
             "description": "The kind of class it is a run of.",
             "format": "uuid"
           },
+          "classTypeName": {
+            "type": "string",
+            "description": "The class type's name; empty when Booking doesn't know the class type."
+          },
+          "instructorName": {
+            "type": "string",
+            "description": "Who teaches it."
+          },
           "startTime": {
             "type": "string",
             "description": "When it starts.",
             "format": "date-time"
+          },
+          "durationMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "How long it lasts, in minutes.",
+            "format": "int32"
           },
           "capacity": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -374,20 +414,6 @@
           }
         }
       },
-      "ReservationRequest": {
-        "required": [
-          "memberId"
-        ],
-        "type": "object",
-        "properties": {
-          "memberId": {
-            "type": "string",
-            "description": "The member who wants the seat.",
-            "format": "uuid"
-          }
-        },
-        "description": "A member asks for a seat. Until the JWT issue (#172), the member id comes in the body."
-      },
       "ReservationResponse": {
         "required": [
           "classSessionId",
@@ -445,6 +471,9 @@
     }
   },
   "tags": [
+    {
+      "name": "ClassSchedule"
+    },
     {
       "name": "ClassSessions"
     }

@@ -1,8 +1,10 @@
 using System.Globalization;
 using System.Reflection;
+using BookingService.Application;
 using BookingService.Clients;
 using BookingService.Repositories;
 using BookingService.Seed;
+using FitLife.Authentication;
 using FitLife.Configuration;
 using FitLife.Correlation;
 using NLog;
@@ -26,6 +28,7 @@ try
     builder.Services.AddProblemDetails();
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddRepositories();
+    builder.Services.AddScoped<GetClassSessionsQueryHandler>(); // the class schedule (#254)
     if (builder.Configuration.GetValue<bool>("Seed:Enabled"))
     {
         builder.Services.AddHostedService<ClassSessionSeeder>();
@@ -33,6 +36,11 @@ try
 
     // Who the member behind an account is, from Membership (#256). The reservation endpoints use it (#260)
     builder.Services.AddMembershipClient();
+    builder.Services.AddScoped<ReserveSeatCommandHandler>();
+
+    // The member's token (#183, #260): POST reservations needs the role Medlem; the class schedule and /health stay open
+    builder.Services.AddFitLifeJwtAuthentication();
+    builder.Services.AddAuthorization();
 
     WebApplication app = builder.Build();
 
@@ -47,6 +55,8 @@ try
     }
 
     app.UseExceptionHandler(); // an unexpected error is a problem-details 500, without the exception's text
+    app.UseAuthentication();
+    app.UseAuthorization();
     app.MapHealthChecks("/health");
     app.MapControllers();
 

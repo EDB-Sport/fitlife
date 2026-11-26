@@ -1,0 +1,11 @@
+{
+  "tools": [
+    {
+      "name": "list_class_sessions",
+      "description": "Lists the upcoming class sessions of a centre, or of every centre, with names and free seats. A cancelled class session has no free seats. Needs no login.",
+      "inputs": [
+        "centerId"
+      ]
+    }
+  ]
+}

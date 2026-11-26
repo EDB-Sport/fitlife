@@ -1,0 +1,25 @@
+# Delivery metrics (DORA) for the report (issue #344): deployment frequency, lead time, change failure rate and
+# time to restore, from the release.yml and deploy.yml runs. Logic and definitions: tools/ci/delivery-metrics.sh.
+# Started by hand (Actions → delivery-metrics → Run workflow) or weekly; the table is in the run's summary.
+name: delivery-metrics
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+
+# Read-only: the script only reads the Actions runs and jobs
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  delivery-metrics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Delivery metrics to the job summary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: tools/ci/delivery-metrics.sh "$GITHUB_REPOSITORY" >> "$GITHUB_STEP_SUMMARY"

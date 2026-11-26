@@ -1,0 +1,70 @@
+# image-scan (#280): Trivy on the image of each service a PR changes, with the settings release.yml uses,
+# so a HIGH or CRITICAL finding fails the PR instead of the release on main (#25).
+# image-scan-plan: tools/ci/image-scan-plan.sh picks the services whose Dockerfile copies a changed path.
+# image-scan: per picked service, one build (tools/ci/check-service-image.sh --build-only, its usual tag),
+#   then Trivy on that tag. No /health run: that stays a local check. A PR that changes no image skips it.
+# Not a required check (yet); making it one is the owner's decision. Run it locally: docs/CSHARP_SETUP_TODO.md section 8.
+# No "paths:" filter: the plan job decides, so the workflow always reports. Checked by tools/ci/image-scan.test.sh.
+name: image-scan
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+# A new push to a PR cancels the run in progress
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  image-scan-plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      services: ${{ steps.plan.outputs.services }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the diff needs the base commit
+          persist-credentials: false
+      - name: Pick the services whose image the PR changes
+        id: plan
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          services=$(git diff --name-only "$BASE_SHA...$HEAD_SHA" | tools/ci/image-scan-plan.sh)
+          echo "Images to scan: $services"
+          echo "services=$services" >> "$GITHUB_OUTPUT"
+
+  image-scan:
+    needs: image-scan-plan
+    if: needs.image-scan-plan.outputs.services != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false # one vulnerable image doesn't hide the others' results
+      matrix:
+        service: ${{ fromJSON(needs.image-scan-plan.outputs.services) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the image once, with the image check's tag
+        id: build
+        shell: bash
+        env:
+          SERVICE: ${{ matrix.service }}
+        run: |
+          tools/ci/check-service-image.sh --build-only "$SERVICE" | tee build.log
+          grep '^image=' build.log >> "$GITHUB_OUTPUT"
+      - name: Trivy scan (HIGH and CRITICAL fail the PR)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.build.outputs.image }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"

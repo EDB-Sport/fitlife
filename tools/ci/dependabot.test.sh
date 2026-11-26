@@ -2,6 +2,7 @@
 # Checks .github/dependabot.yml for the rules of issue #281: three ecosystems, monthly, one group each,
 # the .NET SDK image ignored, and a low open-pull-requests-limit (METHODOLOGY section 10).
 # Usage: tools/ci/dependabot.test.sh   (from the repo root, or anywhere in the repo; exit 0 = all pass)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)" || exit 2
@@ -12,7 +13,12 @@ if [ ! -f "$file" ]; then
   exit 1
 fi
 
+# Without PyYAML: skip on a laptop, fail in CI (CI=true on GitHub Actions), so ci-scripts never passes untested (#449)
 if ! python3 -I -c 'import yaml' 2>/dev/null; then
+  if [ "${CI:-}" = true ]; then
+    echo "FAIL  PyYAML is not installed, so this test can't run in CI (pip install pyyaml)"
+    exit 1
+  fi
   echo "SKIP: PyYAML not installed (pip install pyyaml)"
   exit 0
 fi
@@ -79,8 +85,5 @@ check("NuGet" in text and "packages.lock.json" in text,
 check("SDK" in text and "global.json" in text and "#" in text,
       "the file says why the SDK image is ignored, in a comment")
 
-if failures:
-    print(f"{len(failures)} case(s) failed.")
-    sys.exit(1)
-print("All Dependabot checks work.")
+sys.exit(1 if failures else 0)
 PY

@@ -26,7 +26,7 @@ public sealed class VaultSecretsTests
         await vault.StartAsync().ConfigureAwait(false);
         string vaultUrl = vault.Services.GetRequiredService<IServer>().Features.GetRequiredFeature<IServerAddressesFeature>().Addresses.Single();
 
-        using var app = new WebApplicationFactory<Program>();
+        using var app = new TestKeyFactory();
         using WebApplicationFactory<Program> factory = app.WithWebHostBuilder(host => host
             .UseSetting("Vault:Address", vaultUrl)
             .UseSetting("Vault:Token", "test-root-token"));

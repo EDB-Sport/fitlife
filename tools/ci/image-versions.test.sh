@@ -3,6 +3,7 @@
 # version (or a digest), and the same image has the same version in Dockerfiles, compose files, Bicep and
 # Testcontainers builders. The .NET runtime image (aspnet) may float (ADR 004).
 # Usage: tools/ci/image-versions.test.sh   (exit code 0 = all cases pass)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 check="$(cd "$(dirname "$0")" && pwd)/image-versions.sh"
@@ -20,6 +21,12 @@ compose() { printf 'services:\n  db:\n    image: %s\n' "$1" > "$root/deploy/comp
 bicep() { printf "param %s string = '%s'\n" "$1" "$2" > "$root/deploy/azure/main.bicep"; }
 dockerfile() { printf '%s\n' "$@" > "$root/src/Svc/Dockerfile"; }
 csharp() { printf 'var c = new MongoDbBuilder("%s").Build();\n' "$1" > "$root/tests/Svc.IntegrationTests/DbTests.cs"; }
+# csharp_override: an image an environment variable can override, on one line, or on two as in NotificationService (#315)
+csharp_override() { printf 'var c = new MongoDbBuilder(env["MONGO_IMAGE"] ?? "%s").Build();\n' "$1" > "$root/tests/Svc.IntegrationTests/SetUp.cs"; }
+csharp_override_two_lines() {
+  printf 'var c = new MongoDbBuilder(\n    new ConfigurationBuilder().AddEnvironmentVariables().Build()["MONGO_IMAGE"] ?? "%s").Build();\n' "$1" \
+    > "$root/tests/Svc.IntegrationTests/Infrastructure.cs"
+}
 
 # expect <0|1> <description> [grep pattern for the output]
 expect() {
@@ -86,6 +93,31 @@ else
   echo "FAIL  the version mismatch names both files and lines"; sed 's/^/        /' <<<"$out"; failures=$((failures + 1))
 fi
 
+fresh; compose 'mongo:8.0.38'; csharp_override 'mongo:7.0.48'
+expect 1 "an env override default (Builder(env[...] ?? \"mongo:7.0.48\")) against mongo:8.0.38 fails, naming file, line and both versions (#315)"   'tests/Svc.IntegrationTests/SetUp.cs:1.*7\.0\.48.*8\.0\.38|tests/Svc.IntegrationTests/SetUp.cs:1.*8\.0\.38.*7\.0\.48|7\.0\.48.*8\.0\.38.*SetUp.cs:1'
+
+fresh; compose 'mongo:8.0.38'; csharp_override 'mongo:8.0.38'
+expect 0 "an env override default on the same version passes (#315)" 'image-versions: 2 image reference\(s\) checked'
+
+fresh; compose 'mongo:8.0.38'; csharp_override_two_lines 'mongo:7.0.48'
+expect 1 "an env override default on the line after the builder call is checked too (#315)" 'Infrastructure.cs:2.*7\.0\.48|7\.0\.48.*Infrastructure.cs:2'
+
+fresh; csharp_override 'mongo:8'
+expect 1 "an env override default is held to rule 1 (full version) (#315)" 'SetUp.cs:1.*mongo:8'
+
+fresh; printf 'var name = settings["Name"] ?? "mongo:7";\n' > "$root/tests/Svc.IntegrationTests/Other.cs"
+expect 0 "a ?? default outside a builder call is not an image"
+
+# Builders that aren't Testcontainers: WebApplicationFactory's WithWebHostBuilder, StringBuilder (review on PR #426)
+fresh; printf '%s\n' \
+  'using var f = app.WithWebHostBuilder(host => host' \
+  '    .UseSetting("Vault:Address", url ?? "http://vault.test"));' \
+  'var n = new StringBuilder(64);' \
+  '    var s = name ?? "localhost:5000");' \
+  'var c = new ConfigurationBuilder(' \
+  '    ).Build()["X"] ?? "x:y");' > "$root/tests/Svc.IntegrationTests/Other.cs"
+expect 0 "a ?? default in WithWebHostBuilder, StringBuilder or ConfigurationBuilder is not an image" 'image-versions: 0 image reference'
+
 fresh; compose 'mongo:8.0.38'; bicep mongoImage 'mongo:8.0.39'
 expect 1 "compose against Bicep on different versions fails" '8\.0\.38.*8\.0\.39|8\.0\.39.*8\.0\.38'
 
@@ -120,9 +152,4 @@ else
   echo "FAIL  the repository passes"; sed 's/^/        /' <<<"$out"; failures=$((failures + 1))
 fi
 
-echo
-if [ "$failures" -gt 0 ]; then
-  echo "image-versions.test.sh: $failures case(s) failed" >&2
-  exit 1
-fi
-echo "image-versions.test.sh: all cases passed"
+[ "$failures" -eq 0 ] || exit 1

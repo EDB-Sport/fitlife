@@ -2,6 +2,7 @@
 # Checks the `images` job in .github/workflows/release.yml for the rules of issue #282: each image is
 # built once, and the image pushed to Docker Hub is the one Trivy scanned (METHODOLOGY section 10).
 # Usage: tools/ci/release-single-build.test.sh   (from anywhere in the repo; exit 0 = all pass)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)" || exit 2
@@ -12,7 +13,12 @@ if [ ! -f "$file" ]; then
   exit 1
 fi
 
+# Without PyYAML: skip on a laptop, fail in CI (CI=true on GitHub Actions), so ci-scripts never passes untested (#449)
 if ! python3 -I -c 'import yaml' 2>/dev/null; then
+  if [ "${CI:-}" = true ]; then
+    echo "FAIL  PyYAML is not installed, so this test can't run in CI (pip install pyyaml)"
+    exit 1
+  fi
   echo "SKIP: PyYAML not installed (pip install pyyaml)"
   exit 0
 fi

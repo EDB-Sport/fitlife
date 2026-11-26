@@ -50,7 +50,8 @@ Rules:
 - **Merge with merge commits, not squash.** That way the network graph shows feature, release and hotfix branches, as `git flow ... finish` would.
 - **The `git flow` CLI:** use it to start branches (`git flow feature start ...`). Finish through a PR instead of `git flow ... finish`, because finish merges and pushes locally, and branch protection blocks that.
 - **Delete** feature, release and hotfix branches after they are merged.
-- **Keep feature branches short-lived.** Rebase on, or merge in, `develop` often to avoid large conflicts between parallel agents.
+- **Keep feature branches short-lived** to avoid large conflicts between parallel agents.
+- **Merge `develop` (or the base) into a feature branch only** when GitHub shows a conflict, or when a fix on `develop` is needed for green CI, which includes stale CI (section 3). Don't merge it in just to be up to date.
 - **Start every branch from an up-to-date `develop`,** and get a PR signed off and merged before work that builds on it starts. A branch built on an unmerged one re-sends that code in its own diff and every reviewer reads it again (#106).
 - **When stacking can't be avoided,** the PR's base is its parent branch, so its diff shows only its own change. Retarget it to `develop` once the parent merges. The `stack-check` (#110) enforces this.
 
@@ -103,6 +104,10 @@ Rules for reviewers:
 - **Domain changes:** when a PR touches a domain model, go through the DDD checklist in section 11.3.
 - **Verdict:** approve, or request changes with at most three concrete reasons. Post one review per round, with the verdict and the notes together. Notes never block: at most two.
 - **One reviewer per PR.** The review is requested from `@EDB-Sport/edb-team`; any member takes it first come first served. Once one member has reviewed, nobody else does, unless the author asks for a second review. A re-review goes to the member who reviewed first (#464).
+
+**After approval.** Once a PR is approved and green, merge it right away. The author doesn't push again, because every push dismisses the approval. A note that doesn't block becomes a new issue if it matters, or is dropped.
+
+If a merge-in (section 2.1) is still needed after the approval and it is clean (it changes none of the PR's own lines), a group member re-approves with one click, without starting an agent review. That is the member who reviewed first, or another member if that one pushed the merge-in: whoever pushed last can't approve (`require_last_push_approval`).
 
 ## 4. Testing
 

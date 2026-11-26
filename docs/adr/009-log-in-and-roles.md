@@ -9,7 +9,7 @@
 The report and the oral exam ask why log-in works as it does, and every feature asks who may use it. This ADR records the decision. [`docs/domain/ACCESS.md`](../domain/ACCESS.md) holds the table of which role may call which endpoint or open which page.
 
 Forces:
-- Identity is a Generic subdomain: "Build simply ourselves" (CONTEXT-MAP section 2). Principle P5 says we build what sets FitLife apart and buy or integrate the rest, so a generic subdomain is usually bought. We build this one because the course teaches JWT authentication [M10.03], and the PoC needs only test users and roles (CONTEXT-MAP section 2, ADR 007).
+- Identity is a Generic subdomain: "Build simply ourselves" (CONTEXT-MAP section 2). Principle P5 in part 1 says we build what sets FitLife apart and buy or integrate the rest, so a generic subdomain is usually bought. We build this one because the course teaches JWT authentication [M10.03], and the PoC needs only test users and roles (CONTEXT-MAP section 2, ADR 007).
 - TO-BE-kontekst §1 decides the form: JWT as the token format and the roles Medlem, Træner and Admin as claims. Principle PS1: least privilege, and roles are checked in the backend. §5 asks for role-based access in the backend.
 - Every service must check the same token in the same way (CONTEXT-MAP section 4: Identity is an Open Host Service).
 - The class schedule can be seen without logging in (TO-BE-kontekst §8).
@@ -27,7 +27,7 @@ Where the code is on `develop` today: Membership has the check on every endpoint
 
 ## Alternatives considered
 
-- **MitID** instead of our own accounts. TO-BE-kontekst §1 says "MitID i produktion, testbrugere i PoC", and §10 lists MitID under "Ikke i PoC". We chose test accounts with roles over MitID because that is the scope the TO-BE context document gives the PoC.
+- **MitID** instead of our own accounts. TO-BE-kontekst §1 says "MitID i produktion, testbrugere i PoC", and §10 leaves MitID out of the PoC. We chose test accounts with roles over MitID because that is the scope the TO-BE context document gives the PoC.
 - **A bought identity provider** instead of our own `IdentityService`. Rejected in ADR 007: we chose our own JWT service over a bought provider because the course teaches JWT authentication [M10.03] and the PoC needs only test users and roles.
 
 ## Consequences

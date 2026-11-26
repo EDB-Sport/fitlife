@@ -37,7 +37,7 @@ This table is a reference, not a second spec. When an issue and the table disagr
 | `POST /members/me/payment` (planned) | MembershipService | – | not decided | not decided | not decided | [#250](https://github.com/EDB-Sport/fitlife/issues/250), [#267](https://github.com/EDB-Sport/fitlife/issues/267) |
 | `GET /notifications?memberId={id}` (planned) | NotificationService | – | – | yes | yes | [#221](https://github.com/EDB-Sport/fitlife/issues/221) |
 | `/mcp`, the tool `list_class_sessions` (planned) | McpServer | yes | yes | yes | yes | [#214](https://github.com/EDB-Sport/fitlife/issues/214) |
-| `/mcp`, the five member tools (planned) | McpServer | – | yes | – | – | [#215](https://github.com/EDB-Sport/fitlife/issues/215): the server passes the member's token to Booking, which needs the role Medlem ([#260](https://github.com/EDB-Sport/fitlife/issues/260) to [#265](https://github.com/EDB-Sport/fitlife/issues/265)) |
+| `/mcp`, the five member tools (planned) | McpServer | – | not decided | not decided | not decided | [#215](https://github.com/EDB-Sport/fitlife/issues/215): names no role. The server only passes the member's token to Booking, whose endpoints need the role Medlem ([#260](https://github.com/EDB-Sport/fitlife/issues/260) to [#265](https://github.com/EDB-Sport/fitlife/issues/265)) |
 | `/` (Home) | MemberPortal.Web | yes | yes | yes | yes | [#8](https://github.com/EDB-Sport/fitlife/issues/8) |
 | `/Error` | MemberPortal.Web | yes | yes | yes | yes | [#8](https://github.com/EDB-Sport/fitlife/issues/8) |
 | `/hold` (planned) | MemberPortal.Web | yes | yes | yes | yes | [#205](https://github.com/EDB-Sport/fitlife/issues/205) |

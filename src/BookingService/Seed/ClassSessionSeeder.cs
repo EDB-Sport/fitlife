@@ -5,13 +5,13 @@ using BookingService.Models;
 namespace BookingService.Seed;
 
 /// <summary>
-/// Loads the demo data at start-up, when <c>Seed:Enabled</c> is true (Development and compose): six centres, three class types,
+/// Loads the demo data in the background after start-up, when <c>Seed:Enabled</c> is true (Development and compose): six centres, three class types,
 /// and two class sessions per centre and day for the next 4 weeks (#255). Every run tops the schedule up to 4 weeks from that
 /// run's now and keeps what is stored, reservations included, so a restart or a redeploy refreshes it (decision on #217). Until
 /// MongoDB answers it tries again, so the service can start together with it. Any other failure is logged as one error, and the
-/// service starts without the demo data.
+/// service runs without the demo data. /health is unhealthy until the seed has finished (<see cref="ClassSessionSeedHealthCheck"/>).
 /// </summary>
-public sealed partial class ClassSessionSeeder : IHostedService
+public sealed partial class ClassSessionSeeder : BackgroundService
 {
     private const int ClassSessionsPerCenterAndDay = 2;
 
@@ -44,34 +44,38 @@ public sealed partial class ClassSessionSeeder : IHostedService
     private static readonly TimeSpan ClassSessionDuration = TimeSpan.FromMinutes(60);
 
     private readonly IServiceScopeFactory _scopes;
+    private readonly ClassSessionSeedStatus _status;
     private readonly TimeProvider _clock;
     private readonly ILogger<ClassSessionSeeder> _logger;
 
     /// <summary>Creates the seeder.</summary>
     /// <param name="scopes">Gives the seeder its own repositories.</param>
+    /// <param name="status">Told when the seed has finished, for /health.</param>
     /// <param name="clock">Tells today's date.</param>
     /// <param name="logger">Logs what was loaded.</param>
-    public ClassSessionSeeder(IServiceScopeFactory scopes, TimeProvider clock, ILogger<ClassSessionSeeder> logger)
+    public ClassSessionSeeder(IServiceScopeFactory scopes, ClassSessionSeedStatus status, TimeProvider clock, ILogger<ClassSessionSeeder> logger)
     {
         _scopes = scopes;
+        _status = status;
         _clock = clock;
         _logger = logger;
     }
 
     /// <inheritdoc />
-    public async Task StartAsync(CancellationToken cancellationToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (true)
         {
             try
             {
-                await SeedAsync(cancellationToken).ConfigureAwait(false);
+                await SeedAsync(stoppingToken).ConfigureAwait(false);
+                _status.MarkFinished();
                 return;
             }
             catch (TimeoutException exception)
             {
                 LogMongoDbNotReady(exception, RetryAfter.TotalSeconds);
-                await Task.Delay(RetryAfter, _clock, cancellationToken).ConfigureAwait(false);
+                await Task.Delay(RetryAfter, _clock, stoppingToken).ConfigureAwait(false);
             }
             catch (Exception exception) when (exception is not OperationCanceledException) // a failed seed must not stop the service (#255)
             {
@@ -79,12 +83,6 @@ public sealed partial class ClassSessionSeeder : IHostedService
                 return;
             }
         }
-    }
-
-    /// <inheritdoc />
-    public Task StopAsync(CancellationToken cancellationToken)
-    {
-        return Task.CompletedTask;
     }
 
     /// <summary>Stores the centres and class types, and adds every class session of the next 4 weeks that isn't stored yet.</summary>

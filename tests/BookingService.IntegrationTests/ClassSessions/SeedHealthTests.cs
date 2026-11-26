@@ -2,6 +2,8 @@ using System.Net;
 using BookingService.Application;
 using BookingService.Models;
 using BookingService.Repositories;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -23,9 +25,7 @@ public sealed class SeedHealthTests
         // Arrange: the seed waits at its first write until the test lets it go
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var booking = new BookingApiFactory(MongoDbContainerSetUp.ConnectionString, $"booking-{Guid.NewGuid():N}", new FakeTimeProvider(Now), seed: true);
-        using var factory = booking.WithWebHostBuilder(host => host.ConfigureTestServices(services =>
-            services.Replace(ServiceDescriptor.Scoped<IReferenceDataWriter>(provider =>
-                new GatedReferenceDataWriter(ActivatorUtilities.CreateInstance<ReferenceDataWriter>(provider), gate.Task)))));
+        using WebApplicationFactory<Program> factory = booking.WithWebHostBuilder(host => UseGatedWriter(host, gate.Task));
         using HttpClient client = factory.CreateClient();
 
         // Act
@@ -49,6 +49,17 @@ public sealed class SeedHealthTests
 
         // Assert
         Assert.That(health.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+    }
+
+    private static void UseGatedWriter(IWebHostBuilder host, Task gate)
+    {
+        host.ConfigureTestServices(services => ReplaceWriter(services, gate));
+    }
+
+    private static void ReplaceWriter(IServiceCollection services, Task gate)
+    {
+        services.Replace(ServiceDescriptor.Scoped<IReferenceDataWriter>(provider =>
+            new GatedReferenceDataWriter(ActivatorUtilities.CreateInstance<ReferenceDataWriter>(provider), gate)));
     }
 
     /// <summary>Writes reference data only once the gate opens, so the seed is still running when the test asks.</summary>

@@ -33,7 +33,7 @@ public sealed class ClassSessionSeederTests
     public async Task SeedAsync_OnAnEmptyDatabase_StoresTheDemoData()
     {
         // Arrange
-        ClassSessionSeeder seeder = Seeder();
+        using ClassSessionSeeder seeder = Seeder();
 
         // Act
         await seeder.SeedAsync(CancellationToken.None).ConfigureAwait(false);
@@ -53,7 +53,7 @@ public sealed class ClassSessionSeederTests
     public async Task SeedAsync_OnAnEmptyDatabase_StoresOnlyClassSessionsThatCanBeReserved()
     {
         // Arrange
-        ClassSessionSeeder seeder = Seeder();
+        using ClassSessionSeeder seeder = Seeder();
 
         // Act
         await seeder.SeedAsync(CancellationToken.None).ConfigureAwait(false);
@@ -70,7 +70,7 @@ public sealed class ClassSessionSeederTests
     public async Task SeedAsync_RunTwice_LeavesTheSameDemoDataAndKeepsReservations()
     {
         // Arrange
-        ClassSessionSeeder seeder = Seeder();
+        using ClassSessionSeeder seeder = Seeder();
         await seeder.SeedAsync(CancellationToken.None).ConfigureAwait(false);
         ClassSession reserved = _classSessions.All[0];
         reserved.Reserve(Guid.NewGuid(), _clock);
@@ -92,7 +92,7 @@ public sealed class ClassSessionSeederTests
     public async Task SeedAsync_AWeekLater_TopsTheScheduleUpToFourWeeksFromThenAndKeepsWhatExists()
     {
         // Arrange
-        ClassSessionSeeder seeder = Seeder();
+        using ClassSessionSeeder seeder = Seeder();
         await seeder.SeedAsync(CancellationToken.None).ConfigureAwait(false);
         Guid[] idsBefore = [.. _classSessions.All.Select(classSession => classSession.Id)];
         DateTimeOffset lastStartBefore = _classSessions.All.Max(classSession => classSession.StartTime);
@@ -115,7 +115,7 @@ public sealed class ClassSessionSeederTests
     public async Task ExecuteAsync_AfterTheSeed_MarksItFinished()
     {
         // Arrange
-        ClassSessionSeeder seeder = Seeder();
+        using ClassSessionSeeder seeder = Seeder();
 
         // Act
         await RunAsync(seeder).ConfigureAwait(false);
@@ -133,7 +133,7 @@ public sealed class ClassSessionSeederTests
     {
         // Arrange
         var logger = new ErrorCountingLogger();
-        ClassSessionSeeder seeder = Seeder(new FailingReferenceData(), logger);
+        using ClassSessionSeeder seeder = Seeder(new FailingReferenceData(), logger);
 
         // Act: the background work ends without an exception, so the host keeps running
         await RunAsync(seeder).ConfigureAwait(false);
@@ -143,13 +143,13 @@ public sealed class ClassSessionSeederTests
     }
 
     [Test]
-    public void ExecuteAsync_WhenCancelled_PassesTheCancellationOn()
+    public async Task ExecuteAsync_WhenCancelled_PassesTheCancellationOn()
     {
         // Arrange
-        ClassSessionSeeder seeder = Seeder(new FailingReferenceData(new OperationCanceledException()), new ErrorCountingLogger());
+        using ClassSessionSeeder seeder = Seeder(new FailingReferenceData(new OperationCanceledException()), new ErrorCountingLogger());
 
         // Act & Assert
-        Assert.That(() => RunAsync(seeder), Throws.InstanceOf<OperationCanceledException>());
+        await Assert.ThatAsync(() => RunAsync(seeder), Throws.InstanceOf<OperationCanceledException>()).ConfigureAwait(false);
     }
 
     /// <summary>Starts the seeder as the host does, and waits for its background work.</summary>

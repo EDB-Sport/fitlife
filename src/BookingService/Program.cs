@@ -30,7 +30,10 @@ try
     builder.Services.AddScoped<GetClassSessionsQueryHandler>(); // the class schedule (#254)
     if (builder.Configuration.GetValue<bool>("Seed:Enabled"))
     {
+        // The seed runs in the background; /health is unhealthy until it has finished (#255)
+        builder.Services.AddSingleton<ClassSessionSeedStatus>();
         builder.Services.AddHostedService<ClassSessionSeeder>();
+        builder.Services.AddHealthChecks().AddCheck<ClassSessionSeedHealthCheck>("demo-data");
     }
 
     // Who the member behind an account is, from Membership (#256). The reservation endpoints use it (#260)

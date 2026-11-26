@@ -24,18 +24,20 @@ public sealed class ConsumerReconnectTests
         "6741f0c2a9e1b3d4c5f6071a",
         new DateTimeOffset(2026, 12, 1, 17, 0, 0, TimeSpan.Zero));
 
-    private RabbitMqContainer _rabbitMq = null!;
+    // A fixed host port: Docker gives a random one a new number when the container starts again
+    private readonly RabbitMqContainer _rabbitMq = new RabbitMqBuilder("rabbitmq:4.4.1-management")
+        .WithPortBinding(FreePort(), RabbitMqBuilder.RabbitMqPort)
+        .Build();
 
+    /// <summary>Starts the container, or starts it again after a test that stopped it.</summary>
     [SetUp]
     public async Task StartRabbitMq()
     {
-        // A fixed host port: Docker gives a random one a new number when the container starts again
-        _rabbitMq = new RabbitMqBuilder("rabbitmq:4.4.1-management").WithPortBinding(FreePort(), RabbitMqBuilder.RabbitMqPort).Build();
         await _rabbitMq.StartAsync().ConfigureAwait(false);
     }
 
-    [TearDown]
-    public async Task StopRabbitMq()
+    [OneTimeTearDown]
+    public async Task RemoveRabbitMq()
     {
         await _rabbitMq.DisposeAsync().ConfigureAwait(false);
     }
@@ -97,7 +99,8 @@ public sealed class ConsumerReconnectTests
                 return report;
             }
 
-            await Task.Delay(TimeSpan.FromMilliseconds(200), deadline.Token).ConfigureAwait(false);
+            // Real time on purpose: it waits for a real broker, which no fake clock moves
+            await Task.Delay(TimeSpan.FromMilliseconds(200), TimeProvider.System, deadline.Token).ConfigureAwait(false);
         }
     }
 
@@ -116,7 +119,7 @@ public sealed class ConsumerReconnectTests
         builder.Services.AddRabbitMq(builder.Configuration);
         builder.Services.AddEventPublisher();
         builder.Services.AddSingleton<IEventSubscriber<ReservationMade>>(handler);
-        builder.Services.AddEventConsumer<ReservationMade>("test-reconnect");
+        builder.Services.AddEventConsumer<ReservationMade>("test-" + Guid.NewGuid().ToString("N"));
         IHost host = builder.Build();
         await host.StartAsync().ConfigureAwait(false);
         await ConsumerOf(host).Consuming.WaitAsync(Timeout).ConfigureAwait(false);

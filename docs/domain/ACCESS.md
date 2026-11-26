@@ -15,11 +15,11 @@ This table is a reference, not a second spec. When an issue and the table disagr
 |---|---|---|---|---|---|---|
 | `POST /accounts` | IdentityService | yes | yes | yes | yes | [#234](https://github.com/EDB-Sport/fitlife/issues/234) |
 | `POST /tokens` | IdentityService | yes | yes | yes | yes | [#235](https://github.com/EDB-Sport/fitlife/issues/235) |
-| `GET /accounts` (planned) | IdentityService | – | – | – | yes | [#364](https://github.com/EDB-Sport/fitlife/issues/364) |
-| `PUT /accounts/{id}/roles/traener` (planned) | IdentityService | – | – | – | yes | [#365](https://github.com/EDB-Sport/fitlife/issues/365) |
-| `DELETE /accounts/{id}/roles/traener` (planned) | IdentityService | – | – | – | yes | [#365](https://github.com/EDB-Sport/fitlife/issues/365) |
+| `GET /accounts` | IdentityService | – | – | – | yes | [#364](https://github.com/EDB-Sport/fitlife/issues/364) |
+| `PUT /accounts/{id}/roles/traener` | IdentityService | – | – | – | yes | [#365](https://github.com/EDB-Sport/fitlife/issues/365) |
+| `DELETE /accounts/{id}/roles/traener` | IdentityService | – | – | – | yes | [#365](https://github.com/EDB-Sport/fitlife/issues/365) |
 | `GET /class-sessions` | BookingService | yes | yes | yes | yes | [#254](https://github.com/EDB-Sport/fitlife/issues/254), stays open in [#369](https://github.com/EDB-Sport/fitlife/issues/369) |
-| `POST /class-sessions/{id}/reservations` | BookingService | yes | yes | yes | yes | [#369](https://github.com/EDB-Sport/fitlife/issues/369) makes it Medlem only; [#260](https://github.com/EDB-Sport/fitlife/issues/260) |
+| `POST /class-sessions/{id}/reservations` | BookingService | – | yes | – | – | [#260](https://github.com/EDB-Sport/fitlife/issues/260) |
 | `DELETE /class-sessions/{id}/reservations/{memberId}` | BookingService | yes | yes | yes | yes | [#369](https://github.com/EDB-Sport/fitlife/issues/369) makes it Medlem only |
 | `POST /class-sessions/{id}/waitlist` | BookingService | yes | yes | yes | yes | [#369](https://github.com/EDB-Sport/fitlife/issues/369) makes it Medlem only; [#263](https://github.com/EDB-Sport/fitlife/issues/263) |
 | `DELETE /class-sessions/{id}/reservations/mine` (planned) | BookingService | – | yes | – | – | [#262](https://github.com/EDB-Sport/fitlife/issues/262) |

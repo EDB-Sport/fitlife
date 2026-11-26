@@ -22,7 +22,7 @@ public sealed class Membership
     public MembershipType Type { get; }
 
     /// <summary>Where the membership is in its life.</summary>
-    public MembershipStatus Status { get; }
+    public MembershipStatus Status { get; private set; }
 
     /// <summary>The day the membership started.</summary>
     public DateOnly StartDate { get; }
@@ -30,13 +30,22 @@ public sealed class Membership
     /// <summary>Whether the membership gives access and the right to book.</summary>
     public bool IsActive => Status == MembershipStatus.Active;
 
-    /// <summary>A new membership is active from the day the member joins (TO-BE-kontekst §8, UC5).</summary>
+    /// <summary>
+    /// A new membership starts the day the member joins, with Betaling mangler until the first fee is paid
+    /// (<see cref="MarkPaid"/>), so an interrupted join never gives access without a paid fee (TO-BE-kontekst §8, UC5).
+    /// </summary>
     /// <param name="memberId">The member who joined.</param>
     /// <param name="startDate">Today.</param>
     /// <returns>The new membership.</returns>
     public static Membership Start(Guid memberId, DateOnly startDate)
     {
-        return new Membership(Guid.NewGuid(), memberId, MembershipType.Standard, MembershipStatus.Active, startDate);
+        return new Membership(Guid.NewGuid(), memberId, MembershipType.Standard, MembershipStatus.PaymentMissing, startDate);
+    }
+
+    /// <summary>The membership fee was paid: the membership gives access and the right to book.</summary>
+    public void MarkPaid()
+    {
+        Status = MembershipStatus.Active;
     }
 
     /// <summary>Rebuilds a stored membership.</summary>

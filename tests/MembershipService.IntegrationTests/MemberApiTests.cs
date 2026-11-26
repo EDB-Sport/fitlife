@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -193,6 +194,74 @@ public sealed class MemberApiTests
 
         // Assert
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+    }
+
+    [Test]
+    public async Task GetMine_AfterJoining_ReturnsTheMembership()
+    {
+        // Arrange
+        using HttpClient client = ClientFor(TestTokens.For(TestTokens.NewAccountId()));
+        var before = DateOnly.FromDateTime(TimeProvider.System.GetUtcNow().UtcDateTime);
+        using HttpResponseMessage joined = await Join(client).ConfigureAwait(false);
+        var after = DateOnly.FromDateTime(TimeProvider.System.GetUtcNow().UtcDateTime);
+        using JsonDocument joinedBody = await Body(joined).ConfigureAwait(false);
+
+        // Act
+        using HttpResponseMessage response = await GetMine(client).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        using JsonDocument body = await Body(response).ConfigureAwait(false);
+        JsonElement mine = body.RootElement;
+        Assert.That(mine.GetProperty("memberId").GetGuid(), Is.EqualTo(joinedBody.RootElement.GetProperty("memberId").GetGuid()));
+        Assert.That(mine.GetProperty("membershipType").GetString(), Is.EqualTo("Standard"));
+        Assert.That(mine.GetProperty("membershipStatus").GetString(), Is.EqualTo(joinedBody.RootElement.GetProperty("membershipStatus").GetString()));
+        Assert.That(mine.GetProperty("isActive").GetBoolean(), Is.EqualTo(joinedBody.RootElement.GetProperty("isActive").GetBoolean()));
+        Assert.That(DateOnly.Parse(mine.GetProperty("startDate").GetString() ?? string.Empty, CultureInfo.InvariantCulture), Is.InRange(before, after));
+    }
+
+    [Test]
+    public async Task GetMine_WhenTheAccountHasNotJoined_ReturnsNotFound()
+    {
+        // Arrange
+        using HttpClient client = ClientFor(TestTokens.For(TestTokens.NewAccountId()));
+
+        // Act
+        using HttpResponseMessage response = await GetMine(client).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+    }
+
+    [Test]
+    public async Task GetMine_WithoutAToken_ReturnsUnauthorized()
+    {
+        // Arrange
+        using HttpClient client = _factory.CreateClient();
+
+        // Act
+        using HttpResponseMessage response = await GetMine(client).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+    }
+
+    [Test]
+    public async Task GetMine_WithATokenSignedWithAnotherKey_ReturnsUnauthorized()
+    {
+        // Arrange
+        using HttpClient client = ClientFor(TestTokens.For(TestTokens.NewAccountId(), TestTokens.OtherKey));
+
+        // Act
+        using HttpResponseMessage response = await GetMine(client).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+    }
+
+    private static Task<HttpResponseMessage> GetMine(HttpClient client)
+    {
+        return client.GetAsync(new Uri("/members/me", UriKind.Relative));
     }
 
     private HttpClient ClientFor(string token)

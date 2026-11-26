@@ -2,6 +2,8 @@ using IdentityService.Application;
 using IdentityService.Domain;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 
@@ -23,10 +25,15 @@ public sealed class LogInHandlerTests
 
     private static LogInHandler Handler(Mock<IAccountRepository> repository, IPasswordHasher<Account> hasher)
     {
+        return Handler(repository, hasher, NullLogger<LogInHandler>.Instance);
+    }
+
+    internal static LogInHandler Handler(Mock<IAccountRepository> repository, IPasswordHasher<Account> hasher, ILogger<LogInHandler> logger)
+    {
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal) { ["Jwt:SigningKey"] = SigningKey })
             .Build();
-        return new LogInHandler(repository.Object, hasher, new TokenWriter(configuration, new FakeTimeProvider()));
+        return new LogInHandler(repository.Object, hasher, new TokenWriter(configuration, new FakeTimeProvider()), logger);
     }
 
     [Test]

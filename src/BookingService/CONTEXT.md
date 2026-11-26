@@ -18,8 +18,8 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | Booking | A member's seat on one class session | `Reservation` |
 | Ventelisteplads | A member's place in the queue for a full class session | `WaitlistEntry` |
 | Medlem | Booking only knows the member's id | `MemberId` (a `Guid`) |
-| Center | One of the six centres. Booking only knows its id | `CenterId` (a `Guid`) |
-| Holdtype | The kind of class a class session is a run of. Booking only knows its id | `ClassTypeId` (a `Guid`) |
+| Center | One of the six centres. A class session knows its id; the class schedule shows its name (reference data, read-only) | `CenterId` (a `Guid`), `Models/Center` |
+| Holdtype | The kind of class a class session is a run of. A class session knows its id; the class schedule shows its name (reference data, read-only) | `ClassTypeId` (a `Guid`), `Models/ClassType` |
 | Instruktør | The trainer who leads a class session. Booking only knows the name | `Instructor` |
 | Holdoplysninger | A class session's centre, class type, instructor and duration | `ClassSessionDetails` |
 | Booking oprettet | A member got a seat, directly or from the waitlist | `ReservationMade` |
@@ -27,6 +27,7 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | Sen afmelding | A cancellation under 2 hours before start, statistics only. A seat from the waitlist is never late | `ReservationCancelled.IsLateCancellation` |
 | Ventelisteplads udløbet | The waitlist closed and a member's waitlist entry was removed without a seat | `WaitlistEntryExpired` |
 | Hold aflyst | A class session will not take place | `ClassSessionCancelled` |
+| Hold ændret | A class session got a new start time. Its reservations and waitlist entries are kept | `ClassSessionChanged` |
 
 ## Aggregates
 
@@ -35,7 +36,7 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | Part | Kind | Notes |
 |---|---|---|
 | `ClassSession` | Aggregate root | Id, `Capacity`, start time, `ClassSessionDetails` (centre id, class type id, instructor, duration), whether it is cancelled, the reservations, the waitlist |
-| `Reservation` | Entity, inside the aggregate | Made by `ClassSession.Reserve`, or from the waitlist (`IsFromWaitlist`) |
+| `Reservation` | Entity, inside the aggregate | Made by `ClassSession.Reserve`, or from the waitlist (`IsFromWaitlist`). `IsFromBeforeAChangedStart` marks a seat reserved before `ChangeStart`; it is stored with the reservation (#241) |
 | `Capacity` | Value object | At least 1 seat |
 | `ClassSessionDetails` | Value object | Centre id, class type id, `Instructor` and a duration of more than zero. No start time: that is `ClassSession.StartTime` |
 | `Instructor` | Value object | A name that isn't empty or white space |
@@ -53,26 +54,31 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | 6 | The waitlist closes 2 hours before start | `ClassSessionTests.JoinWaitlist_LessThanTwoHoursBeforeStart_IsRejected`, `ClassSessionTests.CloseWaitlist_TwoHoursBeforeStart_RemovesTheWaitlistEntriesAndTellsEachMember`, `ClassSessionTests.CloseWaitlist_MoreThanTwoHoursBeforeStart_IsRejected` |
 | 7 | A cancellation under 2 hours before start is a late cancellation | `ClassSessionTests.CancelReservation_LessThanTwoHoursBeforeStart_IsALateCancellation`, `ClassSessionTests.CancelReservation_OfASeatFromTheWaitlist_IsNeverALateCancellation` |
 | 8 | A cancelled class session cancels every reservation and waitlist entry | `ClassSessionCancelTests.Cancel_RemovesEveryReservationAndWaitlistEntryAndNamesTheirMembers`, `ClassSessionCancelTests.Reserve_OnACancelledClassSession_IsRejected`, `ClassSessionCancelTests.Cancel_OnACancelledClassSession_RaisesNoSecondClassSessionCancelled`, `ClassSessionCancelTests.JoinWaitlist_OnACancelledClassSession_IsRejected` |
+| 9 | After a changed start, a member who already had a reservation cancels free: never a late cancellation | `ClassSessionChangeStartTests.ChangeStart_ThenAMemberWhoHadAReservationCancelsUnderTwoHoursBeforeStart_IsNotALateCancellation`, `ClassSessionChangeStartTests.ChangeStart_ThenAMemberWhoReservedAfterwardsCancelsUnderTwoHoursBeforeStart_IsALateCancellation` |
+| 10 | A class session that has started can't be reserved; a free seat can be taken until the start time (#312's safe default) | `ClassSessionStartedTests.Reserve_AfterTheClassSessionHasStarted_IsRejected`, `ClassSessionStartedTests.Reserve_JustBeforeStart_IsReserved` |
 
 ## Commands, queries and events
 
 | Kind | Name | Notes |
 |---|---|---|
-| Command | `ClassSession.Reserve(memberId, clock)` | Returns `ReservationResult.Made`, `ClassSessionCancelled`, `MemberAlreadyHasReservation`, `TooFarAhead` or `ClassSessionFull`. The clock is a `TimeProvider` |
+| Command | `ClassSession.Reserve(memberId, clock)` | Returns `ReservationResult.Made`, `ClassSessionCancelled`, `MemberAlreadyHasReservation`, `ClassSessionStarted`, `TooFarAhead` or `ClassSessionFull`. The clock is a `TimeProvider` |
+| Command | `Application/ReserveSeatCommand` | `POST /class-sessions/{id}/reservations` (#260). The handler asks Membership (`IMembershipClient`) for the member behind the token's account id, then calls `ClassSession.Reserve` with the `MemberId` and saves once, only on `Made`. Not a member or not active: 403 `MembershipNotActive`; Membership unavailable: 503 `MembershipUnavailable` |
 | Command | `ClassSession.JoinWaitlist(memberId, clock)` | Returns `WaitlistResult.Joined`, `ClassSessionCancelled`, `MemberAlreadyHasReservation`, `MemberAlreadyOnWaitlist`, `ClassSessionNotFull` or `WaitlistClosed` |
 | Command | `ClassSession.CancelReservation(memberId, clock)` | Returns `CancellationResult.Cancelled` or `NoReservation` |
 | Command | `ClassSession.CloseWaitlist(clock)` | Returns `WaitlistClosingResult.Closed` or `TooEarly`. Nothing calls it yet: a scheduled job does, in a later issue. Until it has run, `CancelReservation` still gives a freed seat to the first waitlist entry, also in the last 2 hours |
 | Command | `ClassSession.Cancel()` | Empties the reservations and the waitlist; `IsCancelled` becomes true. On a cancelled class session it changes nothing and raises no second `ClassSessionCancelled` |
+| Command | `ClassSession.ChangeStart(newStart, clock)` | Returns `ChangeStartResult.Changed`, `ClassSessionCancelled` or `StartNotInTheFuture`. Keeps the reservations and the waitlist; checks neither the 4 weeks nor the waitlist's closing time (#240). The endpoint is #241 |
 | Event | `ReservationCancelled` | Raised when a member gives up their seat. `IsLateCancellation` says whether it was a late cancellation |
 | Event | `ReservationMade` | Raised when the first waitlist entry gets the freed seat. Published later (#171 and after); the events wait in `ClassSession.DomainEvents` |
 | Event | `WaitlistEntryExpired` | Raised for each waitlist entry removed when the waitlist closes |
 | Event | `ClassSessionCancelled` | Raised when a class session is cancelled, with the member ids of every reservation and waitlist entry |
+| Event | `ClassSessionChanged` | Raised when `ChangeStart` moves a class session, with the members who have a reservation (not the waitlisted), the previous and the new start. Published in #242 |
 
 ### Storage and HTTP (#171)
 
-- **Repository:** `Repositories/IClassSessionRepository`, the only code that uses `MongoDB.Driver` (TEAM001). One document per class session in the `classSessions` collection, reservations and waitlist inside it. A `Version` field makes a save on a stale copy fail (optimistic concurrency), so two requests at once can't overbook.
-- **HTTP:** `Api/ClassSessionsController`. `GET /class-sessions?centerId=`, `POST /class-sessions/{id}/reservations`, `DELETE /class-sessions/{id}/reservations/{memberId}`, `POST /class-sessions/{id}/waitlist`. A rule the aggregate rejects is a problem-details 404, 409 or 422, never a 500: every `ReservationResult` and `WaitlistResult` value has its own case, and a value without one throws `UnreachableException` so a test catches it. `GET` keeps a cancelled class session in the list with `isCancelled: true` and `freeSeats: 0` (`ClassSession.FreeSeats`). Until #172 the member id comes in the request.
-- **Configuration:** `MongoDb:ConnectionString` (no password), `MongoDb:Password` (Vault, #17), `MongoDb:Database`. `Seed:Enabled` loads a demo class schedule into an empty database (`Seed/ClassSessionSeeder`): on in compose and in the `http` launch profile.
+- **Repository:** `Application/IClassSessionRepository`; its MongoDB class `Repositories/ClassSessionRepository` is the only code that uses `MongoDB.Driver` (TEAM001). One document per class session in the `classSessions` collection, reservations and waitlist inside it. A `Version` field makes a save on a stale copy fail (optimistic concurrency), so two requests at once can't overbook. A document stored before #252 has no `InstructorName` and no `Duration`: it is read with the instructor `Unknown` and 60 minutes, so its reservations are kept and the service starts (#396). No migration rewrites it; the next save stores the defaults.
+- **HTTP:** `Api/ClassSessionsController`. `GET /class-sessions?centerId=`, `POST /class-sessions/{id}/reservations`, `DELETE /class-sessions/{id}/reservations/{memberId}`, `POST /class-sessions/{id}/waitlist`. A rule the aggregate rejects is a problem-details 404 or 409, never a 500: every `ReservationResult` and `WaitlistResult` value has its own case, and a value without one throws `UnreachableException` so a test catches it. `GET` is answered by `Application/GetClassSessionsQuery` and its handler (#254): only class sessions that start after now (strictly), by start, with `centerName` and `classTypeName` from `Application/IReferenceDataRepository` (the `centers` and `classTypes` collections; an unknown id gives an empty name). It keeps a cancelled class session in the list with `isCancelled: true` and `freeSeats: 0` (`ClassSession.FreeSeats`). `POST /class-sessions/{id}/reservations` needs a token with the role `Medlem` (`libs/FitLife.Authentication`, `Jwt:SigningKey` from Vault) and answers every rejection with a `code` (`Api/ReservationProblems`): 409 with the `ReservationResult` name. The cancel and waitlist endpoints still take the member id in the request until #262 and #263.
+- **Configuration:** `MongoDb:Host`, `MongoDb:Port`, `MongoDb:Database`, `MongoDb:Username`, `MongoDb:Password` (Vault, #17) and the optional `MongoDb:AuthSource` (default: the database), as IdentityService (#253). `Seed:Enabled` loads a demo class schedule into an empty database (`Seed/ClassSessionSeeder`): on in compose and in the `http` launch profile.
 - **Events:** the aggregate's `DomainEvents` are not published yet. That comes with the messaging issue.
 
 ## Talks to

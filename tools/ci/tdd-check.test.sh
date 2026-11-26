@@ -2,7 +2,7 @@
 # Tests for tools/ci/tdd-check.sh and its workflow (issue #43).
 # Each case builds a small fixture repo (a base commit and a PR commit) and runs the check on it.
 # The fixture's test suite is a stand-in for `dotnet test`: every `// needs: <word>` line in
-# tests/ must appear somewhere under src/, so a test "fails on base" when its word isn't there yet.
+# tests/ must appear somewhere under src/ or libs/, so a test "fails on base" when its word isn't there yet.
 # Usage: tools/ci/tdd-check.test.sh   (exit code 0 = all cases pass)
 set -uo pipefail
 
@@ -20,12 +20,12 @@ fixture() {
   git -C "$repo" init --quiet --initial-branch=develop
   git -C "$repo" config user.email test@example.invalid
   git -C "$repo" config user.name tdd-check-test
-  mkdir -p "$repo/src" "$repo/tests"
+  mkdir -p "$repo/src" "$repo/libs" "$repo/tests"
   cat > "$repo/run-tests.sh" <<'EOF'
 #!/usr/bin/env bash
 status=0
 while read -r word; do
-  grep -rqF "$word" src/ 2>/dev/null || { echo "red: $word"; status=1; }
+  grep -rqF "$word" src/ libs/ 2>/dev/null || { echo "red: $word"; status=1; }
 done < <(grep -rhoE '// needs: [A-Za-z]+' tests/ | sed 's|// needs: ||')
 exit "$status"
 EOF
@@ -43,16 +43,17 @@ public class CalculatorTests
     public void Add_Cases_ReturnSum(int a, int b) { }
 }
 EOF
+  echo 'public static class Clock { public static int Ticks() => 1; }' > "$repo/libs/Clock.cs"
   commit "$repo" "base"
   echo "$repo"
 }
 
 commit() { git -C "$1" add -A && git -C "$1" commit --quiet -m "$2"; }
 
-# expect <description> <pass|fail> <repo> [text the output must contain] [labels]
+# expect <description> <pass|fail> <repo> [text the output must contain] [labels] [production dirs, default src/]
 expect() {
   local out status
-  out=$(cd "$3" && BASE_SHA=$(git rev-parse HEAD^) TEST_CMD="bash run-tests.sh" PR_LABELS="${5:-}" "$check" 2>&1)
+  out=$(cd "$3" && BASE_SHA=$(git rev-parse HEAD^) TEST_CMD="bash run-tests.sh" PR_LABELS="${5:-}" SRC_DIR="${6:-src/}" "$check" 2>&1)
   status=$?
   if [ "$2" = pass ] && [ "$status" -eq 0 ]; then
     echo "PASS  $1"
@@ -99,6 +100,35 @@ EOF
 expect "feature PR passes" pass "$(feature_pr)"
 expect "feature PR with a refactor label is still checked as a refactor" fail "$(feature_pr)" "changes files under tests/" refactor
 
+# 1b. libs/ is production code (issue #379): the workflow's SRC_DIR lists src/ and libs/ together.
+prod_dirs="src/ libs/"
+repo=$(fixture)
+echo 'public static class Clock { public static int Ticks() => 2; }' > "$repo/libs/Clock.cs"
+commit "$repo" "change libs without a test"
+expect "a libs/ change without a test fails check 1" fail "$repo" "no test under tests/ was added or changed" "" "$prod_dirs"
+
+# The tests depend on the libs/ change; src/ only has the wiring that uses it.
+repo=$(fixture)
+echo 'public static class Stopwatch { public static int Lap() => 3; }' > "$repo/libs/Stopwatch.cs"
+echo 'public static class Program { public static int Lap() => Stopwatch.Lap(); }' > "$repo/src/Program.cs"
+cat >> "$repo/tests/CalculatorTests.cs" <<'EOF'
+public class StopwatchTests
+{
+    [Test] // needs: Stopwatch
+    public void Lap_ReturnsThree() { }
+}
+EOF
+commit "$repo" "libs change, src wiring, and a test that depends on libs"
+expect "libs/ and src/ wiring with tests that depend on libs/ passes check 4" pass "$repo" "" "" "$prod_dirs"
+expect "the same PR fails when only src/ counts as production (the #98 case)" fail "$repo" "also pass without the production change"
+
+# A test that depends on neither directory's change is red on nothing: both are reset together.
+repo=$(fixture)
+echo 'public static class Clock { public static int Ticks() => 2; }' > "$repo/libs/Clock.cs"
+echo '// a test that passes on base' >> "$repo/tests/CalculatorTests.cs"
+commit "$repo" "libs change with a test that doesn't depend on it"
+expect "a libs/ change whose tests also pass on base fails check 4" fail "$repo" "also pass without the production change" "" "$prod_dirs"
+
 # 2. Refactor PRs (METHODOLOGY section 8)
 expect "refactor PR with the refactor label passes" pass "$(refactor_pr)" "" refactor
 expect "refactor label among other labels passes" pass "$(refactor_pr)" "" "setup,refactor"
@@ -134,6 +164,29 @@ repo=$(feature_pr)
 edit "$repo/tests/CalculatorTests.cs" 's|Subtract_TwoNumbers_ReturnsDifference() { }|Subtract_TwoNumbers_ReturnsDifference() { Assume.That(false); }|'
 git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
 expect "added Assume.That fails" fail "$repo" "adds skipped tests"
+
+# 3b. A skip marker inside a string literal is test data, not a skipped test (issue #380).
+repo=$(feature_pr)
+cat >> "$repo/tests/CalculatorTests.cs" <<'EOF2'
+public class MarkerDataTests
+{
+    [TestCase("Assert.Ignore(\"x\");")]
+    public void Marker_InString_IsData(string source) { }
+}
+EOF2
+git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+expect "added [TestCase(\"Assert.Ignore(...)\")] passes" pass "$repo"
+
+repo=$(feature_pr)
+edit "$repo/tests/CalculatorTests.cs" 's|Subtract_TwoNumbers_ReturnsDifference() { }|Subtract_TwoNumbers_ReturnsDifference() { Assert.Ignore("x"); }|'
+git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+expect "added Assert.Ignore(\"x\"); statement fails" fail "$repo" "adds skipped tests"
+
+repo=$(feature_pr)
+edit "$repo/tests/CalculatorTests.cs" "s|    \[Test\] // needs: Subtract|    [Ignore(\"x\")]\\
+    [Test] // needs: Subtract|"
+git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+expect "added [Ignore(\"x\")] attribute fails" fail "$repo" "adds skipped tests"
 
 # 4. Removed tests
 repo=$(fixture)
@@ -264,11 +317,55 @@ repo=$(marked "$(refactor_pr)")
 label_event "the refactor label still runs in full" fail "$repo" labeled refactor "$(runs completed:success)" "no test under tests/ was added or changed"
 ran "the refactor label runs the suite" "$repo"
 
+# 4a. Comment-only changes under src/ (issue #361): checks 1 and 4 skip them, a code change still gets them.
+comment_pr() { # comment_pr <lines to add above the code line in src/Calculator.cs> [replacement for the code line]
+  local repo; repo=$(fixture)
+  { printf '%b\n' "$1"; echo "${2:-public static class Calculator { public static int Add(int a, int b) => a + b; }}"; } > "$repo/src/Calculator.cs"
+  commit "$repo" "comment"
+  echo "$repo"
+}
+removed_comment_pr() {
+  local repo; repo=$(fixture)
+  echo '// old note' > "$repo/src/Note.cs"; commit "$repo" "note"
+  echo '' > "$repo/src/Note.cs"; commit "$repo" "drop the note"
+  echo "$repo"
+}
+changed_code='public static class Calculator { public static int Add(int a, int b) => b + a; }'
+expect "a // comment added under src/ passes without a test" pass "$(comment_pr '// Stryker disable once Boolean')"
+expect "///, /* */ and blank lines added under src/ pass" pass "$(comment_pr '/// <summary>x</summary>\n\n/* note\n * more\n */')"
+expect "a removed comment line passes" pass "$(removed_comment_pr)"
+expect "a comment next to a code change still needs a test" fail "$(comment_pr '// Stryker disable once Boolean' "$changed_code")" "no test under tests/ was added or changed"
+repo=$(comment_pr '// Stryker disable once Boolean' "$changed_code")
+echo '// a note' >> "$repo/tests/CalculatorTests.cs"
+git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+expect "a comment next to a code change still needs red on base" fail "$repo" "also pass without the production change"
+expect "a #pragma line is not a comment" fail "$(comment_pr '#pragma warning disable CS1591')" "no test under tests/ was added or changed"
+expect "a trailing // comment after code is a code change" fail "$(comment_pr '' 'public static class Calculator { public static int Add(int a, int b) => a + b; } // x')" "no test under tests/ was added or changed"
+# A comment-looking diff line that is code (review of #401). Each is red against the line-by-line pattern.
+operand_pr() { # a base file with a wrapped operator line, and the PR changing only that line
+  local repo; repo=$(fixture)
+  printf 'public static class Calculator { public static int Add(int a, int b) =>\n    a\n    * rate; }\n' > "$repo/src/Calculator.cs"; commit "$repo" "wrapped"
+  sed 's/\* rate;/* discountRate;/' "$repo/src/Calculator.cs" > "$repo/src/Calculator.tmp" && mv "$repo/src/Calculator.tmp" "$repo/src/Calculator.cs"; commit "$repo" "change operand"
+  echo "$repo"
+}
+expect "a changed wrapped '* operand;' line is code" fail "$(operand_pr)" "no test under tests/ was added or changed"
+expect "code after a one-line block comment is code" fail "$(comment_pr '/* x */ return 1;')" "no test under tests/ was added or changed"
+expect "code after a closing */ is code" fail "$(comment_pr '/* x\n*/ return 1;')" "no test under tests/ was added or changed"
+expect "an unindented ++x; line is code" fail "$(comment_pr '++x;')" "no test under tests/ was added or changed"
+expect "a // inside a string is not a comment" fail "$(comment_pr 'var u = "http://x";')" "no test under tests/ was added or changed"
+libs_comment_pr() { # a comment added to libs/Clock.cs, which is production code since #379
+  local repo; repo=$(fixture)
+  { echo '// Stryker disable once Boolean'; cat "$repo/libs/Clock.cs"; } > "$repo/libs/Clock.tmp" && mv "$repo/libs/Clock.tmp" "$repo/libs/Clock.cs"; commit "$repo" "comment"
+  echo "$repo"
+}
+expect "a // comment added under libs/ passes without a test" pass "$(libs_comment_pr)" "" "" "src/ libs/"
+
 # 5. The workflow (finding 1 and 3)
 wf() { grep -qE "$2" "$workflow" && echo "PASS  $1" || { echo "FAIL  $1: '$2' not in $workflow"; failures=$((failures + 1)); }; }
 wf "workflow re-runs on label changes" 'types: \[opened, synchronize, reopened, labeled, unlabeled\]'
 wf "workflow takes BASE_SHA from the merge commit's first parent" 'BASE_SHA=\$\(git rev-parse HEAD\^1\)'
 wf "workflow passes the PR's labels" 'PR_LABELS: \$\{\{ join\(github\.event\.pull_request\.labels\.\*\.name, '"','"'\) \}\}'
+wf "workflow treats libs/ as production code (issue #379)" "SRC_DIR: 'src/ libs/'( #.*)?$"
 wf "workflow checks tools/Analyzers (issue #49): SRC_DIR" 'SRC_DIR: tools/Analyzers/Team\.Analyzers/$'
 wf "workflow checks tools/Analyzers (issue #49): TEST_DIR" 'TEST_DIR: tools/Analyzers/Team\.Analyzers\.Tests/$'
 wf "workflow passes the event and its label (issue #136)" 'EVENT_LABEL: \$\{\{ github\.event\.label\.name \}\}'

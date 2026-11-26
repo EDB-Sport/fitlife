@@ -8,7 +8,8 @@ namespace BookingService.Seed;
 /// Loads the demo data at start-up, when <c>Seed:Enabled</c> is true (Development and compose): six centres, three class types,
 /// and two class sessions per centre and day for the next 4 weeks (#255). Every run tops the schedule up to 4 weeks from that
 /// run's now and keeps what is stored, reservations included, so a restart or a redeploy refreshes it (decision on #217). Until
-/// MongoDB answers it tries again, so the service can start together with it.
+/// MongoDB answers it tries again, so the service can start together with it. Any other failure is logged as one error, and the
+/// service starts without the demo data.
 /// </summary>
 public sealed partial class ClassSessionSeeder : IHostedService
 {
@@ -71,6 +72,11 @@ public sealed partial class ClassSessionSeeder : IHostedService
             {
                 LogMongoDbNotReady(exception, RetryAfter.TotalSeconds);
                 await Task.Delay(RetryAfter, _clock, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException) // a failed seed must not stop the service (#255)
+            {
+                LogSeedFailed(exception);
+                return;
             }
         }
     }
@@ -145,6 +151,9 @@ public sealed partial class ClassSessionSeeder : IHostedService
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "MongoDB isn't ready, so the demo class sessions aren't loaded yet. Trying again in {Seconds} s")]
     private partial void LogMongoDbNotReady(Exception exception, double seconds);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The demo data wasn't loaded. The service runs without it")]
+    private partial void LogSeedFailed(Exception exception);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Loaded the demo centres and class types, and added {Count} demo class sessions")]
     private partial void LogSeeded(int count);

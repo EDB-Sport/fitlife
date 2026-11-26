@@ -3,13 +3,14 @@ using FitLife.Contracts.Testing;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FitLife.Contracts.Tests;
 
 /// <summary>
 /// <see cref="AccessTable"/> finds every way a service's rows in ACCESS.md can differ from its endpoints (#489).
-/// Each test builds a small app in-process; nothing is sent over HTTP.
+/// Each test builds a small app in-process and reads its endpoints; the app is not started.
 /// </summary>
 public sealed class AccessTableTests
 {
@@ -23,7 +24,7 @@ public sealed class AccessTableTests
         string table = Table();
 
         // Act
-        IReadOnlyList<string> differences = await AccessTable.CompareAsync(Service, table, app.Services).ConfigureAwait(false);
+        IReadOnlyList<string> differences = await CompareAsync(table, app).ConfigureAwait(false);
 
         // Assert
         Assert.That(differences, Has.One.Contains("GET /things"));
@@ -37,7 +38,7 @@ public sealed class AccessTableTests
         string table = Table("| `GET /things` | TestService | – | yes | yes | yes | #1 |");
 
         // Act
-        IReadOnlyList<string> differences = await AccessTable.CompareAsync(Service, table, app.Services).ConfigureAwait(false);
+        IReadOnlyList<string> differences = await CompareAsync(table, app).ConfigureAwait(false);
 
         // Assert
         Assert.That(differences, Has.One.Contains("GET /things"));
@@ -51,7 +52,7 @@ public sealed class AccessTableTests
         string table = Table("| `GET /things` (planned) | TestService | – | yes | yes | yes | #1 |");
 
         // Act
-        IReadOnlyList<string> differences = await AccessTable.CompareAsync(Service, table, app.Services).ConfigureAwait(false);
+        IReadOnlyList<string> differences = await CompareAsync(table, app).ConfigureAwait(false);
 
         // Assert
         Assert.That(differences, Is.Empty);
@@ -65,7 +66,7 @@ public sealed class AccessTableTests
         string table = Table("| `GET /things` | OtherService | – | yes | yes | yes | #1 |");
 
         // Act
-        IReadOnlyList<string> differences = await AccessTable.CompareAsync(Service, table, app.Services).ConfigureAwait(false);
+        IReadOnlyList<string> differences = await CompareAsync(table, app).ConfigureAwait(false);
 
         // Assert
         Assert.That(differences, Is.Empty);
@@ -79,7 +80,7 @@ public sealed class AccessTableTests
         string table = Table("| `GET /things` | TestService | – | yes | yes | yes | #1 |");
 
         // Act
-        IReadOnlyList<string> differences = await AccessTable.CompareAsync(Service, table, app.Services).ConfigureAwait(false);
+        IReadOnlyList<string> differences = await CompareAsync(table, app).ConfigureAwait(false);
 
         // Assert
         Assert.That(differences, Has.One.Contains("GET /things"));
@@ -93,7 +94,7 @@ public sealed class AccessTableTests
         string table = Table("| `GET /things` | TestService | yes | yes | yes | yes | #1 |");
 
         // Act
-        IReadOnlyList<string> differences = await AccessTable.CompareAsync(Service, table, app.Services).ConfigureAwait(false);
+        IReadOnlyList<string> differences = await CompareAsync(table, app).ConfigureAwait(false);
 
         // Assert
         Assert.That(differences, Has.One.Contains("GET /things"));
@@ -117,7 +118,7 @@ public sealed class AccessTableTests
             "| `PUT /things/{id}/owner` | TestService | – | yes | – | – | #1 |");
 
         // Act
-        IReadOnlyList<string> differences = await AccessTable.CompareAsync(Service, table, app.Services).ConfigureAwait(false);
+        IReadOnlyList<string> differences = await CompareAsync(table, app).ConfigureAwait(false);
 
         // Assert
         Assert.That(differences, Is.Empty);
@@ -131,6 +132,14 @@ public sealed class AccessTableTests
         WebApplication app = builder.Build();
         mapEndpoints(app);
         return app;
+    }
+
+    /// <summary>The app's endpoints are read from its route builder: the app is not started, so no host runs.</summary>
+    private static Task<IReadOnlyList<string>> CompareAsync(string table, WebApplication app)
+    {
+        IEnumerable<Endpoint> endpoints = ((IEndpointRouteBuilder)app).DataSources.SelectMany(source => source.Endpoints);
+        IAuthorizationPolicyProvider policies = app.Services.GetRequiredService<IAuthorizationPolicyProvider>();
+        return AccessTable.CompareAsync(Service, table, endpoints, policies);
     }
 
     private static string Table(params string[] rows)

@@ -3,6 +3,7 @@
 # so "Require actions to be pinned to a full-length commit SHA" can be turned on without breaking a workflow.
 # Local actions (./...) and docker:// images are not GitHub actions and are skipped.
 # Usage: tools/ci/actions-pinned.test.sh   (from the repo root, or anywhere in the repo)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)" || exit 2
@@ -36,5 +37,5 @@ while IFS=: read -r file line text; do
   fi
 done < <(grep -rnE '^[[:space:]-]*uses:' .github --include='*.yml' --include='*.yaml' | sort -t: -k1,1 -k2,2n)
 
-if [ "$failures" -eq 0 ]; then echo "Every action is pinned to a commit SHA."; else echo "$failures problem(s) with action pins."; fi
+[ "$failures" -eq 0 ] && echo "PASS  every action is pinned to a commit SHA, with its tag in a comment"
 exit $((failures > 0))

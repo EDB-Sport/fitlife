@@ -27,6 +27,7 @@ docker compose up -d --wait
 | What | Where |
 |---|---|
 | Gateway | http://localhost:8080 (`/health`, `/api/<context>/...`) |
+| Member portal | http://localhost:8080/ through the gateway (the `member-portal` container, #204) |
 | RabbitMQ management | http://localhost:15672, user and password from `.env` |
 | Vault | http://localhost:8200, log in with `VAULT_DEV_ROOT_TOKEN` from `.env` |
 | MongoDB | `mongodb://localhost:27018` (27018, so it doesn't clash with a local MongoDB on 27017) |
@@ -45,6 +46,37 @@ Stop and delete the data (MongoDB then creates the users again on the next start
 docker compose down -v
 ```
 
+**After you change a service, rebuild its image.** `up` builds a `fitlife/*:local` image only when it doesn't exist yet. Once it does, `up` reuses it, so the stack runs your old code. Rebuild with:
+
+```bash
+docker compose up -d --wait --build
+```
+
+`tools/ci/api-tests.sh` does the same with `API_TESTS_BUILD=1 tools/ci/api-tests.sh`. Without the switch it reuses the images it has, as before. CI starts on a fresh runner with no images, so it builds them either way (#284).
+
+## Local builds: base images
+
+A local build uses the base images already on your machine. The cheapest source comes first:
+
+- **(a)** pull the published `:develop` images from Docker Hub instead of building (#340, not usable on `develop` until it lands);
+- **(b)** build with the base images in your local cache. This is what `docker compose up --build` does, and the compose files never force a pull (no `--pull`, no `pull: true`);
+- **(c)** download the base images from MCR (`mcr.microsoft.com`) only as a last resort.
+
+A first build with no base images on disk is slow because of MCR, not the build: on 2026-11-25 the first `docker compose up` took about 10 minutes for three images, and the SDK image alone is about 272 MB, downloaded at about 40 KB/s. After that, a rebuild downloads no base images.
+
+**Probe: does a build with the base images on disk pull anything?** This scratch build names its base under an unreachable registry host (`127.0.0.1:9`), so a build that reaches a registry would fail. It passes only when the base comes from the local image store:
+
+```bash
+mkdir -p /tmp/local-build-probe && cd /tmp/local-build-probe
+docker tag alpine:3.24.4 127.0.0.1:9/mcr/aspnet:10.0-alpine   # any image you have
+printf 'FROM 127.0.0.1:9/mcr/aspnet:10.0-alpine\nRUN echo built\n' > Dockerfile
+printf 'services:\n  probe:\n    build: .\n    image: probe-local:local\n' > compose.yaml
+docker compose build && docker compose build   # both succeed: the second one pulled nothing
+cd / && rm -rf /tmp/local-build-probe && docker rmi -f probe-local:local 127.0.0.1:9/mcr/aspnet:10.0-alpine
+```
+
+A floating tag (`aspnet:10.0-alpine`, as in `src/MemberPortal.Web/Dockerfile`) doesn't change this: a tag that exists in the local store is used without a registry check. It was measured with the default Docker builder. A `docker-container` builder (e.g. CI's buildx) may differ.
+
 One group on its own: `docker compose -f infrastructure.yml up -d --wait`.
 
 Two stacks side by side (two worktrees, say): give each its own project name and ports, e.g. `docker compose -p fitlife-6 up -d --wait` with other `*_PORT` values in that folder's `.env`.
@@ -54,6 +86,8 @@ Two stacks side by side (two worktrees, say): give each its own project name and
 `.env` (git-ignored) holds every password; the compose files hold none. `.env.example` has made-up values, which CI uses as they are. Change them in your own `.env`. In Azure the passwords are secure Bicep parameters instead (section 9a).
 
 The services don't read `.env`: they get their secrets from Vault (below).
+
+The demo accounts' passwords (`DEMO_*_PASSWORD`) go from `.env` straight to `identity-svc`. They are made-up demo data, not the service's secrets, so they aren't in Vault.
 
 ## Vault
 
@@ -68,6 +102,8 @@ Each service has one secret, `secret/<name>-svc`, for every name in `SERVICE_DAT
 | `MongoDb:Password` | `<NAME>_DB_PASSWORD`, the service's own database user |
 | `RabbitMq:Username`, `RabbitMq:Password` | `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD` |
 | `Jwt:SigningKey` | `JWT_SIGNING_KEY` |
+
+**How a service reads it:** `await builder.Configuration.AddVaultAsync()` from `libs/FitLife.Configuration` loads the secret at startup, and the code reads `configuration["MongoDb:Password"]` like any other setting. The service's `appsettings.json` names its secret (`"Vault": { "Path": "booking-svc" }`), and compose gives it `Vault__Address: http://vault:8200` and `Vault__Token` from `VAULT_DEV_ROOT_TOKEN`. Vault and the service start together, so the service waits: while Vault doesn't answer, or answers 404 (not seeded yet) or 5xx, it tries again every second, for up to `Vault:WaitSeconds` (60). A wrong token (403) stops it at once. Either way the log has the HTTP status and the secret's path, never the token. Without `Vault:Address` (`dotnet run`, the tests) nothing is loaded.
 
 Read one by hand:
 
@@ -95,11 +131,13 @@ mongodb://booking-svc:<BOOKING_DB_PASSWORD>@mongodb:27017/booking?authSource=boo
 
 ## The gateway
 
-`nginx/default.conf.template` is rendered by the nginx image's `envsubst` at start, so the upstream addresses are environment variables (`BOOKING_URL`, `MEMBERSHIP_URL`, `IDENTITY_URL`, `MEMBER_PORTAL_URL`, `GRAFANA_URL` in `services.yml`). Azure mounts the same file with `http://127.0.0.1:<port>` addresses instead (`deploy/azure/`, #10). Every variable must be set, or Nginx won't start.
+`nginx/default.conf.template` is rendered by the nginx image's `envsubst` at start, so the upstream addresses are environment variables (`BOOKING_URL`, `MEMBERSHIP_URL`, `IDENTITY_URL`, `MCP_SERVER_URL`, `MEMBER_PORTAL_URL`, `GRAFANA_URL` in `services.yml`). Azure mounts the same file with `http://127.0.0.1:<port>` addresses instead (`deploy/azure/`, #10). Every variable must be set, or Nginx won't start.
 
 - `/api/<context>/<path>` reaches the service as `/<path>`, e.g. `/api/booking/reservations/42` → `http://booking-svc:8080/reservations/42`.
-- Every other path goes to the member portal (Blazor UI) unchanged, with WebSocket upgrade for Blazor's SignalR connection.
+- `/mcp` reaches the MCP server (the `mcp-server` container, #213) with the path unchanged.
+- Every other path goes to the member portal (Blazor UI, the `member-portal` container) unchanged, with WebSocket upgrade for Blazor's SignalR connection. Open the member portal at http://localhost:8080/. Running it with `dotnet run` instead, it reaches the stack's APIs through `Gateway:BaseUrl` (`http://localhost:8080` in `appsettings.Development.json`).
 - A route whose service isn't running answers 502; the gateway itself still starts.
+- Log-in (`POST /api/identity/tokens`) is limited per client address, `LOGIN_RATE_LIMIT` with a burst of `LOGIN_RATE_BURST` (10 a minute and 10 at once in `.env.example`); above that the gateway answers 429 and Identity never sees the request (#366).
 - The gateway passes on the caller's `X-Correlation-ID`, or sets a new one, and returns it in the response (section 7).
 - `/grafana/` reaches Grafana (`GRAFANA_URL`) with the path unchanged, since Grafana serves itself under `/grafana/`. WebSocket upgrades are passed on (Grafana Live).
 
@@ -108,7 +146,7 @@ mongodb://booking-svc:<BOOKING_DB_PASSWORD>@mongodb:27017/booking?authSource=boo
 1. Add the service to `services.yml`: name it `<name>-svc`, listen on 8080, give it a `healthcheck` on `/health`, and pass its MongoDB and RabbitMQ hosts, the Vault address and `VAULT_DEV_ROOT_TOKEN` as environment variables. Its passwords come from Vault, at `secret/<name>-svc`.
 2. If it has a database: add its name to `SERVICE_DATABASES` in `infrastructure.yml`, add `<NAME>_DB_PASSWORD` there (under `x-service-secrets`) and to `.env.example`, then `docker compose down -v` so the init script runs again. Vault gets the new secret on its next start.
 3. If it has an HTTP API: add a `location /api/<context>/` block to the Nginx template and the `<NAME>_URL` variable to the gateway in `services.yml`.
-4. Logging: pass `LOKI_URL: http://loki:3100` to the service, log with the labels and fields below, and if its name isn't one of the four already in `grafana/provisioning/alerting/error-rate.yml`, add an error-rate rule for it there.
+4. Logging: pass `LOKI_URL: http://loki:3100` to the service, log with the labels and fields below, and if `grafana/provisioning/alerting/error-rate.yml` has no rule for its name yet, add an error-rate rule for it there.
 
 ## Logging and monitoring
 

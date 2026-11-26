@@ -23,9 +23,21 @@
     <PackageVersion Include="Scalar.AspNetCore" Version="3.1.1" />
     <!-- Writes contracts/openapi/<service>.json on build (docs/CSHARP_SETUP_TODO.md section 8) -->
     <PackageVersion Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.15" />
+    <!-- Booking's call to Membership: time-out, retry and circuit breaker (#256) -->
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.11.1" />
     <!-- NLog → Loki (course rule #8, docs/CSHARP_SETUP_TODO.md section 7) -->
     <PackageVersion Include="NLog.Web.AspNetCore" Version="6.2.2" />
     <PackageVersion Include="NLog.Targets.Loki" Version="2.7.1" />
+    <!-- Used only in *.Repositories namespaces (TEAM001) -->
+    <PackageVersion Include="MongoDB.Driver" Version="3.14.1" />
+    <!-- Checks the JWT from Identity, the same way in every service (libs/FitLife.Authentication, #183) -->
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.15" />
+    <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="2.4.0" /> <!-- The MCP server's SDK over HTTP (#214) -->
+  </ItemGroup>
+
+  <!-- RabbitMQ events, used only by libs/FitLife.Messaging (#190) -->
+  <ItemGroup Label="Messaging">
+    <PackageVersion Include="RabbitMQ.Client" Version="7.2.2" />
   </ItemGroup>
 
   <!-- Added to every test project automatically by tests/Directory.Build.props. -->
@@ -35,6 +47,11 @@
     <PackageVersion Include="NUnit3TestAdapter" Version="6.3.1" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.15.0" />
     <PackageVersion Include="coverlet.collector" Version="10.1.1" />
+  </ItemGroup>
+
+  <!-- UI component tests (bUnit) -->
+  <ItemGroup Label="UI tests">
+    <PackageVersion Include="bunit" Version="2.15.2" />
   </ItemGroup>
 
   <!-- Referenced by a test project when it needs them (tests/README.md). -->
@@ -51,9 +68,14 @@
     <PackageVersion Include="Testcontainers.RabbitMq" Version="4.17.0" />
   </ItemGroup>
 
+  <!-- Event contracts: tests validate events against contracts/events/*.schema.json (#92) -->
+  <ItemGroup Label="Contract tests">
+    <PackageVersion Include="JsonSchema.Net" Version="9.6.0" />
+  </ItemGroup>
+
   <!--
     The project's own analyzers in tools/Analyzers (docs/CSHARP_SETUP_TODO.md section 4).
-    Microsoft.CodeAnalysis.CSharp stays at 5.0.0, the Roslyn in SDK 10.0.100 (global.json):
+    Microsoft.CodeAnalysis.CSharp stays at 5.0.0, which is not newer than the Roslyn of the SDK in global.json (10.0.203):
     an analyzer built against a newer Roslyn than the compiler that loads it is not loaded (CS8032).
   -->
   <ItemGroup Label="Roslyn analyzers">

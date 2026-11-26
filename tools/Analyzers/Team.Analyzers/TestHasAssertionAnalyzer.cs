@@ -87,7 +87,8 @@ public sealed class TestHasAssertionAnalyzer : DiagnosticAnalyzer
             return !NonFailingAsserts.Contains(method.Name);
         }
 
-        return string.Equals(ns, "Moq", StringComparison.Ordinal)
+        bool isMoq = string.Equals(ns, "Moq", StringComparison.Ordinal) || ns.StartsWith("Moq.", StringComparison.Ordinal);
+        return isMoq
             && method.Name.StartsWith("Verify", StringComparison.Ordinal);
     }
 }

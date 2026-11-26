@@ -4,5 +4,478 @@
     "title": "BookingService | v1",
     "version": "1.0.0"
   },
-  "paths": { }
+  "paths": {
+    "/class-sessions": {
+      "get": {
+        "tags": [
+          "ClassSchedule"
+        ],
+        "summary": "Lists the upcoming class sessions of a centre, or of every centre, by start, with names and free seats. No login needed.",
+        "description": "Only class sessions that start after now. A cancelled one has no free seats. An unknown centre or class type has an empty name.",
+        "parameters": [
+          {
+            "name": "centerId",
+            "in": "query",
+            "description": "The centre; leave it out for every centre.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClassSessionResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClassSessionResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClassSessionResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/class-sessions/{id}/reservations": {
+      "post": {
+        "tags": [
+          "ClassSessions"
+        ],
+        "summary": "Reserves a seat for the member behind the token (#260). Membership says who the member is and whether they may book.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The class session.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservationResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservationResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token has no role Medlem, or the account has no active membership (code MembershipNotActive).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The class session rejected the reservation; code is the reason, e.g. ClassSessionFull or TooFarAhead.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Membership didn't answer (code MembershipUnavailable).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/class-sessions/{id}/reservations/{memberId}": {
+      "delete": {
+        "tags": [
+          "ClassSessions"
+        ],
+        "summary": "Cancels the member's reservation. When someone is on the waitlist, the first waitlist entry gets the seat.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The class session.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "memberId",
+            "in": "path",
+            "description": "The member who gives up the seat.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "No such class session, or the member has no seat on it.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/class-sessions/{id}/waitlist": {
+      "post": {
+        "tags": [
+          "ClassSessions"
+        ],
+        "summary": "Puts the member at the end of the waitlist of a full class session.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The class session.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Stops the request.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WaitlistEntryRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/WaitlistEntryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/WaitlistEntryResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WaitlistEntryResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WaitlistEntryResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A seat is free, the waitlist has closed, the class session is cancelled, or the member already has a place.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ClassSessionResponse": {
+        "required": [
+          "id",
+          "centerId",
+          "centerName",
+          "classTypeId",
+          "classTypeName",
+          "instructorName",
+          "startTime",
+          "durationMinutes",
+          "capacity",
+          "freeSeats",
+          "isCancelled"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The class session's id.",
+            "format": "uuid"
+          },
+          "centerId": {
+            "type": "string",
+            "description": "The centre it takes place in.",
+            "format": "uuid"
+          },
+          "centerName": {
+            "type": "string",
+            "description": "The centre's name; empty when Booking doesn't know the centre."
+          },
+          "classTypeId": {
+            "type": "string",
+            "description": "The kind of class it is a run of.",
+            "format": "uuid"
+          },
+          "classTypeName": {
+            "type": "string",
+            "description": "The class type's name; empty when Booking doesn't know the class type."
+          },
+          "instructorName": {
+            "type": "string",
+            "description": "Who teaches it."
+          },
+          "startTime": {
+            "type": "string",
+            "description": "When it starts.",
+            "format": "date-time"
+          },
+          "durationMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "How long it lasts, in minutes.",
+            "format": "int32"
+          },
+          "capacity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "How many members can have a reservation.",
+            "format": "int32"
+          },
+          "freeSeats": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "How many seats are not reserved yet; 0 when the class session is cancelled.",
+            "format": "int32"
+          },
+          "isCancelled": {
+            "type": "boolean",
+            "description": "The class session will not take place (Hold aflyst)."
+          }
+        },
+        "description": "One class session in the class schedule."
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ReservationResponse": {
+        "required": [
+          "classSessionId",
+          "memberId"
+        ],
+        "type": "object",
+        "properties": {
+          "classSessionId": {
+            "type": "string",
+            "description": "The class session.",
+            "format": "uuid"
+          },
+          "memberId": {
+            "type": "string",
+            "description": "The member who has the seat.",
+            "format": "uuid"
+          }
+        },
+        "description": "A member's seat on a class session."
+      },
+      "WaitlistEntryRequest": {
+        "required": [
+          "memberId"
+        ],
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "string",
+            "description": "The member who wants to wait for a seat.",
+            "format": "uuid"
+          }
+        },
+        "description": "A member asks for a place on the waitlist of a full class session. Until #172, the member id comes in the body."
+      },
+      "WaitlistEntryResponse": {
+        "required": [
+          "classSessionId",
+          "memberId"
+        ],
+        "type": "object",
+        "properties": {
+          "classSessionId": {
+            "type": "string",
+            "description": "The class session.",
+            "format": "uuid"
+          },
+          "memberId": {
+            "type": "string",
+            "description": "The member who is waiting.",
+            "format": "uuid"
+          }
+        },
+        "description": "A member's place on the waitlist of a class session."
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "ClassSchedule"
+    },
+    {
+      "name": "ClassSessions"
+    }
+  ]
 }

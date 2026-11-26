@@ -2,6 +2,7 @@
 # Tests for tools/ci/api-tests.sh (issue #22). Each case runs the script in a fixture repo with stub
 # `docker` and `newman` commands that log their arguments, so no Docker or Node is needed.
 # Usage: tools/ci/api-tests.test.sh   (exit code 0 = every case passes)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -9,6 +10,8 @@ script="$here/api-tests.sh"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 failures=0
+# A developer who exports API_TESTS_BUILD must not change the cases that run without it.
+unset API_TESTS_BUILD
 
 # Stubs: each call is one line in $work/calls. newman fails for a collection named *failing*,
 # `docker compose up` fails when STUB_UP_FAILS=1.
@@ -109,20 +112,25 @@ check "a stack that doesn't start fails the job" [ "$status" -ne 0 ]
 check "no collection runs without the stack" no_call '^newman'
 check "the stack is stopped after a failed start" has_call '^docker compose down -v'
 
-# 5. The repo's own collections assert status codes and bodies, never response times: a timing
+# 5. API_TESTS_BUILD=1 rebuilds the fitlife/*:local images; without it the command is the same as before (#284)
+repo=$(fixture)
+add "$repo" services booking
+API_TESTS_BUILD=1 run "$repo"
+check "API_TESTS_BUILD=1 starts the stack with up -d --wait --build" has_call '^docker compose up -d --wait --build \(in compose\)$'
+check "API_TESTS_BUILD=1 still passes" [ "$status" -eq 0 ]
+repo=$(fixture)
+add "$repo" services booking
+API_TESTS_BUILD=0 run "$repo"
+check "API_TESTS_BUILD=0 doesn't build" has_call '^docker compose up -d --wait \(in compose\)$'
+
+# 6. The repo's own collections assert status codes and bodies, never response times: a timing
 #    assertion against a mock server on the internet depends on the network, not on the code (#135)
 timed=$(grep -rlE 'responseTime' "$here/../../tests/postman" --include='*.postman_collection.json' || true)
 check "no collection asserts a response time" [ -z "$timed" ]
 
-# 6. The collections use the glossary's names: sign-up creates an Account (Konto), and "User" is in its
+# 7. The collections use the glossary's names: sign-up creates an Account (Konto), and "User" is in its
 #    Avoid column (GLOSSARY.md, #128). A technical name such as the User-Agent header is fine.
 avoided=$(grep -rniE 'user' "$here/../../tests/postman" | grep -viE 'user-agent' || true)
 check "no collection or README uses \"user\" for an account" [ -z "$avoided" ]
 
-echo
-if [ "$failures" -eq 0 ]; then
-  echo "All api-tests.sh cases pass."
-else
-  echo "$failures case(s) failed."
-fi
 exit "$failures"

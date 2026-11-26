@@ -58,8 +58,9 @@ if [ "${#tags[@]}" -eq 0 ] && [ "$failed" -eq 0 ]; then
 fi
 
 if [ -n "${GITHUB_OUTPUT:-}" ]; then
-  services_json=$(IFS=,; echo "[${matrix[*]}]")
+  # ${arr[*]+...}: an empty array is unbound under set -u in bash 3.2 (macOS, #87)
+  services_json=$(IFS=,; echo "[${matrix[*]+${matrix[*]}}]")
   echo "services=$services_json" >> "$GITHUB_OUTPUT"
-  echo "tags=${tags[*]}" >> "$GITHUB_OUTPUT"
+  echo "tags=${tags[*]+${tags[*]}}" >> "$GITHUB_OUTPUT"
 fi
 exit "$failed"

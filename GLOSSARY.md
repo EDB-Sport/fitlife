@@ -23,16 +23,18 @@ People and agents use these words, and only these words, in code, tests, issues,
 | Medlemskab | A member's agreement with FitLife: membership type, status, start date and any binding period | `Membership` | ProgramMembership | Membership | Aggregate root | Subscription, Contract, Plan |
 | Medlemstype | The kind of membership offered. The case has exactly one today [PB p. 3]; more are a TO-BE choice | `MembershipType` | – | Membership | Value object | Plan, Tier, Product |
 | Medlemskabets tilstand | Where a membership is in its life: Aktiv, Pause, Betaling mangler, Opsagt, Afsluttet. Only Aktiv gives access and the right to book | `MembershipStatus` | – | Membership | Value object | State, Phase, Active flag |
-| Konto | The log-in identity of a person: user name, password hash and roles | `Account` | – | Identity | Aggregate root | User, Member, Login |
+| Konto | The log-in identity of a person: e-mail address (the log-in name), password hash and roles | `Account` | – | Identity | Aggregate root | User, Member, Login |
 | Rolle | What an account may do: Medlem, Træner or Admin, carried as a claim in the token | `Role` | Role | Identity | Value object | Permission, Group, UserType |
 | Center | One of FitLife's six centres [PB p. 3] | `Center` | ExerciseGym | Booking | Entity | Gym, Location, Club, Site |
 | Holdtype | A kind of class that recurs in the schedule, e.g. spinning or yoga | `ClassType` | – | Booking | Entity | Activity, Program, Course |
 | Hold | One scheduled run of a class: centre, class type, instructor, start time, duration and capacity | `ClassSession` | Event | Booking | Aggregate root | Session, Class, Lesson, Event |
+| Starttid | When a class session starts: a date and a time with an offset (ISO 8601). `startTime` in JSON and event contracts | `StartTime` | DateTime | Booking | Value object | StartDate, StartsAt, Begin, Time, Date |
 | Kapacitet | How many members can have a reservation on one class session | `Capacity` | – | Booking | Value object | Seats, Size, Max, Limit |
+| Holdoplysninger | A class session's centre, class type, instructor and duration. Its start time is Starttid | `ClassSessionDetails` | – | Booking | Value object | Info, Metadata, Description |
 | Booking | A member's seat on one class session | `Reservation` | Reservation | Booking | Entity | Booking (as a name in code), Signup, Enrollment, Tilmelding |
 | Ventelisteplads | A member's place in the queue for a full class session, first come first served | `WaitlistEntry` | – | Booking | Entity | Queue, Standby, Waiting |
-| Sen afmelding | A cancellation less than two hours before the class session starts. Statistics only, no consequence | – | – | Booking | Term | Late cancel, No-show |
-| Instruktør | The trainer who leads a class session. Booking only knows the instructor's id and name | `Instructor` | Person | Booking | Value object | Trainer, Coach, Teacher |
+| Sen afmelding | A cancellation less than two hours before the class session starts. Statistics only, no consequence. A seat from the waitlist is never late | `ReservationCancelled.IsLateCancellation` | – | Booking | Term | Late cancel, No-show |
+| Instruktør | The trainer who leads a class session. Booking only knows the instructor's name, which isn't blank; an id comes when a Træner needs to see their own class sessions | `Instructor` | Person | Booking | Value object | Trainer, Coach, Teacher |
 | Personlig træner | A trainer in a personal training programme with one member (NEXT) | `PersonalTrainer` | Person | Training | Entity | Instructor, Coach, PT |
 | Træningspas | One completed training session in a personal training programme (NEXT) | `TrainingSession` | ExerciseAction | Training | Entity | Session, Workout, Visit |
 | PT-forløb | A personal training programme: one member's series of training sessions with their personal trainer, with follow-up (NEXT) | `TrainingProgram` | ExercisePlan | Training | Aggregate root | Course, Plan, Package |
@@ -42,21 +44,24 @@ People and agents use these words, and only these words, in code, tests, issues,
 | Notifikation | One message to one member about something that happened, with its delivery log | `Notification` | – | Notification | Aggregate root | Message, Alert, Push |
 | Booking oprettet | A member got a seat on a class session, directly or from the waitlist | `ReservationMade` | – | Booking | Domain event | BookingCreated, ReservationAdded |
 | Booking afmeldt | A member gave up their seat | `ReservationCancelled` | – | Booking | Domain event | BookingDeleted, ReservationRemoved |
+| Ventelisteplads udløbet | The waitlist closed 2 hours before start, and a member's waitlist entry was removed without a seat | `WaitlistEntryExpired` | – | Booking | Domain event | WaitlistEntryRemoved, WaitlistEntryDeleted, QueueExpired |
 | Hold aflyst | A class session will not take place | `ClassSessionCancelled` | – | Booking | Domain event | ClassDeleted, SessionRemoved |
 | Hold ændret | A class session got a new time or place | `ClassSessionChanged` | – | Booking | Domain event | ClassUpdated, SessionEdited |
+| Indmeldelse | A person with an account joins FitLife with their token and gets a member and a membership (UC5). The membership starts as Betaling mangler (`PaymentMissing`) and becomes Aktiv when the first fee is paid | `JoinMembershipCommand` | JoinAction | Membership | Command | Signup, Registration, Subscribe, Enroll |
+| Betalingsudbyder | The external payment provider that charges the membership fee. Outside FitLife Digital, behind an anticorruption layer; a Postman Mock Server in the PoC | `IPaymentProvider` | – | Membership | Domain service | Payment gateway, PSP, Acquirer |
 | Medlemskab pauset | A membership is on pause for a period | `MembershipPaused` | – | Membership | Domain event | MembershipFrozen, Suspended |
 | Medlemskab opsagt | A member has given notice; the membership ends after the notice period | `MembershipCancelled` | – | Membership | Domain event | MembershipDeleted, Unsubscribed |
 | Betaling fejlet | A charge for the membership fee did not go through | `PaymentFailed` | – | Membership | Domain event | ChargeError, PaymentDeclined |
 
 ## Words that mean different things in different contexts
 
-From the language test, step 1 of `docs/DDD_PLAN.md`. Each line here points at a context boundary, except *hold* (see the note under the table). The references point to where the word is used in the interviews. Checking them against the transcripts and adding quotes is #126.
+From the language test, step 1 of `docs/DDD_PLAN.md`. Each line here points at a context boundary, except *hold* (see the note under the table). The references point to the user interviews (*Brugerinddragelse: Unge medlemmer i FitLife Fitness*, on the group's Drive; I1 Freja, I2 Mikkel, I3 Amira, I4 Jonas), with a short quote for each.
 
 | Word | Meaning in context A | Meaning in context B | Names in code |
 |---|---|---|---|
-| hold | Booking, planning: a kind of class that recurs every week, the class the informant goes to every Tuesday or "is on" [I1, I3] | Booking, reservations: one run of a class that can be full [I1, I3]. A third meaning, the regular group of people on a class who know each other [I3, I4], points at a later Engagement context | `ClassType` / `ClassSession` / (Engagement, LATER) |
-| træner | Booking: the instructor who leads a class and knows the members' names [I1, I3] | Training: the personal trainer in a programme with one member, with data, exercises and follow-up [I2, I3] | `Instructor` / `PersonalTrainer` |
-| medlem | Identity: anyone who can log in, including the role "Medlem" | Membership: a person who has joined, pays and has a key fob [PB p. 4; I1]. Booking only sees a participant with a seat | `Account` (with `Role`) / `Member`, referenced as `MemberId` |
-| session | Training: one personal training session in a programme [I3] | Identity: a logged-in browser session | `TrainingSession` / – (no type in Identity yet) |
+| hold | Booking, planning: a kind of class that recurs every week, the class the informant goes to every Tuesday or "is on" [I1: "det der "Power Circuit"-hold om tirsdagen"; I3: "Jeg går på yoga og på et styrkehold, der hedder "Strong & Stable""] | Booking, reservations: one run of a class that can be full [I1: "Hvis holdet er fuldt, laver vi bare lidt løbebånd og maskiner"; I3: "Det første hold, jeg prøvede at komme på, var fyldt"]. A third meaning, the regular group of people on a class who know each other [I3: "På yogaholdet kender vi hinanden"; I4: "Jeg havde en fast gruppe på cirkeltræningen"], points at a later Engagement context | `ClassType` / `ClassSession` / (Engagement, LATER) |
+| træner | Booking: the instructor who leads a class [I3: "instruktøren tog sig af mig og viste mig, hvordan jeg kunne tilpasse øvelserne"] and knows the members' names [I1: "Louise, der har spinning, … kan altid huske mit navn"; I4: "trænerne kunne se én og råbe "kom så, Jonas!""] | Training: the personal trainer in a programme with one member, with data, exercises and follow-up [I2: "han skrev mine tal ind i et Excel-ark på sin egen computer"; I3: "Jeg fik mine øvelser på et printet ark … Der var ingen opfølgning"] | `Instructor` / `PersonalTrainer` |
+| medlem | Identity: anyone who can log in, including the role "Medlem" | Membership: a person who has joined, pays and has a key fob [PB p. 4; I1: "Jeg fik en brik, og så var det det"]. Booking only sees a participant with a seat | `Account` (with `Role`) / `Member`, referenced as `MemberId` |
+| session | Training: one personal training session in a programme [I3: "Jeg havde et skulderforløb med Henrik for et år siden, ti sessioner"] | Identity: a logged-in browser session | `TrainingSession` / – (no type in Identity yet) |
 
 **Bare "hold" is ambiguous, and it is not a boundary.** The informants use it both for the weekly class and for one run of it (first line of the table). In this glossary `Holdtype` is the weekly class (`ClassType`) and `Hold` is one run of it (`ClassSession`). Both belong to Booking, because ADR 007 keeps class scheduling and booking in one context. Say which of the two you mean.

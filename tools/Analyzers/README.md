@@ -54,15 +54,8 @@ Tests compile the snippets against the .NET 10 reference assemblies (`ReferenceA
 
 ## Versions
 
-Package versions are in the root `Directory.Packages.props`. `Microsoft.CodeAnalysis.CSharp` stays at the Roslyn version of the SDK floor in `global.json` (5.0.0 for SDK 10.0.100): a compiler doesn't load an analyzer built against a newer Roslyn than itself (warning CS8032, an error here). Raise both together.
+Package versions are in the root `Directory.Packages.props`. `Microsoft.CodeAnalysis.CSharp` must not be newer than the Roslyn version of the SDK floor in `global.json`: a compiler doesn't load an analyzer built against a newer Roslyn than itself (warning CS8032, an error here). Raise both together.
 
 ## How the analyzers reach the services
 
-Not wired in yet: the rules run only in the tests of this folder. Section 4 of `docs/CSHARP_SETUP_TODO.md` wires them into every project from the root `Directory.Build.props`, a code-owned file, in a PR of its own:
-
-```xml
-<ItemGroup Condition="'$(MSBuildProjectName)' != 'Team.Analyzers' And '$(MSBuildProjectName)' != 'Team.Analyzers.Tests'">
-  <ProjectReference Include="$(MSBuildThisFileDirectory)tools/Analyzers/Team.Analyzers/Team.Analyzers.csproj"
-                    OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-</ItemGroup>
-```
+The root `Directory.Build.props` (code-owned) wires them into every project except `Team.Analyzers` and `Team.Analyzers.Tests` (#48). It references `Team.Analyzers/Team.Analyzers.csproj` with `OutputItemType="Analyzer"` and `ReferenceOutputAssembly="false"`, so the rules run in the compiler and the services don't load the analyzer assembly. A TEAM rule is an error, so it fails the build of any service, library or test project. The same `ItemGroup` passes `GLOSSARY.md` in as an AdditionalFile, which TEAM008 reads (#76). The XML is in `Directory.Build.props`.

@@ -2,8 +2,9 @@
 # Tests for tools/ci/tdd-check.sh and its workflow (issue #43).
 # Each case builds a small fixture repo (a base commit and a PR commit) and runs the check on it.
 # The fixture's test suite is a stand-in for `dotnet test`: every `// needs: <word>` line in
-# tests/ must appear somewhere under src/, so a test "fails on base" when its word isn't there yet.
+# tests/ must appear somewhere under src/ or libs/, so a test "fails on base" when its word isn't there yet.
 # Usage: tools/ci/tdd-check.test.sh   (exit code 0 = all cases pass)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -20,12 +21,12 @@ fixture() {
   git -C "$repo" init --quiet --initial-branch=develop
   git -C "$repo" config user.email test@example.invalid
   git -C "$repo" config user.name tdd-check-test
-  mkdir -p "$repo/src" "$repo/tests"
+  mkdir -p "$repo/src" "$repo/libs" "$repo/tests"
   cat > "$repo/run-tests.sh" <<'EOF'
 #!/usr/bin/env bash
 status=0
 while read -r word; do
-  grep -rqF "$word" src/ 2>/dev/null || { echo "red: $word"; status=1; }
+  grep -rqF "$word" src/ libs/ 2>/dev/null || { echo "red: $word"; status=1; }
 done < <(grep -rhoE '// needs: [A-Za-z]+' tests/ | sed 's|// needs: ||')
 exit "$status"
 EOF
@@ -43,16 +44,17 @@ public class CalculatorTests
     public void Add_Cases_ReturnSum(int a, int b) { }
 }
 EOF
+  echo 'public static class Clock { public static int Ticks() => 1; }' > "$repo/libs/Clock.cs"
   commit "$repo" "base"
   echo "$repo"
 }
 
 commit() { git -C "$1" add -A && git -C "$1" commit --quiet -m "$2"; }
 
-# expect <description> <pass|fail> <repo> [text the output must contain] [labels]
+# expect <description> <pass|fail> <repo> [text the output must contain] [labels] [production dirs, default src/]
 expect() {
   local out status
-  out=$(cd "$3" && BASE_SHA=$(git rev-parse HEAD^) TEST_CMD="bash run-tests.sh" PR_LABELS="${5:-}" "$check" 2>&1)
+  out=$(cd "$3" && BASE_SHA=$(git rev-parse HEAD^) TEST_CMD="bash run-tests.sh" PR_LABELS="${5:-}" SRC_DIR="${6:-src/}" "$check" 2>&1)
   status=$?
   if [ "$2" = pass ] && [ "$status" -eq 0 ]; then
     echo "PASS  $1"
@@ -99,6 +101,35 @@ EOF
 expect "feature PR passes" pass "$(feature_pr)"
 expect "feature PR with a refactor label is still checked as a refactor" fail "$(feature_pr)" "changes files under tests/" refactor
 
+# 1b. libs/ is production code (issue #379): the workflow's SRC_DIR lists src/ and libs/ together.
+prod_dirs="src/ libs/"
+repo=$(fixture)
+echo 'public static class Clock { public static int Ticks() => 2; }' > "$repo/libs/Clock.cs"
+commit "$repo" "change libs without a test"
+expect "a libs/ change without a test fails check 1" fail "$repo" "no test under tests/ was added or changed" "" "$prod_dirs"
+
+# The tests depend on the libs/ change; src/ only has the wiring that uses it.
+repo=$(fixture)
+echo 'public static class Stopwatch { public static int Lap() => 3; }' > "$repo/libs/Stopwatch.cs"
+echo 'public static class Program { public static int Lap() => Stopwatch.Lap(); }' > "$repo/src/Program.cs"
+cat >> "$repo/tests/CalculatorTests.cs" <<'EOF'
+public class StopwatchTests
+{
+    [Test] // needs: Stopwatch
+    public void Lap_ReturnsThree() { }
+}
+EOF
+commit "$repo" "libs change, src wiring, and a test that depends on libs"
+expect "libs/ and src/ wiring with tests that depend on libs/ passes check 4" pass "$repo" "" "" "$prod_dirs"
+expect "the same PR fails when only src/ counts as production (the #98 case)" fail "$repo" "also pass without the production change"
+
+# A test that depends on neither directory's change is red on nothing: both are reset together.
+repo=$(fixture)
+echo 'public static class Clock { public static int Ticks() => 2; }' > "$repo/libs/Clock.cs"
+echo '// a test that passes on base' >> "$repo/tests/CalculatorTests.cs"
+commit "$repo" "libs change with a test that doesn't depend on it"
+expect "a libs/ change whose tests also pass on base fails check 4" fail "$repo" "also pass without the production change" "" "$prod_dirs"
+
 # 2. Refactor PRs (METHODOLOGY section 8)
 expect "refactor PR with the refactor label passes" pass "$(refactor_pr)" "" refactor
 expect "refactor label among other labels passes" pass "$(refactor_pr)" "" "setup,refactor"
@@ -115,27 +146,57 @@ echo 'public static class Calculator { public static int Sum(int a, int b) => a 
 commit "$repo" "refactor that breaks the suite"
 expect "refactor PR with a red suite fails" fail "$repo" "the tests fail" refactor
 
+# edit <file> <sed script>: in-place edit that works with GNU and BSD sed (macOS, #87).
+# GNU and BSD disagree on "sed -i" and on "\n" in a replacement; a backslash-newline works in both.
+edit() {
+  sed "$2" "$1" >"$1.tmp" && mv "$1.tmp" "$1"
+}
+
 # 3. Skipped tests
 for marker in '[Ignore("later")]' '[TestCase(3, 4, IgnoreReason = "later")]' '[Explicit]'; do
   repo=$(feature_pr)
-  sed -i "s|    \[Test\] // needs: Subtract|    $marker\n    [Test] // needs: Subtract|" "$repo/tests/CalculatorTests.cs"
+  edit "$repo/tests/CalculatorTests.cs" "s|    \[Test\] // needs: Subtract|    $marker\\
+    [Test] // needs: Subtract|"
   git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
   expect "added $marker fails" fail "$repo" "adds skipped tests"
 done
 
 repo=$(feature_pr)
-sed -i 's|Subtract_TwoNumbers_ReturnsDifference() { }|Subtract_TwoNumbers_ReturnsDifference() { Assume.That(false); }|' "$repo/tests/CalculatorTests.cs"
+edit "$repo/tests/CalculatorTests.cs" 's|Subtract_TwoNumbers_ReturnsDifference() { }|Subtract_TwoNumbers_ReturnsDifference() { Assume.That(false); }|'
 git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
 expect "added Assume.That fails" fail "$repo" "adds skipped tests"
 
+# 3b. A skip marker inside a string literal is test data, not a skipped test (issue #380).
+repo=$(feature_pr)
+cat >> "$repo/tests/CalculatorTests.cs" <<'EOF2'
+public class MarkerDataTests
+{
+    [TestCase("Assert.Ignore(\"x\");")]
+    public void Marker_InString_IsData(string source) { }
+}
+EOF2
+git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+expect "added [TestCase(\"Assert.Ignore(...)\")] passes" pass "$repo"
+
+repo=$(feature_pr)
+edit "$repo/tests/CalculatorTests.cs" 's|Subtract_TwoNumbers_ReturnsDifference() { }|Subtract_TwoNumbers_ReturnsDifference() { Assert.Ignore("x"); }|'
+git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+expect "added Assert.Ignore(\"x\"); statement fails" fail "$repo" "adds skipped tests"
+
+repo=$(feature_pr)
+edit "$repo/tests/CalculatorTests.cs" "s|    \[Test\] // needs: Subtract|    [Ignore(\"x\")]\\
+    [Test] // needs: Subtract|"
+git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+expect "added [Ignore(\"x\")] attribute fails" fail "$repo" "adds skipped tests"
+
 # 4. Removed tests
 repo=$(fixture)
-sed -i '/\[TestCase(2, 3)\]/d' "$repo/tests/CalculatorTests.cs"
+edit "$repo/tests/CalculatorTests.cs" '/\[TestCase(2, 3)\]/d'
 commit "$repo" "delete a test case"
 expect "deleted test fails" fail "$repo" "removes tests"
 
 repo=$(fixture)
-sed -i 's|    \[Test\] // needs: Add|    // [Test] // needs: Add|' "$repo/tests/CalculatorTests.cs"
+edit "$repo/tests/CalculatorTests.cs" 's|    \[Test\] // needs: Add|    // [Test] // needs: Add|'
 commit "$repo" "comment out a test"
 expect "commented-out [Test] fails" fail "$repo" "removes tests"
 
@@ -169,19 +230,182 @@ echo "${runner//echo \"red: \$word\"/echo \"Calc.cs(1,1): error CS0103: The name
 git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
 expect "compile error from missing production code is red" pass "$repo"
 
+# 4c. Annotations (issue #133). setup-dotnet's csc problem matcher turns a line like
+# "File.cs(1,1): error CS0103: ..." into an ##[error] annotation. The base run is expected to fail to
+# compile, so its output must not match; the head run's must, and the real failure goes to the summary.
+csc_line='^[^[:space:]].*\([0-9]+(,[0-9]+)*\): +(error|warning) +[A-Za-z]+[0-9]+:'
+run_check() { # run_check <repo> [summary file]: the check's output in $out
+  out=$(cd "$1" && BASE_SHA=$(git rev-parse HEAD^) TEST_CMD="bash run-tests.sh" GITHUB_STEP_SUMMARY="${2:-}" "$check" 2>&1)
+}
+annotation() { # annotation <description> <command...>
+  if "${@:2}"; then echo "PASS  $1"; else echo "FAIL  $1"; echo "$out" | sed 's/^/      /'; failures=$((failures + 1)); fi
+}
+compile_error_runner() { # the fixture's runner, printing a compiler error for each missing word
+  local runner; runner=$(cat "$1/run-tests.sh")
+  echo "${runner//echo \"red: \$word\"/echo \"Calc.cs(1,1): error CS0103: The name '\$word' does not exist [/repo/Calc.csproj]\"}" > "$1/run-tests.sh"
+}
+
+repo=$(feature_pr)
+compile_error_runner "$repo"
+git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+run_check "$repo"
+annotation "expected compile errors of the base run are not annotations" bash -c '! grep -qE "$1" <<<"$2"' _ "$csc_line" "$out"
+annotation "the base run's output is still in the log" grep -qF "| Calc.cs(1,1): error CS0103: The name" <<<"$out"
+
+repo=$(feature_pr)
+compile_error_runner "$repo"
+echo 'public static class Minus { }' > "$repo/src/Subtractor.cs" # head still lacks Subtract
+git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+summary="$tmp_root/summary.md"
+run_check "$repo" "$summary"
+annotation "compile errors of the head run stay annotations" grep -qE "$csc_line" <<<"$out"
+annotation "the real failure goes to the job summary" grep -qF "the tests fail with the change" "$summary"
+
+# 4d. Label events (issue #136). A label other than "refactor" doesn't change what tdd-check checks, so the
+# check reports the last completed tdd-check result on the PR's head commit again, read with `gh api`, and
+# doesn't run the suite. Without such a result, or while another tdd-check run is still going, it runs in full.
+stub_bin="$tmp_root/stub-bin"
+mkdir -p "$stub_bin"
+printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\n" "$STUB_CHECK_RUNS"' > "$stub_bin/gh"
+chmod +x "$stub_bin/gh"
+runs() { # runs <status:conclusion>...: a check-runs answer, oldest first, with this run itself last (in progress)
+  local items="" n=0 pair
+  for pair in "$@" "in_progress:"; do
+    n=$((n + 1))
+    items+="${items:+,}{\"name\":\"tdd-check\",\"status\":\"${pair%%:*}\",\"conclusion\":\"${pair#*:}\",\"completed_at\":\"2026-11-24T10:0$n:00Z\"}"
+  done
+  echo "{\"check_runs\":[$items]}"
+}
+label_event() { # label_event <description> <pass|fail> <repo> <action> <label> <check runs> <text the output must contain>
+  local out status
+  out=$(cd "$3" && rm -f suite-ran && BASE_SHA=$(git rev-parse HEAD^) TEST_CMD="bash run-tests-marked.sh" \
+    EVENT_ACTION="$4" EVENT_LABEL="$5" PR_HEAD_SHA=abc123 GITHUB_REPOSITORY=example/repo STUB_CHECK_RUNS="$6" \
+    PATH="$stub_bin:$PATH" "$check" 2>&1)
+  status=$?
+  if { [ "$2" = pass ] && [ "$status" -eq 0 ]; } || { [ "$2" = fail ] && [ "$status" -ne 0 ]; }; then
+    if grep -qF -- "$7" <<<"$out"; then echo "PASS  $1"; return; fi
+  fi
+  echo "FAIL  $1: expected $2 with '$7', got exit $status"
+  echo "$out" | sed 's/^/      /'
+  failures=$((failures + 1))
+}
+marked() { # marked <repo>: the fixture's runner also leaves suite-ran behind, so a case can tell whether the suite ran
+  printf '%s\n' 'touch suite-ran' 'exec bash run-tests.sh "$@"' > "$1/run-tests-marked.sh"
+  git -C "$1" add -A && git -C "$1" commit --quiet --amend --no-edit
+  echo "$1"
+}
+ran() { if [ -f "$2/suite-ran" ]; then echo "PASS  $1"; else echo "FAIL  $1"; failures=$((failures + 1)); fi; }
+not_ran() { if [ -f "$2/suite-ran" ]; then echo "FAIL  $1"; failures=$((failures + 1)); else echo "PASS  $1"; fi; }
+
+# A refactor PR without the label fails a full run, so a pass here can only be the reused result.
+repo=$(marked "$(refactor_pr)")
+label_event "a label event reports an earlier success again" pass "$repo" labeled documentation "$(runs completed:success)" "reports the last tdd-check result on this commit again"
+not_ran "a reused success doesn't run the suite" "$repo"
+
+repo=$(marked "$(feature_pr)")
+label_event "a label event reports an earlier failure again" fail "$repo" unlabeled documentation "$(runs completed:success completed:failure)" "the last tdd-check run on this commit failed"
+not_ran "a reused failure doesn't run the suite" "$repo"
+
+repo=$(marked "$(feature_pr)")
+label_event "a cancelled run isn't a result to report" pass "$repo" labeled documentation "$(runs completed:cancelled)" "no earlier tdd-check result on this commit"
+ran "without an earlier result the suite runs" "$repo"
+
+repo=$(marked "$(feature_pr)")
+label_event "another run still going means a full run" pass "$repo" labeled documentation "$(runs completed:failure in_progress:)" "another tdd-check run on this commit is still going"
+ran "while another run is going the suite runs" "$repo"
+
+repo=$(marked "$(refactor_pr)")
+label_event "the refactor label still runs in full" fail "$repo" labeled refactor "$(runs completed:success)" "no test under tests/ was added or changed"
+ran "the refactor label runs the suite" "$repo"
+
+# 4a. Comment-only changes under src/ (issue #361): checks 1 and 4 skip them, a code change still gets them.
+comment_pr() { # comment_pr <lines to add above the code line in src/Calculator.cs> [replacement for the code line]
+  local repo; repo=$(fixture)
+  { printf '%b\n' "$1"; echo "${2:-public static class Calculator { public static int Add(int a, int b) => a + b; }}"; } > "$repo/src/Calculator.cs"
+  commit "$repo" "comment"
+  echo "$repo"
+}
+removed_comment_pr() {
+  local repo; repo=$(fixture)
+  echo '// old note' > "$repo/src/Note.cs"; commit "$repo" "note"
+  echo '' > "$repo/src/Note.cs"; commit "$repo" "drop the note"
+  echo "$repo"
+}
+changed_code='public static class Calculator { public static int Add(int a, int b) => b + a; }'
+expect "a // comment added under src/ passes without a test" pass "$(comment_pr '// Stryker disable once Boolean')"
+expect "///, /* */ and blank lines added under src/ pass" pass "$(comment_pr '/// <summary>x</summary>\n\n/* note\n * more\n */')"
+expect "a removed comment line passes" pass "$(removed_comment_pr)"
+expect "a comment next to a code change still needs a test" fail "$(comment_pr '// Stryker disable once Boolean' "$changed_code")" "no test under tests/ was added or changed"
+repo=$(comment_pr '// Stryker disable once Boolean' "$changed_code")
+echo '// a note' >> "$repo/tests/CalculatorTests.cs"
+git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+expect "a comment next to a code change still needs red on base" fail "$repo" "also pass without the production change"
+expect "a #pragma line is not a comment" fail "$(comment_pr '#pragma warning disable CS1591')" "no test under tests/ was added or changed"
+expect "a trailing // comment after code is a code change" fail "$(comment_pr '' 'public static class Calculator { public static int Add(int a, int b) => a + b; } // x')" "no test under tests/ was added or changed"
+# A comment-looking diff line that is code (review of #401). Each is red against the line-by-line pattern.
+operand_pr() { # a base file with a wrapped operator line, and the PR changing only that line
+  local repo; repo=$(fixture)
+  printf 'public static class Calculator { public static int Add(int a, int b) =>\n    a\n    * rate; }\n' > "$repo/src/Calculator.cs"; commit "$repo" "wrapped"
+  sed 's/\* rate;/* discountRate;/' "$repo/src/Calculator.cs" > "$repo/src/Calculator.tmp" && mv "$repo/src/Calculator.tmp" "$repo/src/Calculator.cs"; commit "$repo" "change operand"
+  echo "$repo"
+}
+expect "a changed wrapped '* operand;' line is code" fail "$(operand_pr)" "no test under tests/ was added or changed"
+expect "code after a one-line block comment is code" fail "$(comment_pr '/* x */ return 1;')" "no test under tests/ was added or changed"
+expect "code after a closing */ is code" fail "$(comment_pr '/* x\n*/ return 1;')" "no test under tests/ was added or changed"
+expect "an unindented ++x; line is code" fail "$(comment_pr '++x;')" "no test under tests/ was added or changed"
+expect "a // inside a string is not a comment" fail "$(comment_pr 'var u = "http://x";')" "no test under tests/ was added or changed"
+# A multi-line string (#484): a line inside it that starts with // is string content, not a comment.
+string_pr() { # string_pr <opening of the string> <closing>: a base file with a multi-line string, the PR changing a //-line inside it
+  local repo; repo=$(fixture)
+  printf 'public static class Calculator { public static string Text() => %s\n// old\n%s; }\n' "$1" "$2" > "$repo/src/Calculator.cs"; commit "$repo" "string"
+  sed 's|^// old$|// new|' "$repo/src/Calculator.cs" > "$repo/src/Calculator.tmp" && mv "$repo/src/Calculator.tmp" "$repo/src/Calculator.cs"; commit "$repo" "change the string"
+  echo "$repo"
+}
+expect "a changed // line inside a raw string is a code change" fail "$(string_pr '"""' '"""')" "no test under tests/ was added or changed"
+expect "a changed // line inside a verbatim string is a code change" fail "$(string_pr '@"' '"')" "no test under tests/ was added or changed"
+expect "a changed // line inside an interpolated verbatim string is a code change" fail "$(string_pr '@$"' '"')" "no test under tests/ was added or changed"
+libs_comment_pr() { # a comment added to libs/Clock.cs, which is production code since #379
+  local repo; repo=$(fixture)
+  { echo '// Stryker disable once Boolean'; cat "$repo/libs/Clock.cs"; } > "$repo/libs/Clock.tmp" && mv "$repo/libs/Clock.tmp" "$repo/libs/Clock.cs"; commit "$repo" "comment"
+  echo "$repo"
+}
+expect "a // comment added under libs/ passes without a test" pass "$(libs_comment_pr)" "" "" "src/ libs/"
+
+# 4d. The red-on-base worktree is removed on exit and on interrupt (#479).
+# interrupted_pr <repo>: the runner stops the check itself (SIGTERM) once it runs in the base copy (no src/Subtractor.cs).
+worktrees_left() { git -C "$1" worktree list | wc -l; }
+repo=$(feature_pr)
+runner=$(cat "$repo/run-tests.sh")
+{ echo '#!/usr/bin/env bash'; echo '[ -f src/Subtractor.cs ] || kill -TERM "$(cat '$repo.pid')"'; tail -n +2 <<<"$runner"; } > "$repo/run-tests.sh"
+git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
+(cd "$repo" && BASE_SHA=$(git rev-parse HEAD^) TEST_CMD="bash run-tests.sh" bash -c 'echo $$ > "$0"; exec "$1"' "$repo.pid" "$check" >/dev/null 2>&1)
+if [ "$(worktrees_left "$repo")" -eq 1 ]; then echo "PASS  an interrupted check leaves no worktree"; else echo "FAIL  an interrupted check leaves no worktree"; git -C "$repo" worktree list | sed 's/^/      /'; failures=$((failures + 1)); fi
+repo=$(feature_pr)
+expect "a finished check leaves no worktree" pass "$repo"
+if [ "$(worktrees_left "$repo")" -eq 1 ]; then echo "PASS  a finished check leaves no worktree (list)"; else echo "FAIL  a finished check leaves no worktree (list)"; failures=$((failures + 1)); fi
+
 # 5. The workflow (finding 1 and 3)
 wf() { grep -qE "$2" "$workflow" && echo "PASS  $1" || { echo "FAIL  $1: '$2' not in $workflow"; failures=$((failures + 1)); }; }
 wf "workflow re-runs on label changes" 'types: \[opened, synchronize, reopened, labeled, unlabeled\]'
 wf "workflow takes BASE_SHA from the merge commit's first parent" 'BASE_SHA=\$\(git rev-parse HEAD\^1\)'
 wf "workflow passes the PR's labels" 'PR_LABELS: \$\{\{ join\(github\.event\.pull_request\.labels\.\*\.name, '"','"'\) \}\}'
+wf "workflow treats libs/ as production code (issue #379)" "SRC_DIR: 'src/ libs/'( #.*)?$"
 wf "workflow checks tools/Analyzers (issue #49): SRC_DIR" 'SRC_DIR: tools/Analyzers/Team\.Analyzers/$'
 wf "workflow checks tools/Analyzers (issue #49): TEST_DIR" 'TEST_DIR: tools/Analyzers/Team\.Analyzers\.Tests/$'
+wf "workflow passes the event and its label (issue #136)" 'EVENT_LABEL: \$\{\{ github\.event\.label\.name \}\}'
+wf "workflow can read the earlier check runs (issue #136)" 'checks: read'
+wf "workflow has a concurrency group per PR (issue #136)" 'group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.event\.pull_request\.number \}\}'
+wf "a label run never cancels a run in progress (issue #136)" "cancel-in-progress: \\\$\\{\\{ github\\.event\\.action != 'labeled' && github\\.event\\.action != 'unlabeled' \\}\\}"
+api_workflow="$here/../../.github/workflows/api-tests.yml"
+if grep -qF "cancel-in-progress: \${{ github.event_name == 'pull_request' }}" "$api_workflow"; then
+  echo "PASS  api-tests.yml cancels in-progress runs for pull requests only (issue #136)"
+else
+  echo "FAIL  api-tests.yml cancels in-progress runs for pull requests only (issue #136)"; failures=$((failures + 1))
+fi
 if grep -qF 'pull_request.base.sha' "$workflow"; then
   echo "FAIL  workflow no longer uses pull_request.base.sha"; failures=$((failures + 1))
 else
   echo "PASS  workflow no longer uses pull_request.base.sha"
 fi
 
-echo
-if (( failures == 0 )); then echo "All tdd-check tests pass."; else echo "$failures tdd-check test(s) failed."; fi
 exit $(( failures > 0 ))

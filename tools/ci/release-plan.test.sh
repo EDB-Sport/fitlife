@@ -2,6 +2,7 @@
 # Tests for tools/ci/release-plan.sh (issue #95): the dry run of a release on main, in a throwaway repo.
 # It lists the tags and image names it would create for a changed service and skips an unchanged one.
 # Needs only git. Usage: tools/ci/release-plan.test.sh
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -58,6 +59,26 @@ git -C "$repo" tag v1.1.0
 plan release/1.1.0
 check "a re-run after the release plans nothing" "Nothing to release"
 
-echo
-if [ "$failures" -eq 0 ]; then echo "release-plan.sh works."; else echo "$failures check(s) failed."; fi
+# A service without a Dockerfile can't be released: the plan fails and names it (issue #322)
+service NoImageService 1.0.0
+rm "$repo/src/NoImageService/Dockerfile"
+plan release/1.1.0
+if [ "$status" -ne 0 ] && grep -q "NoImageService 1.0.0 has no src/NoImageService/Dockerfile" <<<"$out"; then
+  echo "PASS  a service without a Dockerfile fails the plan"
+else
+  echo "FAIL  a service without a Dockerfile fails the plan (exit $status)"; echo "$out" | tail -10
+  failures=$((failures + 1))
+fi
+rm -rf "$repo/src/NoImageService"
+
+# The same run in GitHub Actions writes empty outputs. bash 3.2 (macOS) treats an empty array as unbound under set -u (#87).
+outputs=$(mktemp)
+out=$(cd "$repo" && GITHUB_OUTPUT="$outputs" RELEASE_REF=release/1.1.0 DOCKERHUB_NAMESPACE=example tools/ci/release-plan.sh 2>&1)
+status=$?
+out="$out
+$(cat "$outputs")"
+rm -f "$outputs"
+check "nothing to release writes an empty services list" "^services=\[\]$"
+check "nothing to release writes empty tags" "^tags=$"
+
 exit "$failures"

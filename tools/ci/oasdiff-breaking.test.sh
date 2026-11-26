@@ -2,6 +2,7 @@
 # Tests for tools/ci/oasdiff-breaking.sh (issue #91), in a throwaway git repo:
 # a removed endpoint fails, an added endpoint passes, a service with no tag is skipped.
 # Needs git and Docker (oasdiff runs from its pinned image). Usage: tools/ci/oasdiff-breaking.test.sh
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 script="$(cd "$(dirname "$0")" && pwd)/oasdiff-breaking.sh"
@@ -47,6 +48,22 @@ expect 0 "an added endpoint passes"
 contract "{\"/members\":$get_op}" > "$repo/contracts/openapi/fresh.json"
 expect 0 "a service with no tag is skipped" "fresh: no fresh/v\* tag yet, skipped"
 
-echo
-if [ "$failures" -eq 0 ]; then echo "oasdiff-breaking.sh works."; else echo "$failures check(s) failed."; fi
+# No contracts at all: an empty list of services under set -u in bash 3.2 (macOS, #87)
+rm "$repo"/contracts/openapi/*.json
+expect 0 "no contracts passes"
+
+# A Docker error (pull failure, Docker missing: exit 125+) is not a break: it must not say "breaks its contract"
+fakebin=$(mktemp -d)
+printf '#!/bin/sh\nexit 125\n' > "$fakebin/docker" && chmod +x "$fakebin/docker"
+contract "{\"/members\":$get_op}" > "$repo/contracts/openapi/demo.json"
+out=$(cd "$repo" && PATH="$fakebin:$PATH" "$script" 2>&1)
+status=$?
+rm -rf "$fakebin"
+if [ "$status" -eq 1 ] && grep -q "did not run" <<<"$out" && ! grep -q "breaks its contract" <<<"$out"; then
+  echo "PASS  a Docker error fails without claiming a break"
+else
+  echo "FAIL  a Docker error fails without claiming a break (exit $status)"; echo "$out" | tail -10
+  failures=$((failures + 1))
+fi
+
 exit "$failures"

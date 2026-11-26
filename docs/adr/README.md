@@ -13,3 +13,5 @@ Planned first ADRs (`../CSHARP_SETUP_TODO.md`, suggested order step 1):
 | [005-nunit](005-nunit.md) | NUnit (IT-arkitektur) instead of Agil udvikling's MSTest (proposed) |
 | [006-kanban-and-review-signoff](006-kanban-and-review-signoff.md) | Kanban flow with milestones instead of Scrum sprints, and review signoff instead of pair programming (proposed) |
 | [007-bounded-contexts](007-bounded-contexts.md) | The bounded contexts, and why the system is cut this way |
+| [008-mcp-server-in-the-poc](008-mcp-server-in-the-poc.md) | The PoC shows the MCP server as a small channel with fixed guardrails |
+| [009-log-in-and-roles](009-log-in-and-roles.md) | Our own `IdentityService` issues a JWT, every service checks it, closed by default, with the roles checked in the backend |

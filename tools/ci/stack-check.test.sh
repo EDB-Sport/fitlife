@@ -4,6 +4,7 @@
 # on one PR head. The branch names stand in for origin/<branch>: the script reads them with
 # DEVELOP_REF=develop and BRANCH_PREFIX="" here.
 # Usage: tools/ci/stack-check.test.sh   (exit code 0 = all cases pass)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 check="$(cd "$(dirname "$0")" && pwd)/stack-check.sh"
@@ -132,6 +133,16 @@ git -C "$repo" checkout --quiet -b feature/b develop && commit "$repo" b
 git -C "$repo" checkout --quiet -b feature/a feature/b && commit "$repo" a
 expect "bottom of a stack with the higher number passes" pass "" -- "$repo" develop feature/b 11 "$open_prs"
 
+# 12b. Numbers reversed, then develop merged into the bottom PR (issue #140, like #55 under #32): the
+#      bottom's head is no longer an ancestor of the other tip, but its own commits are all in it.
+repo=$(fixture)
+git -C "$repo" checkout --quiet -b feature/b develop && commit "$repo" b
+git -C "$repo" checkout --quiet -b feature/a feature/b && commit "$repo" a
+git -C "$repo" checkout --quiet develop && commit "$repo" later
+git -C "$repo" checkout --quiet feature/b && git -C "$repo" merge --quiet develop -m "Merge develop"
+expect "bottom of a reversed stack passes after develop is merged into it" pass "" -- \
+  "$repo" develop feature/b 11 "$open_prs"
+
 # expect_without <description> <text the output must not contain> -- <repo> <base> <head> <PR number> <open PRs>
 # The check must still fail (exit 1), but without <text> in its output (issue #116).
 expect_without() {
@@ -183,10 +194,30 @@ git -C "$repo" checkout --quiet feature/c && commit "$repo" c2
 expect "child of this PR open, parent moved: the parent still gets base advice" fail "set the base to feature/c" -- \
   "$repo" develop feature/b 11 $'9 feature/c\n11 feature/b\n12 feature/d'
 
-echo
-if [ "$failures" -eq 0 ]; then
-  echo "stack-check behaves as specified."
-else
-  echo "$failures case(s) failed."
-fi
+# 16. The other PR targets main, not develop (issue #316, #313 vs #310): `main` is ahead of develop, a
+#     hotfix PR branched from main, and a release PR into develop that brings main's commits. The only
+#     history they share is on the hotfix's own base, so the hotfix isn't a parent. Open PR lines carry
+#     the base branch as a third field.
+repo=$(fixture)
+git -C "$repo" checkout --quiet -b main develop && commit "$repo" released
+git -C "$repo" checkout --quiet -b hotfix/x main && commit "$repo" fix1 && commit "$repo" fix2
+git -C "$repo" checkout --quiet -b release/y main && commit "$repo" release-note
+expect "release PR passes when the other open PR is a hotfix into main" pass "" -- \
+  "$repo" develop release/y 13 $'10 hotfix/x main\n13 release/y develop'
+
+# 17. A real stack still fails when the other PR's base is given: #10 targets develop (third field).
+repo=$(fixture)
+git -C "$repo" checkout --quiet -b feature/a develop && commit "$repo" a
+git -C "$repo" checkout --quiet -b feature/b feature/a && commit "$repo" b
+expect "stacked on #10 fails with its base given" fail "merge #10 first" -- \
+  "$repo" develop feature/b 11 $'10 feature/a develop\n11 feature/b develop'
+
+# 18. A hotfix's own commits inside a PR into develop still count: the PR is built on the hotfix.
+repo=$(fixture)
+git -C "$repo" checkout --quiet -b main develop && commit "$repo" released
+git -C "$repo" checkout --quiet -b hotfix/x main && commit "$repo" fix1
+git -C "$repo" checkout --quiet -b feature/c hotfix/x && commit "$repo" c
+expect "a PR into develop built on a hotfix's own commits fails" fail "merge #10 first" -- \
+  "$repo" develop feature/c 11 $'10 hotfix/x main\n11 feature/c develop'
+
 exit "$failures"

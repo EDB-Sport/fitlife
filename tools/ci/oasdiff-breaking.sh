@@ -3,7 +3,7 @@
 # docs/CSHARP_SETUP_TODO.md section 8). Compares contracts/openapi/<service>.json in the working tree with the
 # same file at the newest <service>/vX.Y.Z tag. A service with no tag yet (before its first release) is skipped.
 # Usage: tools/ci/oasdiff-breaking.sh [<service> ...]   (from the repo root; no arguments = every contract)
-# Exit code 0 = no breaking change, 1 = at least one. The release gate (#94) reuses it per service.
+# Exit code 0 = no breaking change, 1 = at least one (or oasdiff could not run: only a break says "breaks its contract"). The release gate (#94) reuses it per service.
 # oasdiff runs from its pinned image, so only git and Docker are needed.
 set -uo pipefail
 
@@ -22,7 +22,7 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 broken=0
 
-for service in "${services[@]}"; do
+for service in ${services[@]+"${services[@]}"}; do # guarded: an empty array is unbound under set -u in bash 3.2 (#87)
   tag=$(git tag --list "$service/v*" --sort=-v:refname | head -1)
   if [ -z "$tag" ]; then
     echo "$service: no $service/v* tag yet, skipped"
@@ -35,8 +35,14 @@ for service in "${services[@]}"; do
   cp "contracts/openapi/$service.json" "$work/revision.json"
 
   echo "$service: comparing with $tag"
-  if ! docker run --rm -v "$work:/specs:ro" "$image" breaking /specs/base.json /specs/revision.json --fail-on ERR; then
+  docker run --rm -v "$work:/specs:ro" "$image" breaking /specs/base.json /specs/revision.json --fail-on ERR
+  status=$?
+  if [ "$status" -eq 1 ]; then
     echo "::error title=Breaking API change::$service breaks its contract at $tag. Keep the old interface (add /v2/ next to /v1/, or emulate it), or release $service as a new MAJOR."
+    broken=1
+  elif [ "$status" -ne 0 ]; then
+    # 125+ = Docker itself failed (pull error, Docker missing): not a verdict on the contract
+    echo "::error title=oasdiff did not run::$service: docker run exited $status, so the contract at $tag was not compared. Check Docker and the image pull."
     broken=1
   fi
 done

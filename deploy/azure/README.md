@@ -10,10 +10,10 @@ internet --HTTPS 443--> caddy --:80--> nginx --/api/<context>/--> service       
 
 | Container | Port inside the group | Notes |
 |---|---|---|
-| `caddy` | 443 (public), 8081 | Let's Encrypt certificate for `<dnsNameLabel>.<region>.azurecontainer.io`, kept on the `caddy-data` file share. Only 443 is public: `http://` is not answered. |
-| `nginx` | 80 | The same template as compose: `deploy/compose/nginx/default.conf.template`, mounted as a secret volume. |
+| `caddy` | 443 (public), 8081 | Let's Encrypt certificate for `edb-fitlife.switzerlandnorth.azurecontainer.io`, kept on the `caddy-data` file share. Only 443 is public: `http://` is not answered. |
+| `nginx` | 80 | The same template as compose: `deploy/compose/nginx/default.conf.template`, mounted as a secret volume. It limits log-in (`POST /api/identity/tokens`) per client address and answers 429 above it (`LOGIN_RATE_LIMIT`, `LOGIN_RATE_BURST` in `modules/containers.bicep`); the address is taken from Caddy's `X-Forwarded-For`, trusted only from 127.0.0.1 (#366). |
 | `<context>-svc` | 5001 booking, 5002 membership, 5003 identity | One service in the thin slice (`serviceContext`). The others' routes answer 502. |
-| `member-portal` | 5101 | The Blazor UI. |
+| `member-portal` | 5101 | The Blazor UI. Only in the group once it has a release (`includeMemberPortal`, set when `UI_IMAGE_TAG` is). Until then Nginx answers 502 on `/` (#198). |
 | `mongodb` | 27017 | One database and one user per service, created by the compose init script `deploy/compose/mongodb/init/01-service-users.js`. Data on the `mongodb-data` file share. |
 | `rabbitmq` | 5672, 15672 | The management UI isn't routed through Nginx, so it's reachable only inside the group. |
 | `vault` | 8200 (on 127.0.0.1) | Dev mode, set up by the compose scripts `deploy/compose/vault/start.sh` and `seed.sh`: seeded from the secure parameters on every start, ready only once seeded. See "Vault in production" below. |
@@ -24,13 +24,13 @@ Every container has `restartPolicy: Always` and a liveness and a readiness probe
 
 ### CPU and memory
 
-A container group has a limit per region: 4 vCPU and 16 GB for Linux containers in `northeurope`. `topology.test.sh` adds up the requests and fails above it.
+A container group has a limit per region: 4 vCPU and 16 GB for Linux containers in `switzerlandnorth`. `topology.test.sh` adds up the requests and fails above it.
 
 | | vCPU | GB |
 |---|---|---|
-| Today: Caddy, Nginx, Vault (0.25 / 0.25 each), one service, member portal (0.25 / 0.5 each), RabbitMQ (0.25 / 0.5), MongoDB (0.5 / 1.0) | 2.0 | 3.25 |
+| Today: Caddy, Nginx, Vault (0.25 / 0.3 each, because ACI takes memory in 0.1 GB steps), one service, member portal (0.25 / 0.5 each), RabbitMQ (0.25 / 0.5), MongoDB (0.5 / 1.0). Without the member portal: 1.75 vCPU, 2.9 GB | 2.0 | 3.4 |
 | Later: three more services and one more UI (0.25 / 0.5 each), Loki and Grafana (0.25 / 0.5 each) | +1.5 | +3.0 |
-| Total | 3.5 | 6.25 |
+| Total | 3.5 | 6.4 |
 
 That fits in one group. If it ever doesn't, split it into a second group (section 9a).
 
@@ -58,12 +58,12 @@ Image versions are pinned, never `latest`.
 `.github/workflows/deploy.yml` runs after `release.yml` succeeds on `main`:
 
 1. waits for one approval on the GitHub environment `production`
-2. picks the versions from the release tags (`bookingservice/vX.Y.Z`, `memberportal/vX.Y.Z`) and refuses anything that isn't `X.Y.Z`
+2. picks the versions from the release tags (`bookingservice/vX.Y.Z`, `memberportal/vX.Y.Z`) and refuses anything that isn't `X.Y.Z`. Without a `memberportal/v*` tag it deploys without the member portal, and the smoke test skips the portal's checks. Until the portal is released, `/` answers 502: Nginx still routes it to the portal, which isn't in the group
 3. logs in to Azure with OpenID Connect (no stored client secret)
 4. prints `az deployment group what-if`, then runs `az deployment group create`
 5. waits for HTTPS, then runs the Newman smoke test `tests/postman/smoke/thin-slice.postman_collection.json`
 
-**Rollback:** run the workflow by hand (Actions → deploy → Run workflow) with the previous release's versions.
+**Rollback:** run the workflow by hand (Actions → deploy → Run workflow) with the previous release's versions. An empty `ui_tag` means the newest `memberportal/v*` release, or no member portal while it has none.
 
 ## From your own machine
 
@@ -72,6 +72,8 @@ The same deploy, e.g. if the subscription doesn't allow app registrations for OI
 ```bash
 export DOCKERHUB_USERNAME=<user> DOCKERHUB_PULL_TOKEN=<read-only token> SERVICE_IMAGE_TAG=0.1.0 UI_IMAGE_TAG=0.1.0
 ```
+
+Leave `UI_IMAGE_TAG` unset to deploy without the member portal.
 
 and the secrets, with the same names as in `deploy/compose/.env` (`MONGO_ROOT_PASSWORD`, `BOOKING_DB_PASSWORD`, `MEMBERSHIP_DB_PASSWORD`, `IDENTITY_DB_PASSWORD`, `NOTIFICATION_DB_PASSWORD`, `RABBITMQ_PASSWORD`, `VAULT_DEV_ROOT_TOKEN`, `JWT_SIGNING_KEY`), but with production values.
 
@@ -88,11 +90,11 @@ Check without Azure: `az bicep build --file deploy/azure/main.bicep`, `az bicep 
 ## One-time setup (a person, in Azure and GitHub)
 
 1. Register the resource providers once per subscription: `Microsoft.ContainerInstance` and `Microsoft.Storage`.
-2. Create the resource group `rg-fitlife-prod` in `northeurope` (the region in `main.bicepparam`; change both if the subscription's policy doesn't allow it).
-3. Create an app registration (e.g. `fitlife-github-deploy`) with a federated credential: issuer `https://token.actions.githubusercontent.com`, subject `repo:EDB-Sport/fitlife:environment:production`, audience `api://AzureADTokenExchange`. Give its service principal **Contributor** on `rg-fitlife-prod` only.
+2. Create the resource group `rg-fitlife-prod` in `switzerlandnorth` (the region in `main.bicepparam`; change both if the subscription's policy doesn't allow it).
+3. Create an app registration (e.g. `fitlife-github-deploy`) with a federated credential: issuer `https://token.actions.githubusercontent.com`, subject `repo:EDB-Sport@324029458/fitlife@1468529150:environment:production` (the repo uses GitHub's immutable subject, which names the org and repo by ID), audience `api://AzureADTokenExchange`. Give its service principal **Contributor** on `rg-fitlife-prod` only.
 4. Create the GitHub environment `production` with required reviewers and deployment branch `main`, and these environment secrets: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `DOCKERHUB_USERNAME`, `DOCKERHUB_PULL_TOKEN` (a Docker Hub access token with read-only scope), and the secrets `MONGO_ROOT_PASSWORD`, `BOOKING_DB_PASSWORD`, `MEMBERSHIP_DB_PASSWORD`, `IDENTITY_DB_PASSWORD`, `NOTIFICATION_DB_PASSWORD`, `RABBITMQ_PASSWORD`, `VAULT_DEV_ROOT_TOKEN` and `JWT_SIGNING_KEY` (at least 32 characters). Generate each with e.g. `openssl rand -base64 32`; never reuse the made-up values from `.env.example`.
-5. Create the budget alert: `az deployment sub create --location northeurope --template-file deploy/azure/budget.bicep --parameters contactEmails='["<address>"]'`, or the same in the portal (Cost Management → Budgets).
+5. Create the budget alert: `az deployment sub create --location switzerlandnorth --template-file deploy/azure/budget.bicep --parameters contactEmails='["<address>"]'`, or the same in the portal (Cost Management → Budgets).
 
 ## Cost
 
-ACI bills per vCPU-second and GB-second while the group runs. The group requests 2 vCPU and 3.25 GB in total today (see "CPU and memory"). Stop the group when nobody needs it (`az container stop --resource-group rg-fitlife-prod --name fitlife`), keep it running from hand-in (18 Dec) through the exam, and delete the resource group after the exam (`az group delete --name rg-fitlife-prod`).
+ACI bills per vCPU-second and GB-second while the group runs. The group requests 2 vCPU and 3.4 GB in total today, 1.75 vCPU and 2.9 GB without the member portal (see "CPU and memory"). Stop the group when nobody needs it (`az container stop --resource-group rg-fitlife-prod --name fitlife`), keep it running from hand-in (18 Dec) through the exam, and delete the resource group after the exam (`az group delete --name rg-fitlife-prod`).

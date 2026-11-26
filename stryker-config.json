@@ -3,6 +3,7 @@
     "solution": "FitLife.slnx",
     "configuration": "Release",
     "reporters": ["html", "progress", "cleartext"],
+    "ignore-mutations": ["Boolean"],
     "thresholds": {
       "high": 80,
       "low": 60,

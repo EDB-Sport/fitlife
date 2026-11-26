@@ -10,14 +10,62 @@ services:
       BOOKING_URL: http://booking-svc:8080
       MEMBERSHIP_URL: http://membership-svc:8080
       IDENTITY_URL: http://identity-svc:8080
+      MCP_SERVER_URL: http://mcp-server:8080 # the MCP server (#213), on /mcp
       MEMBER_PORTAL_URL: http://member-portal:8080 # the Blazor UI (#8), on every path that isn't /api/ or /health
       GRAFANA_URL: http://grafana:3000 # monitoring.yml
+      # Log-ins per client address on POST /api/identity/tokens (#366); above them the gateway answers 429
+      LOGIN_RATE_LIMIT: ${LOGIN_RATE_LIMIT:-10r/m}
+      LOGIN_RATE_BURST: ${LOGIN_RATE_BURST:-10}
     volumes:
       - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
     ports:
       - "${GATEWAY_PORT:-8080}:80"
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  identity-svc:
+    # IdentityService, built from the repo root (src/IdentityService/Dockerfile, #232). POST /accounts (#234),
+    # POST /tokens (#235) and GET /accounts (#364). The gateway routes /api/identity/ here (IDENTITY_URL).
+    build:
+      context: ../..
+      dockerfile: src/IdentityService/Dockerfile
+    image: fitlife/identityservice:local
+    environment:
+      Loki__Url: http://loki:3100 # monitoring.yml; Loki:App is identity-svc in appsettings.json
+      # Secrets from Vault (#17): secret/identity-svc (Vault:Path in appsettings.json), loaded at startup.
+      # The service waits for Vault and the seed job itself (Vault:WaitSeconds), so it needs no depends_on.
+      Vault__Address: http://vault:8200 # infrastructure.yml
+      Vault__Token: ${VAULT_DEV_ROOT_TOKEN:?set it in deploy/compose/.env}
+      # MongoDB (infrastructure.yml): the identity database and the identity-svc user are in appsettings.json, the
+      # password (MongoDb:Password) in secret/identity-svc. Nothing connects until the first request, so no depends_on.
+      MongoDb__Host: mongodb
+      MongoDb__Port: "27017"
+      # One demo account per role (#237), seeded after start-up; /health waits for it. Passwords from .env, not Vault.
+      Seed__DemoAccounts: "true"
+      Seed__MedlemPassword: ${DEMO_MEDLEM_PASSWORD:?set it in deploy/compose/.env}
+      Seed__TraenerPassword: ${DEMO_TRAENER_PASSWORD:?set it in deploy/compose/.env}
+      Seed__AdminPassword: ${DEMO_ADMIN_PASSWORD:?set it in deploy/compose/.env}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mcp-server:
+    # The MCP server (src/McpServer/Dockerfile, #213), a channel like the member portal: no database, no secret.
+    # Until #214 it answers /health only. The gateway routes /mcp here (MCP_SERVER_URL).
+    build:
+      context: ../..
+      dockerfile: src/McpServer/Dockerfile
+    image: fitlife/mcpserver:local
+    environment:
+      Loki__Url: http://loki:3100 # monitoring.yml; Loki:App is mcp-server in appsettings.json
+      Gateway__BaseUrl: http://gateway:80 # it reaches Booking through the gateway (#214)
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -30,8 +78,81 @@ services:
     image: fitlife/bookingservice:local
     environment:
       Loki__Url: http://loki:3100 # monitoring.yml; Loki:App is booking-svc in appsettings.json
+      # Secrets from Vault (#17): secret/booking-svc (Vault:Path in appsettings.json), loaded at startup.
+      # The service waits for Vault and the seed job itself (Vault:WaitSeconds), so it needs no depends_on.
+      Vault__Address: http://vault:8200 # infrastructure.yml
+      Vault__Token: ${VAULT_DEV_ROOT_TOKEN:?set it in deploy/compose/.env}
+      # MongoDB (infrastructure.yml): the booking database and the booking-svc user (mongodb/init) are in appsettings.json,
+      # the password (MongoDb:Password) in secret/booking-svc. Nothing connects until the first request, so no depends_on.
+      MongoDb__Host: mongodb
+      MongoDb__Port: "27017"
+      Seed__Enabled: "true" # the demo class schedule, loaded once into an empty database (#171)
+      Membership__BaseUrl: http://membership-svc:8080 # who the member behind an account is (#256)
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
       interval: 5s
       timeout: 5s
       retries: 10
+
+  membership-svc:
+    # MembershipService, built from the repo root (src/MembershipService/Dockerfile, #170).
+    build:
+      context: ../..
+      dockerfile: src/MembershipService/Dockerfile
+    image: fitlife/membershipservice:local
+    environment:
+      Loki__Url: http://loki:3100 # monitoring.yml; Loki:App is membership-svc in appsettings.json
+      # Secrets from Vault (#17): secret/membership-svc (Vault:Path in appsettings.json), loaded at startup:
+      # MongoDb:Password and Jwt:SigningKey. The service waits for Vault itself, so it needs no depends_on.
+      Vault__Address: http://vault:8200 # infrastructure.yml
+      Vault__Token: ${VAULT_DEV_ROOT_TOKEN:?set it in deploy/compose/.env}
+      # Database membership, user membership-svc (infrastructure.yml, SERVICE_DATABASES)
+      MongoDb__Host: mongodb
+      MongoDb__Port: "27017"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  member-portal:
+    # The member portal (Blazor UI, #8), built from the repo root (src/MemberPortal.Web/Dockerfile).
+    # The gateway sends it every path that isn't /api/, /health or /grafana/ (MEMBER_PORTAL_URL above, #204).
+    build:
+      context: ../..
+      dockerfile: src/MemberPortal.Web/Dockerfile
+    image: fitlife/memberportal:local
+    environment:
+      Gateway__BaseUrl: http://gateway:80 # where the portal's clients reach the services' APIs (#205 on)
+      Loki__Url: http://loki:3100 # monitoring.yml; Loki:App is member-portal in appsettings.json
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  notification-svc:
+    # NotificationService (#191): consumes ReservationMade from RabbitMQ and logs the notification. No HTTP route
+    # in the gateway, nothing calls it.
+    build:
+      context: ../..
+      dockerfile: src/NotificationService/Dockerfile
+    image: fitlife/notificationservice:local
+    environment:
+      Loki__Url: http://loki:3100 # monitoring.yml; Loki:App is notification-svc in appsettings.json
+      RabbitMq__HostName: rabbitmq
+      RabbitMq__Port: "5672"
+      MongoDb__Host: mongodb
+      MongoDb__Port: "27017"
+      # Secrets from Vault (#259): secret/notification-svc (Vault:Path in appsettings.json) holds MongoDb:Password,
+      # RabbitMq:Username and RabbitMq:Password. The service waits for Vault and the seed job itself (Vault:WaitSeconds).
+      Vault__Address: http://vault:8200 # infrastructure.yml
+      Vault__Token: ${VAULT_DEV_ROOT_TOKEN:?set it in deploy/compose/.env}
+    # No depends_on, so this group still starts on its own: the consumer keeps trying until RabbitMQ answers.
+    # /health is unhealthy until it consumes (#258); start_period covers RabbitMQ's own start-up.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 60s

@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 # Checks that a PR description follows .github/pull_request_template.md (docs/METHODOLOGY.md section 2).
-# Usage: PR_BODY="<description>" [HEAD_REF=<branch>] tools/ci/check-pr-body.sh   (or pipe the description in on stdin)
+# Usage: PR_BODY="<description>" [HEAD_REF=<branch>] [PR_AUTHOR=<login>] tools/ci/check-pr-body.sh   (or pipe the description in on stdin)
 # Exit code = number of rules broken. Tests: tools/ci/check-pr-body.test.sh
 set -uo pipefail
+
+# Dependabot opens its PRs with its own body and no template, and its PRs cannot be edited (issue #281).
+if [ "${PR_AUTHOR-}" = "dependabot[bot]" ]; then
+  echo "Dependabot PR: the description is written by Dependabot, not checked against the template."
+  exit 0
+fi
 
 body=${PR_BODY-$(cat)}
 # Template hints in <!-- --> don't count as text; Windows line endings don't matter

@@ -9,13 +9,18 @@
 # Checks:
 #   1. the group holds Caddy, Nginx, MongoDB, RabbitMQ and Vault, and only Caddy has a public port (443)
 #   2. restartPolicy Always, and a liveness and a readiness probe on every container
-#   3. the CPU and memory requests fit the container-group limit (LIMIT_CPU, LIMIT_MEMORY_GB below)
+#   3. the CPU and memory requests fit the container-group limit (LIMIT_CPU, LIMIT_MEMORY_GB below),
+#      and memory is in 0.1 GB steps, the only amounts ACI accepts
 #   4. every secret is a secure parameter and reaches containers as secureValue, never as value
 #   5. MongoDB and Caddy keep their data on Azure Files shares
 #   6. MongoDB's init script and Vault's start and seed scripts are the compose files, so there is one source
+#   7. the service reads its secret from Vault in the group (#17): its address on localhost, the token as
+#      a secureValue
+#   8. the member portal is in the group only when main.bicepparam gets a UI version (UI_IMAGE_TAG), because
+#      until the portal has a release there is no image to pull (#198)
 set -euo pipefail
 
-# The limit per container group for Linux containers without GPU in most regions, northeurope included
+# The limit per container group for Linux containers without GPU in most regions, switzerlandnorth included
 # (Microsoft Learn: "Resource availability and quota limits for ACI", standard SKU).
 LIMIT_CPU=4
 LIMIT_MEMORY_GB=16
@@ -32,10 +37,32 @@ else
   az bicep build --file deploy/azure/main.bicep --stdout >"$WORK/main.json"
 fi
 
-LIMIT_CPU=$LIMIT_CPU LIMIT_MEMORY_GB=$LIMIT_MEMORY_GB python3 -I - "$WORK/main.json" "$ROOT" <<'PY'
+# main.bicepparam as deploy.yml compiles it: once without a UI version, once with one. Made-up secrets, as
+# the file reads them from the environment and doesn't compile without them.
+build_params() {
+  (
+    for name in DOCKERHUB_USERNAME DOCKERHUB_PULL_TOKEN MONGO_ROOT_PASSWORD BOOKING_DB_PASSWORD \
+      MEMBERSHIP_DB_PASSWORD IDENTITY_DB_PASSWORD NOTIFICATION_DB_PASSWORD RABBITMQ_PASSWORD VAULT_DEV_ROOT_TOKEN; do
+      export "$name=made-up"
+    done
+    export JWT_SIGNING_KEY=made-up-signing-key-of-32-characters
+    unset UI_IMAGE_TAG
+    if [[ -n $1 ]]; then export UI_IMAGE_TAG=$1; fi
+    if [[ -n ${BICEP:-} ]]; then
+      "$BICEP" build-params deploy/azure/main.bicepparam --stdout
+    else
+      az bicep build-params --file deploy/azure/main.bicepparam --stdout
+    fi
+  )
+}
+build_params "" >"$WORK/params-without-ui.json"
+build_params 1.2.3 >"$WORK/params-with-ui.json"
+
+LIMIT_CPU=$LIMIT_CPU LIMIT_MEMORY_GB=$LIMIT_MEMORY_GB python3 -I - "$WORK/main.json" "$ROOT" \
+  "$WORK/params-without-ui.json" "$WORK/params-with-ui.json" <<'PY'
 import base64, json, os, re, sys
 
-template_path, root = sys.argv[1], sys.argv[2]
+template_path, root, params_without_ui_path, params_with_ui_path = sys.argv[1:5]
 main = json.load(open(template_path))
 failures = []
 
@@ -82,7 +109,17 @@ def resolve(value):
     return value
 
 properties = group["properties"]
-containers = {c["name"]: c["properties"] for c in properties["containers"]}
+# Every container that can be in the group. An optional container makes the list an expression,
+# [filter(variables('x'), ...)], and then the candidates are that variable; check 7 checks the filter.
+containers_value = properties["containers"]
+containers_filter = None
+if isinstance(containers_value, str):
+    match = re.fullmatch(r"\[filter\(variables\('([^']+)'\), (.*)\)\]", containers_value)
+    if not match:
+        print(f"FAIL: the group's containers are an expression this check can't read: {containers_value}", file=sys.stderr)
+        sys.exit(1)
+    containers_value, containers_filter = variables[match.group(1)], match.group(2)
+containers = {c["name"]: c["properties"] for c in containers_value}
 
 # 1. Containers and the one public port.
 for name in ["caddy", "nginx", "mongodb", "rabbitmq", "vault"]:
@@ -123,6 +160,16 @@ if cpu <= limit_cpu and memory <= limit_memory:
     ok(summary)
 else:
     fail(summary)
+# ACI accepts memory only in 0.1 GB steps and refuses the deploy otherwise (MemoryRequirementNotTimesOfOneTenthGB, #179)
+off_step = []
+for name, container in containers.items():
+    gb = float(resolve(container["resources"])["requests"]["memoryInGB"])
+    if abs(gb * 10 - round(gb * 10)) > 1e-6:
+        off_step.append(f"{name} ({gb:g} GB)")
+if off_step:
+    fail(f"memory not in 0.1 GB steps: {', '.join(off_step)}")
+else:
+    ok("every memory request is in 0.1 GB steps")
 
 # 4. Secrets: secure parameters, passed as secureValue.
 secret_name = re.compile(r"(PASS|TOKEN|SECRET|SIGNING_?KEY|_KEY$)", re.IGNORECASE)
@@ -171,6 +218,43 @@ for container_name, wanted in expected.items():
             ok(f"{container_name}: {mount_path} is {source}")
         else:
             fail(f"{container_name}: {mount_path} differs from {source}")
+
+# 7. The service reads its secret from Vault in the group (#17): the address on the group's localhost,
+#    the token as a secureValue. Compose gives it the same settings (deploy/compose/services.yml).
+infrastructure = {"caddy", "nginx", "member-portal", "mongodb", "rabbitmq", "vault"}
+for name, container in containers.items():
+    if name in infrastructure:
+        continue
+    variables = {v["name"]: v for v in container.get("environmentVariables", [])}
+    address = str(resolve(variables.get("Vault__Address", {}).get("value", "")))
+    if "127.0.0.1" in address and "secureValue" in variables.get("Vault__Token", {}):
+        ok(f"{name} reads its secret from Vault on the group's localhost")
+    else:
+        fail(f"{name} has no Vault__Address on 127.0.0.1 and Vault__Token as a secureValue")
+
+# 8. The member portal only with a UI version. The filter drops exactly that container unless
+#    includeMemberPortal is true, and main.bicepparam sets includeMemberPortal from UI_IMAGE_TAG.
+if "member-portal" in containers:
+    ok("container member-portal (when it has a release)")
+else:
+    fail("no container member-portal in the group")
+expected_filter = "lambda('c', or(parameters('includeMemberPortal'), not(equals(lambdaVariables('c').name, 'member-portal'))))"
+if containers_filter == expected_filter:
+    ok("member-portal is dropped from the group unless includeMemberPortal is true")
+else:
+    fail(f"the group's containers should be filtered with {expected_filter}, got {containers_filter}")
+def bicepparam(path):
+    return {name: p.get("value") for name, p in json.loads(json.load(open(path))["parametersJson"])["parameters"].items()}
+without_ui, with_ui = bicepparam(params_without_ui_path), bicepparam(params_with_ui_path)
+if without_ui.get("includeMemberPortal") is False:
+    ok("main.bicepparam without UI_IMAGE_TAG: no member portal")
+else:
+    fail(f"main.bicepparam without UI_IMAGE_TAG sets includeMemberPortal to {without_ui.get('includeMemberPortal')}, expected false")
+if with_ui.get("includeMemberPortal") is True and with_ui.get("uiImageTag") == "1.2.3":
+    ok("main.bicepparam with UI_IMAGE_TAG=1.2.3: the member portal 1.2.3")
+else:
+    fail(f"main.bicepparam with UI_IMAGE_TAG=1.2.3 sets includeMemberPortal {with_ui.get('includeMemberPortal')} "
+         f"and uiImageTag {with_ui.get('uiImageTag')}, expected true and 1.2.3")
 
 if failures:
     print(f"\n{len(failures)} check(s) failed", file=sys.stderr)

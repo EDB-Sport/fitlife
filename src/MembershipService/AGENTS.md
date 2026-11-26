@@ -23,7 +23,7 @@ The Membership context (supporting subdomain): members, memberships and membersh
 ## Change here also touches
 
 - New or changed endpoint → regenerate `contracts/openapi/membershipservice.json`, add or change an `ACCESS.md` row, add or update the Postman collection, update `CONTEXT.md`.
-- `GET /members/by-account/{accountId}` is read by Booking (`src/BookingService/Clients/`); its answer also changes this service's callers.
+- `GET /members/by-account/{accountId}` is read by Booking (`src/BookingService/Clients/`); its answer also changes this service's callers, and Booking's consumer test is [`tests/BookingService.Tests/Clients/MembershipClientTests.cs`](../../tests/BookingService.Tests/Clients/MembershipClientTests.cs).
 - New or changed event → a row in `docs/domain/CONTEXT-MAP.md` section 5, `contracts/events/<event>.schema.json` and `contracts/events/README.md`, the integration event in [`libs/FitLife.Messaging/Events/`](../../libs/FitLife.Messaging/Events/), the publisher mapping, the consumer and its test, and both contexts' `CONTEXT.md`.
 - Payment provider fields → `src/MembershipService/PaymentProvider/PaymentProviderClient.cs` and [`tests/postman/mocks/payment-provider.mock.postman_collection.json`](../../tests/postman/mocks/payment-provider.mock.postman_collection.json).
 - New term → `GLOSSARY.md` and `CONTEXT.md`.

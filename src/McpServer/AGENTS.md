@@ -22,6 +22,6 @@ Nothing: it is a channel, not a bounded context, and it holds no business rule o
 
 ## Change here also touches
 
-- New or changed tool → `contracts/mcp/tools.json`, an `ACCESS.md` row, the guardrails in [ADR 008](../../docs/adr/008-mcp-server-in-the-poc.md), and tests in `tests/McpServer.Tests/`.
-- The service behind a tool → that service's OpenAPI, `ACCESS.md` rows, Postman collection and `CONTEXT.md`; the tool only passes the member's token through.
+- New or changed tool → `contracts/mcp/tools.json`, an `ACCESS.md` row, the guardrails in [ADR 008](../../docs/adr/008-mcp-server-in-the-poc.md), the tool-list check [`tests/McpServer.IntegrationTests/ToolListContractTests.cs`](../../tests/McpServer.IntegrationTests/ToolListContractTests.cs) and the tool's tests in `tests/McpServer.Tests/Tools/`.
+- The service behind a tool → that service's OpenAPI, `ACCESS.md` rows, Postman collection and `CONTEXT.md`. For the planned member tools, ADR 008's guardrail applies: the caller's token is passed through unchanged and stored nowhere. `list_class_sessions` needs no token, as in the member portal.
 - New term → `GLOSSARY.md`. There is no `CONTEXT.md` here: the server owns no model.

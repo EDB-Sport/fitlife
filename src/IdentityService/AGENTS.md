@@ -23,6 +23,6 @@ The Identity context: accounts, roles and the tokens they are carried in (generi
 ## Change here also touches
 
 - New or changed endpoint → regenerate `contracts/openapi/identityservice.json`, add or change an `ACCESS.md` row, update the Postman collection, update `CONTEXT.md`.
-- Token claims or roles → [`libs/FitLife.Authentication/`](../../libs/FitLife.Authentication/), every service's `AddFitLifeJwtAuthentication()`, and [ADR 009](../../docs/adr/009-log-in-and-roles.md).
+- Token claims or roles → [`libs/FitLife.Authentication/`](../../libs/FitLife.Authentication/), the callers of `AddFitLifeJwtAuthentication()` in `src/BookingService/Program.cs`, `src/IdentityService/Program.cs` and `src/MembershipService/Program.cs` (Notification, McpServer and MemberPortal.Web don't use it), and [ADR 009](../../docs/adr/009-log-in-and-roles.md).
 - The demo accounts → `Seed:DemoAccounts` and the `DEMO_*_PASSWORD` values in [`deploy/compose/services.yml`](../../deploy/compose/services.yml) and `deploy/compose/.env.example`.
 - New term → `GLOSSARY.md` and `CONTEXT.md`.

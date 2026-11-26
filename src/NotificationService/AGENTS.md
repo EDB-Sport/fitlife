@@ -15,9 +15,9 @@ The Notification context (supporting subdomain): notifications to members about 
 
 ## Contracts and access
 
-- OpenAPI: [`contracts/openapi/notificationservice.json`](../../contracts/openapi/notificationservice.json) (`/health` only today). `dotnet build -c Release` regenerates it; commit it (`tools/ci/check-contracts.sh`).
+- OpenAPI: [`contracts/openapi/notificationservice.json`](../../contracts/openapi/notificationservice.json) (its `paths` is empty: `/health` is not in the document). `dotnet build -c Release` regenerates it; commit it (`tools/ci/check-contracts.sh`).
 - Who may call what: the `NotificationService` row in [`docs/domain/ACCESS.md`](../../docs/domain/ACCESS.md) (planned endpoint).
-- Events: consumes `ReservationMade` on queue `notification.reservation-made` (schema [`contracts/events/reservation-made.schema.json`](../../contracts/events/reservation-made.schema.json)); publishes none.
+- Events: consumes `ReservationMade` on queue `notification.reservation-made` (schema [`contracts/events/reservation-made.schema.json`](../../contracts/events/reservation-made.schema.json)); publishes none. The other six in `CONTEXT-MAP` section 5 (`ReservationCancelled`, `ClassSessionCancelled`, `ClassSessionChanged`, `MembershipPaused`, `MembershipCancelled`, `PaymentFailed`) are planned from the same two publishers, none wired.
 - Postman: [`tests/postman/services/`](../../tests/postman/services/).
 
 ## Change here also touches

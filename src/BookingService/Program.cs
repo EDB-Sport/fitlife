@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Reflection;
 using BookingService.Application;
 using BookingService.Clients;
+using BookingService.Jobs;
 using BookingService.Repositories;
 using BookingService.Seed;
 using FitLife.Authentication;
@@ -29,6 +30,8 @@ try
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddRepositories();
     builder.Services.AddScoped<GetClassSessionsQueryHandler>(); // the class schedule (#254)
+    builder.Services.AddWaitlistClosing(builder.Configuration); // closes each waitlist 2 hours before start, when enabled (#314)
+
     if (builder.Configuration.GetValue<bool>("Seed:Enabled"))
     {
         builder.Services.AddHostedService<ClassSessionSeeder>();

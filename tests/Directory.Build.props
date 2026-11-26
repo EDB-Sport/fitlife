@@ -17,6 +17,8 @@
   <PropertyGroup Condition="'$(IsUnitTestProject)' == 'true' or '$(IsIntegrationTestProject)' == 'true'">
     <IsTestProject>true</IsTestProject>
     <IsPackable>false</IsPackable>
+    <!-- Environment for every test run, e.g. no logs sent to Loki (#394) -->
+    <RunSettingsFilePath>$(MSBuildThisFileDirectory)test.runsettings</RunSettingsFilePath>
   </PropertyGroup>
 
   <!-- Every test project gets NUnit and coverlet, so coverage is collected everywhere. Versions: Directory.Packages.props. -->

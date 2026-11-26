@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Tests for tools/ci/check-pr-body.sh (issue #34).
 # Usage: tools/ci/check-pr-body.test.sh   (exit code 0 = all cases pass)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 check="$(dirname "$0")/check-pr-body.sh"
@@ -152,10 +153,4 @@ else
   failures=$((failures + 1))
 fi
 
-echo
-if [ "$failures" -eq 0 ]; then
-  echo "All PR description checks work."
-else
-  echo "$failures case(s) failed."
-fi
 exit "$failures"

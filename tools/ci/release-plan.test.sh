@@ -2,6 +2,7 @@
 # Tests for tools/ci/release-plan.sh (issue #95): the dry run of a release on main, in a throwaway repo.
 # It lists the tags and image names it would create for a changed service and skips an unchanged one.
 # Needs only git. Usage: tools/ci/release-plan.test.sh
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -80,6 +81,4 @@ rm -f "$outputs"
 check "nothing to release writes an empty services list" "^services=\[\]$"
 check "nothing to release writes empty tags" "^tags=$"
 
-echo
-if [ "$failures" -eq 0 ]; then echo "release-plan.sh works."; else echo "$failures check(s) failed."; fi
 exit "$failures"

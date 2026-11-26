@@ -78,7 +78,7 @@ Patterns [M4.01 p. 10]: Customer–Supplier, Open Host Service, Anticorruption L
 | Upstream | Downstream | Pattern | How (REST / event) | Why this pattern |
 |---|---|---|---|---|
 | Finance system and payment provider | Membership | ACL | REST + callback. A Postman Mock Server in the PoC [PB p. 9] | External systems outside FitLife Digital. Their names and data model stay outside ours |
-| Identity | All services | Open Host Service | JWT with roles as claims [M10.03] | Every service checks the same token in the same way |
+| Identity | All services | Open Host Service | JWT with roles as claims [M10.03]. How it works: [ADR 009](../adr/009-log-in-and-roles.md). Which role may call what: [`ACCESS.md`](ACCESS.md) | Every service checks the same token in the same way |
 | Membership | Booking; Access (NEXT) | Open Host Service | REST, when a reservation is made or a door asks: the caller sends the account id from the token, and the answer is the `MemberId` and whether the membership is active | Several contexts need the same answer. Synchronous, so nobody books on a membership that just ended (group choice, DDD_PLAN step 7) |
 | Membership | Booking | Customer–Supplier | Events: `MembershipPaused`, `MembershipCancelled` | Booking cancels future reservations without Membership knowing what a reservation is |
 | Booking | Notification | Customer–Supplier | Events | A reservation must not wait for a message to be sent. Notification follows what Booking publishes |

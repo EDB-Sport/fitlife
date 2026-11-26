@@ -54,6 +54,29 @@ docker compose up -d --wait --build
 
 `tools/ci/api-tests.sh` does the same with `API_TESTS_BUILD=1 tools/ci/api-tests.sh`. Without the switch it reuses the images it has, as before. CI starts on a fresh runner with no images, so it builds them either way (#284).
 
+## Local builds: base images
+
+A local build uses the base images already on your machine. The cheapest source comes first:
+
+- **(a)** pull the published `:develop` images from Docker Hub instead of building (#340, not usable on `develop` until it lands);
+- **(b)** build with the base images in your local cache. This is what `docker compose up --build` does, and the compose files never force a pull (no `--pull`, no `pull: true`);
+- **(c)** download the base images from MCR (`mcr.microsoft.com`) only as a last resort.
+
+A first build with no base images on disk is slow because of MCR, not the build: on 2026-11-25 the first `docker compose up` took about 10 minutes for three images, and the SDK image alone is about 272 MB, downloaded at about 40 KB/s. After that, a rebuild downloads no base images.
+
+**Probe: does a build with the base images on disk pull anything?** This scratch build names its base under an unreachable registry host (`127.0.0.1:9`), so a build that reaches a registry would fail. It passes only when the base comes from the local image store:
+
+```bash
+mkdir -p /tmp/local-build-probe && cd /tmp/local-build-probe
+docker tag alpine:3.24.4 127.0.0.1:9/mcr/aspnet:10.0-alpine   # any image you have
+printf 'FROM 127.0.0.1:9/mcr/aspnet:10.0-alpine\nRUN echo built\n' > Dockerfile
+printf 'services:\n  probe:\n    build: .\n    image: probe-local:local\n' > compose.yaml
+docker compose build && docker compose build   # both succeed: the second one pulled nothing
+cd / && rm -rf /tmp/local-build-probe && docker rmi -f probe-local:local 127.0.0.1:9/mcr/aspnet:10.0-alpine
+```
+
+A floating tag (`aspnet:10.0-alpine`, as in `src/MemberPortal.Web/Dockerfile`) doesn't change this: a tag that exists in the local store is used without a registry check. It was measured with the default Docker builder. A `docker-container` builder (e.g. CI's buildx) may differ.
+
 One group on its own: `docker compose -f infrastructure.yml up -d --wait`.
 
 Two stacks side by side (two worktrees, say): give each its own project name and ports, e.g. `docker compose -p fitlife-6 up -d --wait` with other `*_PORT` values in that folder's `.env`.

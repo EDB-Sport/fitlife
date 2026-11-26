@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
 # Tests for tools/ci/mutation.sh (issue #53). Each case copies the repo into a throwaway git repo,
 # so the real Directory.Build.*, dotnet-tools.json and stryker-config.json (break threshold) apply.
-# Needs the .NET SDK. Usage: tools/ci/mutation.test.sh   (exit code 0 = every case passes)
+# Needs the .NET SDK. Usage: FITLIFE_MUTATION=1 tools/ci/mutation.test.sh   (exit code 0 = every case passes)
 set -uo pipefail
+
+# Mutation testing is disabled for now (#385): each case restores and mutates a project, 2-15 min (#353).
+# FITLIFE_MUTATION=1 is the one switch; ci.yml sets it on ci-scripts when the mutation job runs again (#461).
+if [ "${FITLIFE_MUTATION:-}" != 1 ]; then
+  echo "skipped: mutation testing is disabled. Set FITLIFE_MUTATION=1 to run these cases."
+  exit 0
+fi
 
 root=$(cd "$(dirname "$0")/../.." && pwd)
 script="$root/tools/ci/mutation.sh"

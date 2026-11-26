@@ -63,6 +63,9 @@ for scan_file in .github/workflows/image-scan.yml tools/ci/image-scan-plan.sh to
   check "a change to the scan itself ($scan_file) picks every service" same "$(picks "$scan_file")" '["Alpha","Beta"]'
 done
 check "each service is picked once" same "$(picks src/Alpha/a.cs src/Alpha/b.cs libs/x)" '["Alpha"]'
+# macOS /bin/bash is 3.2, which has no mapfile or readarray (#87)
+check "the plan runs on bash 3.2 (no mapfile or readarray)" \
+  bash -c '! grep -vE "^\s*#" "$1" | grep -qwE "mapfile|readarray"' _ "$plan"
 
 # 2. The real repo: every Dockerfile under src/ is found
 real=$(printf '.dockerignore\n' | "$plan")

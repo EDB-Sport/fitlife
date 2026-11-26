@@ -4,6 +4,7 @@
 # on one PR head. The branch names stand in for origin/<branch>: the script reads them with
 # DEVELOP_REF=develop and BRANCH_PREFIX="" here.
 # Usage: tools/ci/stack-check.test.sh   (exit code 0 = all cases pass)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 check="$(cd "$(dirname "$0")" && pwd)/stack-check.sh"
@@ -219,10 +220,4 @@ git -C "$repo" checkout --quiet -b feature/c hotfix/x && commit "$repo" c
 expect "a PR into develop built on a hotfix's own commits fails" fail "merge #10 first" -- \
   "$repo" develop feature/c 11 $'10 hotfix/x main\n11 feature/c develop'
 
-echo
-if [ "$failures" -eq 0 ]; then
-  echo "stack-check behaves as specified."
-else
-  echo "$failures case(s) failed."
-fi
 exit "$failures"

@@ -13,6 +13,9 @@ If this is a re-review (the PR has an earlier "Reviewed at <sha>" comment):
 read only `git diff <reviewed-sha>..<new-head>` plus the reasons from the earlier
 review. Say which of those reasons are resolved. Don't re-read the whole PR.
 
+First run `tools/dev/review-ready.sh <n>`. If it says "not ready", that is the review: give those
+lines as the reasons, and don't read the diff. Only a ready PR goes on to the checks below.
+
 Check, in this order, and report only real findings:
 1. Existing tests: was any existing test changed, removed, skipped or weakened?
    Does the PR body explain it? (section 3)

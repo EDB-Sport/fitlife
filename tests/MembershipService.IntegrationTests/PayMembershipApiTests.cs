@@ -73,7 +73,8 @@ public sealed class PayMembershipApiTests
         using HttpResponseMessage response = await Pay(client).ConfigureAwait(false);
 
         // Assert
-        await AssertProblem(response, HttpStatusCode.Conflict, "NothingIsOwed").ConfigureAwait(false);
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Conflict));
+        Assert.That(await CodeOf(response).ConfigureAwait(false), Is.EqualTo("NothingIsOwed"));
     }
 
     [Test]
@@ -88,7 +89,8 @@ public sealed class PayMembershipApiTests
         using HttpResponseMessage response = await Pay(client).ConfigureAwait(false);
 
         // Assert
-        await AssertProblem(response, HttpStatusCode.Conflict, "ChargeDeclined").ConfigureAwait(false);
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Conflict));
+        Assert.That(await CodeOf(response).ConfigureAwait(false), Is.EqualTo("ChargeDeclined"));
         using HttpResponseMessage mine = await client.GetAsync(new Uri("/members/me", UriKind.Relative)).ConfigureAwait(false);
         using JsonDocument body = await Body(mine).ConfigureAwait(false);
         Assert.That(body.RootElement.GetProperty("membershipStatus").GetString(), Is.EqualTo("PaymentMissing"));
@@ -120,12 +122,16 @@ public sealed class PayMembershipApiTests
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
     }
 
-    private static async Task AssertProblem(HttpResponseMessage response, HttpStatusCode status, string code)
+    // The problem details' code, and only from a problem-details answer
+    private static async Task<string?> CodeOf(HttpResponseMessage response)
     {
-        Assert.That(response.StatusCode, Is.EqualTo(status));
-        Assert.That(response.Content.Headers.ContentType?.MediaType, Is.EqualTo("application/problem+json"));
+        if (!string.Equals(response.Content.Headers.ContentType?.MediaType, "application/problem+json", StringComparison.Ordinal))
+        {
+            return null;
+        }
+
         using JsonDocument body = await Body(response).ConfigureAwait(false);
-        Assert.That(body.RootElement.GetProperty("code").GetString(), Is.EqualTo(code));
+        return body.RootElement.GetProperty("code").GetString();
     }
 
     // A declined first charge leaves the new membership with Betaling mangler

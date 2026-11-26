@@ -18,15 +18,22 @@ repo=EDB-Sport/fitlife
 gh_cmd=${GH:-$(command -v gh || command -v gh.exe)}
 tries=${WAIT_CI_TRIES:-15}
 delay=${WAIT_CI_DELAY:-20}
+err_file=$(mktemp)
+trap 'rm -f "$err_file"' EXIT
 
 for ((try = 1; ; try++)); do
   # Wait for the checks; gh --watch prints every row, so its output is discarded.
   "$gh_cmd" pr checks "$pr" -R "$repo" --watch >/dev/null 2>&1
 
-  checks=$("$gh_cmd" pr checks "$pr" -R "$repo" --json name,state,link | tr -d '\r') || {
-    echo "could not read the checks of PR $pr" >&2
-    exit 2
-  }
+  # Before any check is registered, gh prints "no checks reported" on stderr and exits 1: that means wait.
+  if ! checks=$("$gh_cmd" pr checks "$pr" -R "$repo" --json name,state,link 2>"$err_file" | tr -d '\r'); then
+    if ! grep -q "no checks reported" "$err_file"; then
+      cat "$err_file" >&2
+      echo "could not read the checks of PR $pr" >&2
+      exit 2
+    fi
+    checks='[]'
+  fi
   count=$(jq 'length' <<<"$checks") || {
     echo "jq failed (is it installed?): cannot judge the checks of PR $pr" >&2
     exit 2

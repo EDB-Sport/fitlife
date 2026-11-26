@@ -86,7 +86,20 @@ new_case; edit pr.json '(.statusCheckRollup[] | select(.name=="mutation") | .con
 expect "failing mutation (not a required check) does not block" 0 "ready for review"
 
 new_case; edit pr.json '.isDraft=true'
-expect "draft PR: not ready" 1 "not ready: draft PR"
+expect "draft PR: ready (a draft can be reviewed, #470)" 0 "ready for review"
+
+# The rollup isn't in time order: the run that started last decides, wherever it is listed.
+new_case; edit pr.json '.statusCheckRollup |= [{"__typename":"CheckRun","name":"test","status":"COMPLETED","conclusion":"FAILURE","startedAt":"2026-11-26T10:05:00Z","detailsUrl":"https://run/test-new"}] + map(if .name=="test" then .startedAt="2026-11-26T10:00:00Z" else . end)'
+expect "newer failing run listed first: not ready" 1 "not ready: required check test is FAILURE on the head: https://run/test-new"
+
+new_case; edit pr.json '.statusCheckRollup |= map(if .name=="test" then .startedAt="2026-11-26T10:00:00Z" else . end) + [{"__typename":"CheckRun","name":"test","status":"COMPLETED","conclusion":"FAILURE","startedAt":"2026-11-26T10:05:00Z","detailsUrl":"https://run/test-new"}]'
+expect "newer failing run listed last: not ready" 1 "not ready: required check test is FAILURE on the head: https://run/test-new"
+
+new_case; edit pr.json '.statusCheckRollup |= [{"__typename":"CheckRun","name":"test","status":"COMPLETED","conclusion":"FAILURE","startedAt":"2026-11-26T09:55:00Z","detailsUrl":"https://run/test-old"}] + map(if .name=="test" then .startedAt="2026-11-26T10:00:00Z" else . end)'
+expect "older failing run listed first, newer run green: ready" 0 "ready for review"
+
+new_case; edit pr.json '.statusCheckRollup |= map(if .name=="test" then .startedAt="2026-11-26T10:00:00Z" else . end) + [{"__typename":"CheckRun","name":"test","status":"COMPLETED","conclusion":"FAILURE","startedAt":"2026-11-26T09:55:00Z","detailsUrl":"https://run/test-old"}]'
+expect "older failing run listed last, newer run green: ready" 0 "ready for review"
 
 new_case; edit pr.json '(.statusCheckRollup[] | select(.name=="test") | .conclusion) = "FAILURE"'
 expect "failing required check: named with its run link" 1 "not ready: required check test is FAILURE on the head: https://run/test"
@@ -115,10 +128,10 @@ expect "behind develop, no workflow change: ready, with an info line" 0 "info: 3
 new_case; edit compare.json '.ahead_by=3 | .files=[{"filename":".github/workflows/ci.yml"},{"filename":"src/x.cs"}]'
 expect "workflow changed on develop after the merge base: CI is stale, not ready" 1 "not ready: CI on the head is stale: develop changed .github/workflows/ci.yml"
 
-new_case; edit pr.json '.isDraft=true | .mergeable="CONFLICTING"'
+new_case; edit pr.json '.mergeable="CONFLICTING" | (.statusCheckRollup[] | select(.name=="test") | .conclusion) = "FAILURE"'
 out=$(GH="$fake" FAKE_GH_DIR="$fx" "$check" 1 2>&1)
 if [ "$(grep -c '^not ready: ' <<<"$out")" -eq 2 ]; then
-  echo "PASS  one line per reason (draft and conflict)"
+  echo "PASS  one line per reason (failing check and conflict)"
 else
   echo "FAIL  one line per reason: expected 2 'not ready:' lines"
   sed 's/^/      /' <<<"$out"

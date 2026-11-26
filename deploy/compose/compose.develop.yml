@@ -7,6 +7,7 @@
 # instead: build it with the base file alone (README.md).
 # CI and the api-tests never use this file: they build the PR's code from source.
 # :develop is allowed only in this file (tools/ci/image-versions.sh).
+# albertarnason/ is the repository variable DOCKERHUB_NAMESPACE the workflow pushes to: if that changes, change it here.
 services:
   identity-svc:
     image: albertarnason/identityservice:develop

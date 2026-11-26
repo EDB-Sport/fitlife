@@ -17,15 +17,28 @@ if [[ " $* " == *" --watch "* ]]; then
   echo "NOISE a green row that must not be printed"
   exit 1
 fi
+# A "$STUB_CHECKS.first" file is printed once, by the first --json read (checks not registered yet).
+if [ -f "$STUB_CHECKS.first" ]; then
+  cat "$STUB_CHECKS.first"
+  rm "$STUB_CHECKS.first"
+  exit 0
+fi
 cat "$STUB_CHECKS"
 EOF
 chmod +x "$tmp/gh"
 
+# Stub jq that fails the way a missing jq does (exit 127); a case puts it first on PATH via RUN_PATH.
+mkdir "$tmp/nojq"
+printf '#!/usr/bin/env bash\nexit 127\n' >"$tmp/nojq/jq"
+chmod +x "$tmp/nojq/jq"
+
 # run <checks json> [pr args...]: runs the script against the stub, sets $out, $err and $code.
+# The retry wait is cut to 0 seconds so the tests stay fast.
 run() {
   printf '%s' "$1" >"$tmp/checks.json"
   : >"$tmp/log"
-  out=$(GH="$tmp/gh" STUB_CHECKS="$tmp/checks.json" STUB_LOG="$tmp/log" "$script" "${2-42}" 2>"$tmp/err")
+  out=$(PATH="${RUN_PATH:-$PATH}" GH="$tmp/gh" STUB_CHECKS="$tmp/checks.json" STUB_LOG="$tmp/log" \
+    WAIT_CI_TRIES=3 WAIT_CI_DELAY=0 "$script" "${2-42}" 2>"$tmp/err")
   code=$?
 }
 
@@ -61,6 +74,14 @@ run '[]'
 
 run "$green" ""
 [ "$code" -eq 2 ]; expect "no PR number: usage error, exit 2" $?
+
+RUN_PATH="$tmp/nojq:$PATH" run "$red"
+[ "$code" -eq 2 ] && [ "$out" != "all checks green" ]; expect "jq missing or failing: exit 2, never a false green" $?
+
+printf '[]' >"$tmp/checks.json.first"
+run "$green"
+[ "$out" = "all checks green" ] && [ "$code" -eq 0 ]
+expect "no checks yet (right after a push): waits and reads again" $?
 
 if [ "$failures" -eq 0 ]; then echo "All wait-ci checks passed."; else echo "$failures check(s) failed."; fi
 exit $((failures > 0))

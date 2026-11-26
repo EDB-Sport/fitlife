@@ -16,8 +16,10 @@
 # only of comments, found with /* */ state tracked over the whole file) are the same on base and head is not
 # production code for checks 1 and 4: a comment can't make a test go red. Any other change counts, so #if and
 # #pragma lines, and code with a trailing // comment added, still do.
-# Limit: a verbatim string (@"...") is read like a regular one, so a backslash before its closing quote can hide a
-# later comment marker; the file then counts as changed or unchanged by the lines it can see, never by a hunk.
+# A file with a multi-line string (#484): code_lines resets its string state on every line, so a line inside a raw
+# string (""") or a verbatim string (@") that starts with // would be read as a comment. A file whose base or head
+# version contains """ or @" is therefore always treated as changed, never as comment-only. (A coarse rule: it also
+# matches a """ or @" in a comment or a one-line verbatim string, which only means a needless test requirement.)
 #
 # A refactoring PR (label "refactor" in PR_LABELS, METHODOLOGY section 8) changes structure, not behaviour:
 #   R1. No file under TEST_DIR changes (added, modified, deleted or moved).
@@ -111,6 +113,9 @@ code_lines() {
       if (code) print }'
 }
 
+# Does the file at a commit contain a raw string (""") or a verbatim string (@")? has_multiline_string <commit> <file>
+has_multiline_string() { git show "$1:$2" 2>/dev/null | grep -qF -e '"""' -e '@"'; }
+
 # Production files whose code lines changed (#361). A file whose only change is blank or comment lines is not.
 # The base and the head version are compared as code lines, so the comment state is known (a -U0 hunk can't
 # tell a "* operand;" continuation line from the middle of a block comment).
@@ -118,7 +123,9 @@ code_changed_files() {
   local file
   while IFS= read -r file; do
     [[ -n $file ]] || continue
-    if ! diff -q <(git show "$BASE_SHA:$file" 2>/dev/null | code_lines) <(git show "$HEAD_SHA:$file" | code_lines) >/dev/null; then
+    if has_multiline_string "$BASE_SHA" "$file" || has_multiline_string "$HEAD_SHA" "$file"; then
+      echo "$file"
+    elif ! diff -q <(git show "$BASE_SHA:$file" 2>/dev/null | code_lines) <(git show "$HEAD_SHA:$file" | code_lines) >/dev/null; then
       echo "$file"
     fi
   done <<< "$1"

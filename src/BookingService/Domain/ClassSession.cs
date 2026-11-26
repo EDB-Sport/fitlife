@@ -16,33 +16,35 @@ public sealed class ClassSession
 
     /// <summary>Creates a class session with no reservations.</summary>
     /// <param name="id">The class session's id.</param>
-    /// <param name="centerId">The centre it takes place in. Booking refers to a centre by id.</param>
-    /// <param name="classTypeId">The kind of class it is a run of. Booking refers to a class type by id.</param>
     /// <param name="capacity">How many members can have a reservation.</param>
     /// <param name="startTime">When the class session starts.</param>
-    public ClassSession(Guid id, Guid centerId, Guid classTypeId, Capacity capacity, DateTimeOffset startTime)
+    /// <param name="details">Its centre, class type, instructor and duration (Holdoplysninger).</param>
+    public ClassSession(Guid id, Capacity capacity, DateTimeOffset startTime, ClassSessionDetails details)
     {
+        ArgumentNullException.ThrowIfNull(details);
         Id = id;
-        CenterId = centerId;
-        ClassTypeId = classTypeId;
         Capacity = capacity;
         StartTime = startTime;
+        Details = details;
     }
 
     /// <summary>The class session's id.</summary>
     public Guid Id { get; }
 
+    /// <summary>Its centre, class type, instructor and duration (Holdoplysninger).</summary>
+    public ClassSessionDetails Details { get; }
+
     /// <summary>The centre the class session takes place in.</summary>
-    public Guid CenterId { get; }
+    public Guid CenterId => Details.CenterId;
 
     /// <summary>The kind of class (Holdtype) this is a run of.</summary>
-    public Guid ClassTypeId { get; }
+    public Guid ClassTypeId => Details.ClassTypeId;
 
     /// <summary>How many members can have a reservation.</summary>
     public Capacity Capacity { get; }
 
     /// <summary>When the class session starts.</summary>
-    public DateTimeOffset StartTime { get; }
+    public DateTimeOffset StartTime { get; private set; }
 
     /// <summary>The class session will not take place (Hold aflyst).</summary>
     public bool IsCancelled { get; private set; }
@@ -60,14 +62,14 @@ public sealed class ClassSession
     public IReadOnlyList<DomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 
     /// <summary>
-    /// Reserves a seat for the member, unless the member already has one, the class session starts more than 4 weeks from
-    /// now, or every seat is taken.
+    /// Reserves a seat for the member, unless the member already has one, the class session has started or starts more than
+    /// 4 weeks from now, or every seat is taken.
     /// </summary>
     /// <param name="memberId">The member who wants a seat.</param>
     /// <param name="clock">Tells the time now.</param>
     /// <returns>
     /// <see cref="ReservationResult.ClassSessionCancelled"/>, <see cref="ReservationResult.MemberAlreadyHasReservation"/>,
-    /// <see cref="ReservationResult.TooFarAhead"/> or
+    /// <see cref="ReservationResult.ClassSessionStarted"/>, <see cref="ReservationResult.TooFarAhead"/> or
     /// <see cref="ReservationResult.ClassSessionFull"/> when no reservation is made; then nothing changes. A member who has a
     /// seat hears that first, also on a full class session.
     /// </returns>
@@ -83,6 +85,11 @@ public sealed class ClassSession
         if (_reservations.Exists(reservation => reservation.MemberId == memberId))
         {
             return ReservationResult.MemberAlreadyHasReservation;
+        }
+
+        if (clock.GetUtcNow() >= StartTime)
+        {
+            return ReservationResult.ClassSessionStarted;
         }
 
         if (StartTime - clock.GetUtcNow() > HowFarAheadMembersCanReserve)
@@ -162,7 +169,9 @@ public sealed class ClassSession
         }
 
         Reservation reservation = _reservations[index];
-        bool isLateCancellation = !reservation.IsFromWaitlist && StartTime - clock.GetUtcNow() < WhenACancellationIsLateBeforeStart;
+        bool isLateCancellation = !reservation.IsFromWaitlist
+            && !reservation.IsFromBeforeAChangedStart
+            && StartTime - clock.GetUtcNow() < WhenACancellationIsLateBeforeStart;
         _reservations.RemoveAt(index);
         _domainEvents.Add(new ReservationCancelled(Id, memberId, isLateCancellation));
 
@@ -199,6 +208,42 @@ public sealed class ClassSession
 
         _waitlist.Clear();
         return WaitlistClosingResult.Closed;
+    }
+
+    /// <summary>
+    /// Moves the class session to a new start. Its reservations and waitlist entries are kept, and a member who has a reservation
+    /// now can later cancel it free: never a late cancellation. <see cref="ClassSessionChanged"/> names those members.
+    /// </summary>
+    /// <param name="newStart">When the class session starts from now on.</param>
+    /// <param name="clock">Tells the time now.</param>
+    /// <returns>
+    /// <see cref="ChangeStartResult.ClassSessionCancelled"/> or <see cref="ChangeStartResult.StartNotInTheFuture"/> when the start
+    /// doesn't change; then nothing changes and nothing is raised.
+    /// </returns>
+    public ChangeStartResult ChangeStart(DateTimeOffset newStart, TimeProvider clock)
+    {
+        ArgumentNullException.ThrowIfNull(clock);
+
+        if (IsCancelled)
+        {
+            return ChangeStartResult.ClassSessionCancelled;
+        }
+
+        if (newStart <= clock.GetUtcNow())
+        {
+            return ChangeStartResult.StartNotInTheFuture;
+        }
+
+        DateTimeOffset previousStart = StartTime;
+        StartTime = newStart;
+        for (int index = 0; index < _reservations.Count; index++)
+        {
+            _reservations[index] = _reservations[index].FromBeforeAChangedStart();
+        }
+
+        var memberIds = _reservations.Select(reservation => reservation.MemberId).ToList();
+        _domainEvents.Add(new ClassSessionChanged(Id, memberIds.AsReadOnly(), previousStart, newStart));
+        return ChangeStartResult.Changed;
     }
 
     /// <summary>

@@ -62,13 +62,52 @@ public sealed class MongoAccountRepository : IAccountRepository, IDisposable
             return null;
         }
 
-        return new Account(document.Id, document.Email, document.PasswordHash, document.Roles.Select(Role.FromName));
+        return ToAccount(document);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Account>> ListAsync(CancellationToken cancellationToken)
+    {
+        List<AccountDocument> documents = await _accounts
+            .Find(FilterDefinition<AccountDocument>.Empty)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return [.. documents.Select(ToAccount)];
+    }
+
+    /// <inheritdoc />
+    public async Task<Account?> FindByIdAsync(Guid id, CancellationToken cancellationToken)
+    {
+        AccountDocument? document = await _accounts.Find(stored => stored.Id == id).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        if (document is null)
+        {
+            return null;
+        }
+
+        return ToAccount(document);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> SaveRolesAsync(Account account, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(account);
+        UpdateResult result = await _accounts.UpdateOneAsync(
+            stored => stored.Id == account.Id,
+            Builders<AccountDocument>.Update.Set(stored => stored.Roles, [.. account.Roles.Select(role => role.Name)]),
+            options: null,
+            cancellationToken).ConfigureAwait(false);
+        return result.MatchedCount == 1;
     }
 
     /// <inheritdoc />
     public void Dispose()
     {
         _indexLock.Dispose();
+    }
+
+    private static Account ToAccount(AccountDocument document)
+    {
+        return new Account(document.Id, document.Email, document.PasswordHash, document.Roles.Select(Role.FromName));
     }
 
     private async Task EnsureIndexAsync(CancellationToken cancellationToken)

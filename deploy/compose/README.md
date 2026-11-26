@@ -87,6 +87,8 @@ Two stacks side by side (two worktrees, say): give each its own project name and
 
 The services don't read `.env`: they get their secrets from Vault (below).
 
+The demo accounts' passwords (`DEMO_*_PASSWORD`) go from `.env` straight to `identity-svc`. They are made-up demo data, not the service's secrets, so they aren't in Vault.
+
 ## Vault
 
 Course rule #9: secrets live in Vault, never in code or committed files (#17).
@@ -135,6 +137,7 @@ mongodb://booking-svc:<BOOKING_DB_PASSWORD>@mongodb:27017/booking?authSource=boo
 - `/mcp` reaches the MCP server (the `mcp-server` container, #213) with the path unchanged.
 - Every other path goes to the member portal (Blazor UI, the `member-portal` container) unchanged, with WebSocket upgrade for Blazor's SignalR connection. Open the member portal at http://localhost:8080/. Running it with `dotnet run` instead, it reaches the stack's APIs through `Gateway:BaseUrl` (`http://localhost:8080` in `appsettings.Development.json`).
 - A route whose service isn't running answers 502; the gateway itself still starts.
+- Log-in (`POST /api/identity/tokens`) is limited per client address, `LOGIN_RATE_LIMIT` with a burst of `LOGIN_RATE_BURST` (10 a minute and 10 at once in `.env.example`); above that the gateway answers 429 and Identity never sees the request (#366).
 - The gateway passes on the caller's `X-Correlation-ID`, or sets a new one, and returns it in the response (section 7).
 - `/grafana/` reaches Grafana (`GRAFANA_URL`) with the path unchanged, since Grafana serves itself under `/grafana/`. WebSocket upgrades are passed on (Grafana Live).
 
@@ -143,7 +146,7 @@ mongodb://booking-svc:<BOOKING_DB_PASSWORD>@mongodb:27017/booking?authSource=boo
 1. Add the service to `services.yml`: name it `<name>-svc`, listen on 8080, give it a `healthcheck` on `/health`, and pass its MongoDB and RabbitMQ hosts, the Vault address and `VAULT_DEV_ROOT_TOKEN` as environment variables. Its passwords come from Vault, at `secret/<name>-svc`.
 2. If it has a database: add its name to `SERVICE_DATABASES` in `infrastructure.yml`, add `<NAME>_DB_PASSWORD` there (under `x-service-secrets`) and to `.env.example`, then `docker compose down -v` so the init script runs again. Vault gets the new secret on its next start.
 3. If it has an HTTP API: add a `location /api/<context>/` block to the Nginx template and the `<NAME>_URL` variable to the gateway in `services.yml`.
-4. Logging: pass `LOKI_URL: http://loki:3100` to the service, log with the labels and fields below, and if its name isn't one of the four already in `grafana/provisioning/alerting/error-rate.yml`, add an error-rate rule for it there.
+4. Logging: pass `LOKI_URL: http://loki:3100` to the service, log with the labels and fields below, and if `grafana/provisioning/alerting/error-rate.yml` has no rule for its name yet, add an error-rate rule for it there.
 
 ## Logging and monitoring
 

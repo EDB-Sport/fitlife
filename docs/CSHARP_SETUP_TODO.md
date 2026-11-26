@@ -285,7 +285,7 @@ The project description's test terms map onto this as: *unit tests* = Unit, *int
   *Why:* fast tests of real HTTP behaviour, including `[Authorize]` returning 401 without a token. The production test enforces **course rule #7: Scalar only in development**.
 - [ ] **Testcontainers** for integration tests (`Testcontainers.MongoDb`, `Testcontainers.RabbitMq`).
   *Why:* real dependencies, started fresh each run, so tests are Repeatable and run on GitHub's Ubuntu runners. It's the course's own MongoDB and RabbitMQ, started from a test.
-- [ ] **A JSON Schema test for each RabbitMQ event:** serialise the event class (e.g. `ReservationMade`) and validate it against `contracts/events/ReservationMade.schema.json` with JsonSchema.Net. Producer and consumer tests both use the same file.
+- [ ] **A JSON Schema test for each RabbitMQ event:** serialise the event class (e.g. `ReservationMade`) and validate it against `contracts/events/reservation-made.schema.json` with JsonSchema.Net (schema files are kebab-case, one per event: `<event-name>.schema.json`, see `contracts/events/README.md`). Producer and consumer tests both use the same file.
   *Why:* the course teaches JSON Schema as the contract (M5) and requires documented event formats. The schema is that documentation, and in one repo both sides test against exactly the same file. The schemas also go in the report's appendix of technical service contracts.
 - [ ] **Postman collections, run by Newman** (METHODOLOGY §7), in this layout:
 
@@ -306,11 +306,11 @@ The project description's test terms map onto this as: *unit tests* = Unit, *int
   - **Results as evidence:** Newman runs with the `cli`, `junit` and `htmlextra` reporters (`newman-reporter-htmlextra`). CI uploads the HTML reports as build artifacts: those are the result tables and screenshots the report asks for.
 
   *Why:* the project description asks for exactly these four kinds of Postman evidence (integration, API, mock server, end-to-end), and the Agil udvikling course: most real bugs live in error paths, and a wrong status code should turn the build red just like a failing unit test.
-- [ ] **Stryker.NET mutation testing on PRs:** `tools/ci/mutation.sh`: Stryker on the C# files changed since `origin/${{ github.base_ref }}` (usually `develop`), with `"thresholds": { "break": 60 }` in a code-owned `stryker-config.json`. Raise the threshold over time. `stryker-config.json` also sets `"ignore-methods": ["*ConfigureAwait"]`, so Stryker doesn't mutate the `ConfigureAwait(false)` calls.
+- [ ] **Stryker.NET mutation testing on PRs:** `tools/ci/mutation.sh`: Stryker on the C# files changed since `origin/${{ github.base_ref }}` (usually `develop`), with `"thresholds": { "break": 60 }` in a code-owned `stryker-config.json`. Raise the threshold over time. `stryker-config.json` also sets `"ignore-mutations": ["Boolean"]`, so Stryker skips the equivalent `ConfigureAwait(false)` -> `true` mutant (and every other boolean-literal mutant); the arithmetic inside a `ConfigureAwait(...)` call is mutated.
   *Why:* proves the tests catch changes to the code, which a coverage number alone doesn't. The project description still asks for coverage reports, so CI produces both (section 10, job 4). It also answers the course question "if you remove the rule from the model, does the test fail?" (M4.02) for every rule at once.
 - [ ] **Adopt the tdd-check workflow** (`.github/workflows/tdd-check.yml`):
   - `TEST_CMD="dotnet test -c Release"`
-  - `SRC_DIR=src/`, `TEST_DIR=tests/`, and a second step with `SRC_DIR=tools/Analyzers/Team.Analyzers/`, `TEST_DIR=tools/Analyzers/Team.Analyzers.Tests/`, so a new TEAM rule is checked the same way (#49)
+  - `SRC_DIR='src/ libs/'`, `TEST_DIR=tests/`: **production code is `src/` and `libs/`** (the shared libraries FitLife.Configuration, FitLife.Correlation, FitLife.Messaging are production code too). The red-on-base run resets both together, so a test that depends on a `libs/` change is red even when `src/` only has the wiring (#379, #98). And a second step with `SRC_DIR=tools/Analyzers/Team.Analyzers/`, `TEST_DIR=tools/Analyzers/Team.Analyzers.Tests/`, so a new TEAM rule is checked the same way (#49)
   - `SRC_FILE_REGEX='\.cs$'` and `TEST_FILE_REGEX='\.cs$'`, so a `CONTEXT.md`, Dockerfile or `.razor` change under `src/` needs no new test, and a PR that only adds Postman collections isn't judged by `dotnet test`
   - add the NUnit markers `[[,][[:space:]]*(Ignore|Explicit)\b|\bIgnoreReason\b|Assert\.(Ignore|Inconclusive)|\bAssume\.` to `SKIP_MARKERS`
   - take `BASE_SHA` from `git rev-parse HEAD^1` (the checked-out merge commit's first parent), not from the event's base sha, which can lag behind
@@ -329,10 +329,10 @@ The project description's test terms map onto this as: *unit tests* = Unit, *int
 The project description asks for a user interface that demonstrates the implemented microservices and selected parts of the prototype. Keep each UI thin: pages, forms and calls to the services. Business rules stay in the services.
 
 - [ ] **One Blazor Web App per UI, in `src/<Name>.Web/`** (e.g. `src/MemberPortal.Web/`, and `src/TrainerPortal.Web/` only if a trainer journey is built), created with `dotnet new blazor`. Use static server-side rendering by default, and the **Interactive Server** render mode only on components that need it.
-  *Why:* one container per UI, no separate API host, and the JWT never reaches the browser (below). WebAssembly would mean a larger download, CORS, and tokens in browser storage. Record the choice in `docs/adr/003-blazor-render-mode.md`.
+  *Why:* one container per UI, no separate API host, and browser script never sees the JWT: it travels only inside the encrypted, HttpOnly authentication cookie (below). WebAssembly would mean a larger download and the token in browser storage, where a script can read it. CORS is not a reason: the UI and the services share one origin through the Nginx gateway. Record the choice in `docs/adr/003-blazor-render-mode.md`.
 - [ ] **The UI calls services through the Nginx gateway with typed clients** (`AddHttpClient<BookingClient>`, base address from configuration). The DTOs are the UI's own records, matching the committed OpenAPI contracts. No `ProjectReference` to a service (section 1).
   *Why:* the UI is a consumer of the service contracts like any future partner, which is what the contracts are meant to prove.
-- [ ] **Login and tokens:** the UI posts the login form to IdentityService, keeps the returned JWT server-side in the authentication cookie's properties, and a `DelegatingHandler` adds `Authorization: Bearer` to the typed clients. Pages that need a member use `[Authorize]`. Interactive Server components have no `HttpContext`, so copy the token into a scoped token holder when the circuit starts (Microsoft's "ASP.NET Core server-side Blazor additional security scenarios" shows the pattern), or keep token-using pages in static rendering.
+- [ ] **Login and tokens:** the UI posts the login form to IdentityService, saves the returned JWT in the authentication cookie's properties (ASP.NET Core serializes them into the cookie, encrypted and signed by Data Protection; HttpOnly, Secure and SameSite, so script can't read it), and a `DelegatingHandler` adds `Authorization: Bearer` to the typed clients. Pages that need a member use `[Authorize]`. Interactive Server components have no `HttpContext`, so copy the token into a scoped token holder when the circuit starts (Microsoft's "ASP.NET Core server-side Blazor additional security scenarios" shows the pattern), or keep token-using pages in static rendering.
   *Why:* identity and access handled in one place, and the browser only holds an HTTP-only cookie.
 - [ ] **bUnit component tests** in `tests/<Name>.Web.Tests` (NUnit + bUnit), with the typed clients faked through an interface or Moq. Test behaviour that matters (a full class session disables "Reserve" and says why, a failed call shows an error), not markup details.
   *Why:* the same test-first loop as the services. The TDD hook and tdd-check apply because the layout is the same (`src/<Name>.Web` ↔ `tests/<Name>.Web.Tests`).
@@ -391,6 +391,12 @@ The project description asks for a user interface that demonstrates the implemen
   *Why:* with only the service folder as context, restore fails: central package versions and the lock-file settings would be missing, and the image would be built without the reviewed rules.
 - [ ] **hadolint** on every Dockerfile and **Trivy** on release images.
   *Why:* consistent, linted images, and known vulnerabilities in base images, which NuGet audit doesn't see. This covers **patching** in the course's security methods (M10).
+- [x] **Trivy on the images a PR changes** (`.github/workflows/image-scan.yml`, #280), with release.yml's settings, so a vulnerable base image fails the PR and not the release. `tools/ci/image-scan-plan.sh` picks each service whose Dockerfile copies a changed path. The image is built once, by `tools/ci/check-service-image.sh --build-only <Service>`, and Trivy scans that tag. A PR that changes no image skips the scan. To run it locally, with Docker and the [Trivy CLI](https://trivy.dev/latest/getting-started/installation/):
+  ```sh
+  git diff --name-only origin/develop... | tools/ci/image-scan-plan.sh   # e.g. ["BookingService"]
+  tools/ci/check-service-image.sh --build-only BookingService             # image=fitlife-check/bookingservice:local
+  trivy image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 fitlife-check/bookingservice:local
+  ```
 - [ ] **gitleaks** secret scan on every PR.
   *Why:* course rule #9, "secrets in Vault, never in code or committed files", checked by a tool instead of by hope.
 

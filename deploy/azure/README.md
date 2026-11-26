@@ -11,7 +11,7 @@ internet --HTTPS 443--> caddy --:80--> nginx --/api/<context>/--> service       
 | Container | Port inside the group | Notes |
 |---|---|---|
 | `caddy` | 443 (public), 8081 | Let's Encrypt certificate for `edb-fitlife.switzerlandnorth.azurecontainer.io`, kept on the `caddy-data` file share. Only 443 is public: `http://` is not answered. |
-| `nginx` | 80 | The same template as compose: `deploy/compose/nginx/default.conf.template`, mounted as a secret volume. |
+| `nginx` | 80 | The same template as compose: `deploy/compose/nginx/default.conf.template`, mounted as a secret volume. It limits log-in (`POST /api/identity/tokens`) per client address and answers 429 above it (`LOGIN_RATE_LIMIT`, `LOGIN_RATE_BURST` in `modules/containers.bicep`); the address is taken from Caddy's `X-Forwarded-For`, trusted only from 127.0.0.1 (#366). |
 | `<context>-svc` | 5001 booking, 5002 membership, 5003 identity | One service in the thin slice (`serviceContext`). The others' routes answer 502. |
 | `member-portal` | 5101 | The Blazor UI. Only in the group once it has a release (`includeMemberPortal`, set when `UI_IMAGE_TAG` is). Until then Nginx answers 502 on `/` (#198). |
 | `mongodb` | 27017 | One database and one user per service, created by the compose init script `deploy/compose/mongodb/init/01-service-users.js`. Data on the `mongodb-data` file share. |
@@ -91,7 +91,7 @@ Check without Azure: `az bicep build --file deploy/azure/main.bicep`, `az bicep 
 
 1. Register the resource providers once per subscription: `Microsoft.ContainerInstance` and `Microsoft.Storage`.
 2. Create the resource group `rg-fitlife-prod` in `switzerlandnorth` (the region in `main.bicepparam`; change both if the subscription's policy doesn't allow it).
-3. Create an app registration (e.g. `fitlife-github-deploy`) with a federated credential: issuer `https://token.actions.githubusercontent.com`, subject `repo:EDB-Sport/fitlife:environment:production`, audience `api://AzureADTokenExchange`. Give its service principal **Contributor** on `rg-fitlife-prod` only.
+3. Create an app registration (e.g. `fitlife-github-deploy`) with a federated credential: issuer `https://token.actions.githubusercontent.com`, subject `repo:EDB-Sport@324029458/fitlife@1468529150:environment:production` (the repo uses GitHub's immutable subject, which names the org and repo by ID), audience `api://AzureADTokenExchange`. Give its service principal **Contributor** on `rg-fitlife-prod` only.
 4. Create the GitHub environment `production` with required reviewers and deployment branch `main`, and these environment secrets: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `DOCKERHUB_USERNAME`, `DOCKERHUB_PULL_TOKEN` (a Docker Hub access token with read-only scope), and the secrets `MONGO_ROOT_PASSWORD`, `BOOKING_DB_PASSWORD`, `MEMBERSHIP_DB_PASSWORD`, `IDENTITY_DB_PASSWORD`, `NOTIFICATION_DB_PASSWORD`, `RABBITMQ_PASSWORD`, `VAULT_DEV_ROOT_TOKEN` and `JWT_SIGNING_KEY` (at least 32 characters). Generate each with e.g. `openssl rand -base64 32`; never reuse the made-up values from `.env.example`.
 5. Create the budget alert: `az deployment sub create --location switzerlandnorth --template-file deploy/azure/budget.bicep --parameters contactEmails='["<address>"]'`, or the same in the portal (Cost Management → Budgets).
 

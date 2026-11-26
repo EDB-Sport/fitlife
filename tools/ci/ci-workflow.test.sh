@@ -38,6 +38,9 @@ for job in format test; do
   expect "$job runs only after build" grep -qE '^    needs: \[?build\]?$' <<<"$(job_block "$job")"
 done
 
+# contract compiles the services too: one compile error fails build only (issue #322)
+expect "contract runs only after build" grep -qE '^    needs: \[?build\]?( #.*)?$' <<<"$(job_block contract)"
+
 build_rules=$(job_block build-rules)
 
 expect "ci.yml runs on pull requests" grep -qE '^  pull_request:' "$ci"
@@ -47,7 +50,7 @@ expect "ci.yml cancels in-progress runs for pull requests only" \
   grep -qF "cancel-in-progress: \${{ github.event_name == 'pull_request' }}" "$ci"
 expect "ci.yml has a build-rules job" test -n "$build_rules"
 expect "build-rules runs tools/ci/check-build-rules.sh" \
-  grep -qE 'run: tools/ci/check-build-rules\.sh$' <<<"$build_rules"
+  grep -qE 'run: (tools/ci/summarize\.sh .* -- )?tools/ci/check-build-rules\.sh$' <<<"$build_rules"
 expect "build-rules sets up the SDK pinned in global.json" \
   grep -qE 'global-json-file: global\.json' <<<"$build_rules"
 expect "build-rules has no continue-on-error" \
@@ -57,7 +60,7 @@ stack_check=$(job_block stack-check)
 
 expect "ci.yml has a stack-check job" test -n "$stack_check"
 expect "stack-check runs tools/ci/stack-check.sh" \
-  grep -qE 'run: tools/ci/stack-check\.sh$' <<<"$stack_check"
+  grep -qE 'run: (tools/ci/summarize\.sh .* -- )?tools/ci/stack-check\.sh$' <<<"$stack_check"
 expect "stack-check runs on pull requests only" \
   grep -qF "if: github.event_name == 'pull_request'" <<<"$stack_check"
 expect "stack-check checks out the full history" \
@@ -96,6 +99,21 @@ expect "ci.yml's test step passes $hang_flags" \
   grep -qF "dotnet test -c Release --no-build $hang_flags" <<<"$(job_block test)"
 expect "tdd-check.yml's TEST_CMD passes $hang_flags in both runs" \
   test "$(grep -cF "TEST_CMD: dotnet test -c Release $hang_flags" "$root/.github/workflows/tdd-check.yml")" -eq 2
+
+# A red CI run names the failing script or check and its first error in gh run view (issue #376).
+# The ci-scripts loop annotates each failing script by name.
+expect "ci-scripts annotates each failing script as ::error title=ci-scripts::<script> failed" \
+  grep -qF 'echo "::error title=ci-scripts::$test failed' <<<"$(job_block ci-scripts)"
+# The other checks run through tools/ci/summarize.sh with a hint, so a failure gets an annotation and a summary.
+# runs_through_summarize <job> <check> <script>: the job runs <script> as summarize.sh <check> "<hint>" -- <script>
+runs_through_summarize() {
+  grep -qE "run: tools/ci/summarize\.sh $2 \"[^\"]+\" -- tools/ci/$3\$" <<<"$(job_block "$1")"
+}
+for pair in stack-check:stack-check.sh mutation:mutation.sh build-rules:check-build-rules.sh \
+  contract:check-contracts.sh contract:oasdiff-breaking.sh diff-scan:diff-scan.sh; do
+  job=${pair%%:*} script=${pair#*:}
+  expect "$job runs tools/ci/$script through summarize.sh with a hint" runs_through_summarize "$job" "$job" "$script"
+done
 
 echo
 if [ "$failures" -eq 0 ]; then

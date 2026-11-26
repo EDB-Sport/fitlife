@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using BookingService.Api;
 using BookingService.Application;
@@ -49,6 +50,24 @@ public sealed class CancelReservationApiTests
             Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
             Assert.That(freeSeats, Is.EqualTo(1));
         });
+    }
+
+    [Test]
+    public async Task DeleteMyReservation_AsksMembershipWithTheTokensAccountIdAndTheTokenUnchanged()
+    {
+        // Arrange
+        using BookingApiFactory factory = Factory();
+        ClassSession classSession = await StoredAsync(factory, reservedBy: Guid.NewGuid()).ConfigureAwait(false);
+        var accountId = Guid.NewGuid();
+        string token = TestTokens.For(accountId);
+        using HttpClient client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Act
+        using HttpResponseMessage response = await client.DeleteAsync(MyReservationOn(classSession)).ConfigureAwait(false);
+
+        // Assert: the account id is the token's sub claim, and the token goes on without its "Bearer " prefix
+        Assert.That((factory.Membership.AskedAccountId, factory.Membership.AskedBearerToken), Is.EqualTo(((Guid?)accountId, token)));
     }
 
     [Test]

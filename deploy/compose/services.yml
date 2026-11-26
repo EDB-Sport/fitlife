@@ -87,6 +87,7 @@ services:
       MongoDb__Host: mongodb
       MongoDb__Port: "27017"
       Seed__Enabled: "true" # the demo class schedule, loaded once into an empty database (#171)
+      WaitlistClosing__Enabled: "true" # closes each waitlist 2 hours before start, once a minute (#314)
       Membership__BaseUrl: http://membership-svc:8080 # who the member behind an account is (#256)
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]

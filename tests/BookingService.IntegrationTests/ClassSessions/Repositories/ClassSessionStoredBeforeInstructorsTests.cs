@@ -41,9 +41,10 @@ public sealed class ClassSessionStoredBeforeInstructorsTests
 
         // Act
         using HttpClient client = factory.CreateClient();
+        await factory.SeedFinishedAsync().ConfigureAwait(false);
         ClassSessionResponse[]? schedule = await client.GetFromJsonAsync<ClassSessionResponse[]>(new Uri("/class-sessions", UriKind.Relative)).ConfigureAwait(false);
 
-        // Assert
-        Assert.That(schedule?.Select(classSession => classSession.Id), Is.EqualTo(new[] { id }));
+        // Assert: the seed tops the schedule up around it (#255), so the old class session is one of several
+        Assert.That(schedule?.Select(classSession => classSession.Id), Does.Contain(id));
     }
 }

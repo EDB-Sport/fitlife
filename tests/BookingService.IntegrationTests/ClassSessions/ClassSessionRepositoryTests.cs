@@ -12,12 +12,12 @@ public sealed class ClassSessionRepositoryTests
     private static readonly DateTimeOffset Now = new(2026, 11, 24, 12, 0, 0, TimeSpan.Zero);
 
     [Test]
-    public async Task Save_AfterAnotherRequestSavedTheSameClassSession_ReportsAConflict()
+    public async Task Save_WhenTheClassSessionWasSavedByAnotherSince_IsRefused()
     {
         // Arrange
         var clock = new FakeTimeProvider(Now);
         using var factory = new BookingApiFactory(MongoDbContainerSetUp.ConnectionString, $"booking-{Guid.NewGuid():N}", clock);
-        var classSession = new ClassSession(Guid.NewGuid(), new Capacity(1), Now.AddDays(1), new ClassSessionDetails(Guid.NewGuid(), Guid.NewGuid(), new Instructor("Mette"), TimeSpan.FromMinutes(60)));
+        var classSession = new ClassSession(Guid.NewGuid(), new Capacity(2), Now.AddDays(1), new ClassSessionDetails(Guid.NewGuid(), Guid.NewGuid(), new Instructor("Mette"), TimeSpan.FromMinutes(60)));
         await factory.AddAsync(classSession).ConfigureAwait(false);
         using IServiceScope first = factory.Services.CreateScope();
         using IServiceScope second = factory.Services.CreateScope();
@@ -32,10 +32,15 @@ public sealed class ClassSessionRepositoryTests
         await firstRepository.SaveAsync(firstCopy, CancellationToken.None).ConfigureAwait(false);
 
         // Act
-        bool saved = await secondRepository.SaveAsync(secondCopy, CancellationToken.None).ConfigureAwait(false);
+        Task SecondSave() => secondRepository.SaveAsync(secondCopy, CancellationToken.None);
 
         // Assert
-        Assert.That(saved, Is.False);
+        Assert.ThrowsAsync<ConcurrencyConflictException>(SecondSave);
+        using IServiceScope reading = factory.Services.CreateScope();
+        ClassSession? stored = await reading.ServiceProvider.GetRequiredService<IClassSessionRepository>()
+            .GetByIdAsync(classSession.Id, CancellationToken.None)
+            .ConfigureAwait(false);
+        Assert.That(stored?.Reservations, Has.Count.EqualTo(1));
     }
 
     [Test]

@@ -1,0 +1,52 @@
+{
+  "workflow_runs": [
+    {
+      "id": 45605293186,
+      "name": "deploy",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "main",
+      "display_title": "deploy",
+      "created_at": "2026-11-25T11:31:54Z",
+      "updated_at": "2026-11-25T11:41:34Z",
+      "html_url": "https://github.com/EDB-Sport/fitlife/actions/runs/45605293186"
+    },
+    {
+      "id": 45586659849,
+      "name": "deploy",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_branch": "main",
+      "display_title": "deploy",
+      "created_at": "2026-11-25T09:34:18Z",
+      "updated_at": "2026-11-25T10:17:27Z",
+      "html_url": "https://github.com/EDB-Sport/fitlife/actions/runs/45586659849"
+    },
+    {
+      "id": 45586502589,
+      "name": "deploy",
+      "event": "workflow_run",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_branch": "develop",
+      "display_title": "deploy",
+      "created_at": "2026-11-25T09:33:19Z",
+      "updated_at": "2026-11-25T09:33:23Z",
+      "html_url": "https://github.com/EDB-Sport/fitlife/actions/runs/45586502589"
+    },
+    {
+      "id": 45583204327,
+      "name": "deploy",
+      "event": "workflow_run",
+      "status": "completed",
+      "conclusion": "skipped",
+      "head_branch": "develop",
+      "display_title": "deploy",
+      "created_at": "2026-11-25T09:12:30Z",
+      "updated_at": "2026-11-25T09:12:31Z",
+      "html_url": "https://github.com/EDB-Sport/fitlife/actions/runs/45583204327"
+    }
+  ]
+}

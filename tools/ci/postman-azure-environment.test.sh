@@ -3,6 +3,7 @@
 # {{baseUrl}}{{serviceBasePath}}/health, and a run that uses only the environment file failed with ENOTFOUND
 # because the variable was missing. The value must be the one the Bicep output gives: /api/<serviceContext>.
 # Usage: tools/ci/postman-azure-environment.test.sh   (from the repo root, or anywhere in the repo; exit 0 = all pass)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)" || exit 2
@@ -49,8 +50,5 @@ if context is not None and service_base_path is not None:
     check(service_base_path.get("value") == expected,
           f"serviceBasePath in the azure environment file is {expected}, the Bicep output for serviceContext '{context}'")
 
-if failures:
-    print(f"\n{len(failures)} check(s) failed")
-    sys.exit(1)
-print("\nall checks pass")
+sys.exit(1 if failures else 0)
 PY

@@ -58,7 +58,7 @@ git -C "$repo" init -q
 git -C "$repo" config user.email test@example.invalid
 git -C "$repo" config user.name test
 mkdir -p "$repo/tools/ci"
-cp "$here/develop-plan.sh" "$here/services.sh" "$here/changes.sh" "$repo/tools/ci/" 2>/dev/null
+cp "$here/develop-plan.sh" "$here/services.sh" "$here/changes.sh" "$here/delivered-revision.sh" "$repo/tools/ci/" 2>/dev/null
 lib FitLife.Messaging
 lib FitLife.Other
 service BookingService FitLife.Messaging
@@ -113,6 +113,19 @@ check "a service whose image is current is not" "image example/bookingservice:" 
 
 # The tags are never latest and never X.Y.Z (the output names exactly develop and sha-<short>)
 check "no image is tagged latest" "latest" absent
+
+# The default lookup, as it runs on the runner: executable in git, and reading the label through docker
+mode=$(git -C "$here" ls-files -s -- "$here/delivered-revision.sh" | cut -c1-6)
+if [ "$mode" = 100755 ]; then echo "PASS  delivered-revision.sh is executable in git"; else echo "FAIL  delivered-revision.sh is mode '$mode' in git, not 100755"; failures=$((failures + 1)); fi
+mkdir -p "$repo/bin"
+cat > "$repo/bin/docker" <<DOCKER
+#!/usr/bin/env bash
+echo '{"config":{"Labels":{"org.opencontainers.image.revision":"$(git -C "$repo" rev-parse HEAD)"}}}'
+DOCKER
+chmod +x "$repo/bin/docker"
+out=$(cd "$repo" && PATH="$repo/bin:$PATH" DOCKERHUB_NAMESPACE=example tools/ci/develop-plan.sh 2>&1)
+status=$?
+check "the default lookup reads the revision label, so a current image is unchanged" "BookingService: unchanged since its :develop image"
 
 outputs=$(mktemp)
 deliver "$(git -C "$repo" rev-parse HEAD)"

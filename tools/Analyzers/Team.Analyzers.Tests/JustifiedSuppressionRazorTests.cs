@@ -6,7 +6,7 @@ namespace Team.Analyzers.Tests;
 /// <summary>
 /// TEAM004 on Razor's C# output. <c>.editorconfig</c> marks <c>*_razor.g.cs</c> as hand-written, so the style rules check
 /// <c>.razor</c> <c>@code</c> blocks (#397). The <c>#pragma</c> and <c>#nullable</c> lines in that output come from the Razor
-/// generator, not from the team, so TEAM004 skips them.
+/// generator, not from the team, so TEAM004 skips them. A directive mapped back to a <c>.razor</c> file is the team's (#437).
 /// </summary>
 [TestFixture]
 public sealed class JustifiedSuppressionRazorTests
@@ -52,6 +52,20 @@ public sealed class JustifiedSuppressionRazorTests
             #line default
                 }
             }
+            """;
+        return VerifyAtPathAsync("/0/Components/Pages/Home_razor.g.cs", source);
+    }
+
+    [Test]
+    public Task RazorOutput_NullableDisableTheGeneratorWritesInsideAMappedUsing_NoDiagnostic()
+    {
+        const string source = """
+            #line 1 "/0/Components/_Imports.razor"
+            using System
+
+            #nullable disable
+                ;
+            #line default
             """;
         return VerifyAtPathAsync("/0/Components/Pages/Home_razor.g.cs", source);
     }

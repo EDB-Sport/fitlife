@@ -362,6 +362,7 @@ string_pr() { # string_pr <opening of the string> <closing>: a base file with a 
 }
 expect "a changed // line inside a raw string is a code change" fail "$(string_pr '"""' '"""')" "no test under tests/ was added or changed"
 expect "a changed // line inside a verbatim string is a code change" fail "$(string_pr '@"' '"')" "no test under tests/ was added or changed"
+expect "a changed // line inside an interpolated verbatim string (@$") is a code change" fail "$(string_pr '@$"' '"')" "no test under tests/ was added or changed"
 libs_comment_pr() { # a comment added to libs/Clock.cs, which is production code since #379
   local repo; repo=$(fixture)
   { echo '// Stryker disable once Boolean'; cat "$repo/libs/Clock.cs"; } > "$repo/libs/Clock.tmp" && mv "$repo/libs/Clock.tmp" "$repo/libs/Clock.cs"; commit "$repo" "comment"

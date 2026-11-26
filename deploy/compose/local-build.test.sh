@@ -59,6 +59,28 @@ else
   fail "README.md doesn't document the probe that a second build pulls nothing"
 fi
 
+# 5. The rebuild claim is about base images only (NuGet still restores on a rebuild, #357).
+if grep -qiE 'rebuild downloads nothing' "$README"; then
+  fail "README.md says a rebuild downloads nothing; it should say a rebuild downloads no base images"
+else
+  ok "README.md scopes the rebuild claim to base images"
+fi
+
+# 6. Step (a) says it is not usable on develop until #340 lands (the bullet for (a) only).
+if tr '\n' ' ' <"$README" | grep -qE '\(a\)[^;]*#340[^;]*until'; then
+  ok "README.md says step (a) waits for #340"
+else
+  fail "README.md doesn't say step (a) is unavailable until #340 lands"
+fi
+
+# 7. The script is executable in git (mode 100755), like the other deploy/compose checks, so its usage line works.
+#    Checked in the index, not the worktree: a Windows-mounted checkout reports every file as executable.
+if git -C "$ROOT" ls-files -s -- deploy/compose/local-build.test.sh | grep -q '^100755 '; then
+  ok "local-build.test.sh is executable"
+else
+  fail "local-build.test.sh is not executable (run: git update-index --chmod=+x deploy/compose/local-build.test.sh)"
+fi
+
 if [ "$failures" -gt 0 ]; then
   printf '%s check(s) failed\n' "$failures" >&2
   exit 1

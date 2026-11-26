@@ -68,6 +68,21 @@ Every issue is a card on the group's GitHub Projects board. The board shows who 
 
 **Starting a card.** Take only an unassigned card. Assign yourself, move it to In Progress, and write a short **Started** comment on the issue saying who (or whose agent) does it and what the first PR will be. An assignee or a Started comment means the card is taken. Ask on the issue before taking it over.
 
+Copy-paste block (Git Bash or another POSIX shell). Fill in the first four lines. `gh project` needs the `project` scope (`gh auth refresh -s project`) and takes no `-R`: `--owner` and the issue URL say where. Moving a card by field name needs a recent `gh` (tried with 2.105.0).
+
+```bash
+n=123                      # issue number
+name=short-name            # for the branch name
+who="you, or whose agent"
+pr="what the first PR will be"
+
+gh issue edit "$n" -R EDB-Sport/fitlife --add-assignee @me
+gh issue comment "$n" -R EDB-Sport/fitlife --body "Started: $who. First PR: $pr."
+gh project item-edit 7 --owner EDB-Sport --url "https://github.com/EDB-Sport/fitlife/issues/$n" --field Status --value "In Progress"
+git fetch origin
+git switch -c "feature/$n-$name" origin/develop --no-track
+```
+
 **Project automations** (the project's *Workflows* settings):
 
 | Automation | What it does | Sets Status to |

@@ -80,4 +80,14 @@ for test in "$here"/*.test.sh; do
     grep -qxF '. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"' <(sed -n '2,12p' "$test")
 done
 
+# A real script on a green run (PR #476 review): security-steps.test.sh printed the gitleaks step's output
+# and its shell on every run. It needs yq and docker, which the ci-scripts job has.
+if command -v yq >/dev/null && timeout 30 docker info >/dev/null 2>&1; then
+  run "$here/security-steps.test.sh"
+  check "security-steps.test.sh on a green run prints only the summary" \
+    bash -c '[[ $1 =~ ^[0-9]+\ cases,\ 0\ failed$ ]]' _ "$out"
+else
+  echo "skipped: security-steps.test.sh on a green run (needs yq and docker)"
+fi
+
 exit $((failures > 0))

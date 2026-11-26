@@ -162,4 +162,34 @@ public sealed class MongoAccountRepositoryTests
         // Assert
         Assert.That(found?.Id, Is.EqualTo(account.Id));
     }
+
+    [Test]
+    public async Task SaveRolesAsync_AfterGiveRole_StoresTheNewRoles()
+    {
+        // Arrange
+        IAccountRepository repository = await RepositoryAsync().ConfigureAwait(false);
+        var account = Account.Create("anna@fitlife.example", PasswordHash);
+        await repository.AddAsync(account, CancellationToken.None).ConfigureAwait(false);
+        account.GiveRole(Role.Traener);
+
+        // Act
+        bool saved = await repository.SaveRolesAsync(account, CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Account? found = await repository.FindByIdAsync(account.Id, CancellationToken.None).ConfigureAwait(false);
+        Assert.That((saved, found?.Roles), Is.EqualTo((true, new[] { Role.Medlem, Role.Traener })));
+    }
+
+    [Test]
+    public async Task SaveRolesAsync_ForAnUnknownAccount_ReturnsFalse()
+    {
+        // Arrange
+        IAccountRepository repository = await RepositoryAsync().ConfigureAwait(false);
+
+        // Act
+        bool saved = await repository.SaveRolesAsync(Account.Create("bo@fitlife.example", PasswordHash), CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(saved, Is.False);
+    }
 }

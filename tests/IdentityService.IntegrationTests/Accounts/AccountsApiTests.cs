@@ -177,5 +177,15 @@ public sealed class AccountsApiTests
         {
             throw new InvalidOperationException(Message);
         }
+
+        public Task<Account?> FindByIdAsync(Guid id, CancellationToken cancellationToken)
+        {
+            throw new InvalidOperationException(Message);
+        }
+
+        public Task<bool> SaveRolesAsync(Account account, CancellationToken cancellationToken)
+        {
+            throw new InvalidOperationException(Message);
+        }
     }
 }

@@ -41,6 +41,7 @@ try
     builder.Services.AddSingleton<IPasswordHasher<Account>, PasswordHasher<Account>>();
     builder.Services.AddScoped<CreateAccountHandler>();
     builder.Services.AddScoped<ListAccountsHandler>();
+    builder.Services.AddScoped<ChangeRoleHandler>(); // an Admin gives or takes the role Træner (#365)
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddSingleton<TokenWriter>(); // reads Jwt:SigningKey when it writes a token, so the app starts without one
     builder.Services.AddScoped<LogInHandler>();

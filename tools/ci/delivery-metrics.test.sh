@@ -60,8 +60,8 @@ deploy_job() { # deploy_job <conclusion> <completed>
 runs "$(release_run 1 2026-12-01T10:00:00Z 2026-12-01T10:20:00Z failure),$(release_run 2 2026-12-01T12:00:00Z 2026-12-01T12:30:00Z success)" >"$made/release.yml-runs.json"
 deploy_job failure 2026-12-01T10:20:00Z >"$made/run-1-jobs.json"
 deploy_job success 2026-12-01T12:30:00Z >"$made/run-2-jobs.json"
-# A redeploy by hand a week later: a deployment, but it ships no new merge, so it has no lead time
-runs '{"id":3,"event":"workflow_dispatch","status":"completed","conclusion":"success","created_at":"2026-12-08T09:00:00Z","updated_at":"2026-12-08T09:10:00Z"}' >"$made/deploy.yml-runs.json"
+# A redeploy by hand eight days later: a deployment, but it ships no new merge, so it has no lead time
+runs '{"id":3,"event":"workflow_dispatch","status":"completed","conclusion":"success","created_at":"2026-12-09T09:00:00Z","updated_at":"2026-12-09T09:10:00Z"}' >"$made/deploy.yml-runs.json"
 run "$made" EDB-Sport/fitlife
 check "called deploy: the script succeeds" [ "$status" -eq 0 ]
 check "called deploy: a release run's successful deploy job and a dispatched deploy are 2 deployments in 2 weeks" \

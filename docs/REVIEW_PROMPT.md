@@ -6,6 +6,11 @@ It checks what CI can't. Tests, the TEAM analyzers, Stryker and the required job
 
 ```
 Review PR #<n> in EDB-Sport/fitlife against docs/METHODOLOGY.md and docs/PR_RULES.md.
+
+Before anything else: run `gh pr view <n> --json latestReviews`. If another member has
+already reviewed and the author hasn't asked for a second review, stop (METHODOLOGY section 3).
+Re-reviews go to the member who reviewed first: if that is you, carry on; a re-review is not a reason to stop.
+
 Don't re-run what CI already proved. Read the diff and the CI result.
 If the PR is stacked, read the diff against its base branch, not develop.
 

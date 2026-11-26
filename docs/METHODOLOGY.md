@@ -101,6 +101,7 @@ Rules for reviewers:
 - **A review comment records the head sha it reviewed.** Include a line ``Reviewed at `<sha>` `` in the review comment.
 - **Domain changes:** when a PR touches a domain model, go through the DDD checklist in section 11.3.
 - **Verdict:** approve, or request changes with at most three concrete reasons. Off-topic remarks go in a separate comment and never block.
+- **One reviewer per PR.** The review is requested from `@EDB-Sport/edb-team`; any member takes it first come first served. Once one member has reviewed, nobody else does, unless the author asks for a second review. A re-review goes to the member who reviewed first (#464).
 
 ## 4. Testing
 

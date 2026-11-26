@@ -8,7 +8,9 @@
 set -euo pipefail
 
 root=${IMAGE_SCAN_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}
-mapfile -t changed
+# a while-read loop, not mapfile: macOS /bin/bash is 3.2 (#87). "|| [ -n ]" keeps a last line without a newline
+changed=()
+while IFS= read -r line || [ -n "$line" ]; do changed+=("$line"); done
 every_service=(.dockerignore .github/workflows/image-scan.yml tools/ci/image-scan-plan.sh tools/ci/check-service-image.sh)
 
 # copy_sources <Dockerfile>: the repo paths its COPY lines take, one per line. Every word after COPY except
@@ -32,7 +34,8 @@ picked=()
 for dockerfile in "$root"/src/*/Dockerfile; do
   [ -f "$dockerfile" ] || continue
   service=$(basename "$(dirname "$dockerfile")")
-  mapfile -t inputs < <(copy_sources "$dockerfile")
+  inputs=()
+  while IFS= read -r line || [ -n "$line" ]; do inputs+=("$line"); done < <(copy_sources "$dockerfile")
   inputs+=("src/$service/Dockerfile" "${every_service[@]}")
   for path in ${changed[@]+"${changed[@]}"}; do
     for input in "${inputs[@]}"; do

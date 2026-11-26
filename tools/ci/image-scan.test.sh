@@ -63,6 +63,8 @@ for scan_file in .github/workflows/image-scan.yml tools/ci/image-scan-plan.sh to
   check "a change to the scan itself ($scan_file) picks every service" same "$(picks "$scan_file")" '["Alpha","Beta"]'
 done
 check "each service is picked once" same "$(picks src/Alpha/a.cs src/Alpha/b.cs libs/x)" '["Alpha"]'
+check "a last path without a newline still counts" \
+  same "$(printf 'src/Beta/Program.cs' | IMAGE_SCAN_ROOT="$work" "$plan" 2>&1)" '["Beta"]'
 # macOS /bin/bash is 3.2, which has no mapfile or readarray (#87)
 check "the plan runs on bash 3.2 (no mapfile or readarray)" \
   bash -c '! grep -vE "^\s*#" "$1" | grep -qwE "mapfile|readarray"' _ "$plan"

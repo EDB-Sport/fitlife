@@ -23,9 +23,26 @@ service() { # service <Name> [<libs project> ...]: a service, with a ProjectRefe
 lib() { mkdir -p "$repo/libs/$1"; printf '<Project Sdk="Microsoft.NET.Sdk"/>\n' > "$repo/libs/$1/$1.csproj"; }
 commit() { git -C "$repo" add -A && git -C "$repo" commit -qm "$1" && git -C "$repo" rev-parse HEAD; }
 
-# plan <before>: the plan for the push from <before> to HEAD, output in $out
+# The plan compares with the revision each :develop image was built from (its label), not with the previous push, so a
+# push whose run was cancelled or failed is made up by the next run (#340 review). The test stands in for the registry:
+# "$DELIVERED_FILE" has one line "<image> <revision>" per delivered image.
+delivered=$(mktemp)
+cat > "$repo/lookup.sh" <<'LOOKUP'
+#!/usr/bin/env bash
+awk -v image="$1" '$1 == image { print $2 }' "$DELIVERED_FILE"
+LOOKUP
+chmod +x "$repo/lookup.sh"
+trap 'rm -rf "$repo" "$delivered"' EXIT
+
+# deliver <revision>: every service's :develop image was built from <revision> (empty: none was delivered yet)
+deliver() {
+  : > "$delivered"
+  [ -z "${1:-}" ] || for s in bookingservice membershipservice memberportal; do echo "example/$s $1" >> "$delivered"; done
+}
+# plan <revision>: the plan for HEAD when the :develop images were built from <revision>, output in $out
 plan() {
-  out=$(cd "$repo" && BEFORE="$1" DOCKERHUB_NAMESPACE=example tools/ci/develop-plan.sh 2>&1)
+  deliver "${1:-}"
+  out=$(cd "$repo" && DELIVERED_FILE="$delivered" DELIVERED_REVISION="$repo/lookup.sh" DOCKERHUB_NAMESPACE=example tools/ci/develop-plan.sh 2>&1)
   status=$?
 }
 check() { # check <description> <grep pattern> [absent]
@@ -75,19 +92,36 @@ commit "docs" >/dev/null
 plan "$before_docs"
 check "a change outside any service plans nothing" "Nothing to deliver"
 
+plan ""
+check "no delivered image (nothing was ever pushed) plans every service" "image example/membershipservice:"
+check "no delivered image plans the others too" "image example/bookingservice:"
+
 plan "0000000000000000000000000000000000000000"
-check "the first push (no earlier commit) plans every service" "image example/membershipservice:"
+check "an image built from a commit this clone doesn't have plans every service" "image example/membershipservice:"
+
+# A push whose run was cancelled: the images are still those of $base, so the middle push's service is planned by the next run
+plan "$base"
+check "a service changed since the delivered image is planned, even when a later push didn't touch it" "image example/bookingservice:"
+
+# One service's image is missing while the others are current
+deliver "$(git -C "$repo" rev-parse HEAD)"
+sed -i '/membershipservice/d' "$delivered"
+out=$(cd "$repo" && DELIVERED_FILE="$delivered" DELIVERED_REVISION="$repo/lookup.sh" DOCKERHUB_NAMESPACE=example tools/ci/develop-plan.sh 2>&1)
+status=$?
+check "a service without an image is planned" "image example/membershipservice:"
+check "a service whose image is current is not" "image example/bookingservice:" absent
 
 # The tags are never latest and never X.Y.Z (the output names exactly develop and sha-<short>)
 check "no image is tagged latest" "latest" absent
 
 outputs=$(mktemp)
-out=$(cd "$repo" && GITHUB_OUTPUT="$outputs" BEFORE="$before_docs" DOCKERHUB_NAMESPACE=example tools/ci/develop-plan.sh 2>&1)
+deliver "$(git -C "$repo" rev-parse HEAD)"
+out=$(cd "$repo" && GITHUB_OUTPUT="$outputs" DELIVERED_FILE="$delivered" DELIVERED_REVISION="$repo/lookup.sh" DOCKERHUB_NAMESPACE=example tools/ci/develop-plan.sh 2>&1)
 status=$?
 out="$out
 $(cat "$outputs")"
 rm -f "$outputs"
-check "nothing to deliver writes an empty services list" "^services=\[\]$"
+check "all images current writes an empty services list" "^services=\[\]$"
 
 echo
 if [ "$failures" -eq 0 ]; then echo "develop-plan.sh works."; else echo "$failures check(s) failed."; fi

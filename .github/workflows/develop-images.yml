@@ -15,7 +15,8 @@ on:
 permissions:
   contents: read
 
-# One run per push, never cancelled halfway: a later push builds its own changes
+# A run is never cancelled halfway. GitHub keeps one pending run per group and cancels an older pending one, so a push
+# can lose its run; the next run makes it up, because the plan compares with the delivered images, not with the push
 concurrency:
   group: develop-images
   cancel-in-progress: false
@@ -29,12 +30,11 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0 # the commit before the push is needed
+          fetch-depth: 0 # the commits the delivered images were built from are needed
       - name: Which services this push changed
         id: plan
         run: tools/ci/develop-plan.sh
         env:
-          BEFORE: ${{ github.event.before }}
           DOCKERHUB_NAMESPACE: ${{ vars.DOCKERHUB_NAMESPACE }}
 
   images:

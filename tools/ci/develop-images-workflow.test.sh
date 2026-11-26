@@ -42,7 +42,7 @@ jobs = workflow.get("jobs", {})
 check("plan" in jobs and "images" in jobs, "there is a plan job and an images job")
 plan_steps = jobs.get("plan", {}).get("steps", [])
 check(any("tools/ci/develop-plan.sh" in str(s.get("run", "")) for s in plan_steps), "plan runs tools/ci/develop-plan.sh")
-check("${{ github.event.before }}" in text, "the plan compares with the commit before the push")
+check("github.event.before" not in text, "the plan compares with the delivered images, not with the commit before the push")
 
 steps = jobs.get("images", {}).get("steps", [])
 def index_of(predicate):
@@ -79,3 +79,18 @@ check(workflow.get("permissions") == {"contents": "read"}, "permissions are cont
 
 sys.exit(1 if failures else 0)
 PY
+status=$?
+
+# Every service with a Dockerfile is run from its :develop image by the override (#340 review: membership-svc was missing)
+# shellcheck source=tools/ci/services.sh
+. tools/ci/services.sh
+while read -r name prefix _; do
+  [ -f "src/$name/Dockerfile" ] || continue
+  if grep -q "image: albertarnason/$prefix:develop$" deploy/compose/compose.develop.yml; then
+    echo "PASS  compose.develop.yml runs $name from albertarnason/$prefix:develop"
+  else
+    echo "FAIL  compose.develop.yml has no albertarnason/$prefix:develop for $name"
+    status=1
+  fi
+done < <(services)
+exit "$status"

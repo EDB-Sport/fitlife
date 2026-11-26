@@ -2,8 +2,8 @@
 # Use it on top of compose.yaml for the services you aren't changing:
 #   docker compose -f compose.yaml -f compose.develop.yml up -d --wait
 # Pulling is much faster than building: a first local build spends most of its time downloading base images.
-# The images are built, scanned and pushed by .github/workflows/develop-images.yml. Only a service that changed in a
-# merge gets a new :develop image, and the first push delivers all of them. A service you are changing runs from source
+# The images are built, scanned and pushed by .github/workflows/develop-images.yml. A run builds every service whose
+# :develop image is missing or older than its source, so none is left out. A service you are changing runs from source
 # instead: build it with the base file alone (README.md).
 # CI and the api-tests never use this file: they build the PR's code from source.
 # :develop is allowed only in this file (tools/ci/image-versions.sh).
@@ -16,6 +16,12 @@ services:
     pull_policy: always
   booking-svc:
     image: albertarnason/bookingservice:develop
+    pull_policy: always
+  membership-svc:
+    image: albertarnason/membershipservice:develop
+    pull_policy: always
+  notification-svc:
+    image: albertarnason/notificationservice:develop
     pull_policy: always
   member-portal:
     image: albertarnason/memberportal:develop

@@ -8,6 +8,8 @@ Checked by CI (`PR description`, `tools/ci/check-pr-body.sh`):
 
 Not checked by CI: assign yourself to the issue when you start, before you open the PR, so nobody else starts the same work.
 
+Not checked by CI: a PR that adds or changes an endpoint or a page updates its row in `docs/domain/ACCESS.md`.
+
 **Lock file diff filtering**: `.gitattributes` marks `**/packages.lock.json` as `linguist-generated`, so GitHub collapses it in the PR diff. Local `git diff` still shows it. `gh pr diff <pr>` ignores `.gitattributes`: add `--exclude '**/packages.lock.json'` to hide lock files. A lock file change can hide a dependency change, so the PR description must name the packages that changed (locked-mode restore in CI, see issue #47).
 
 The rest of the PR rules live in `docs/METHODOLOGY.md`: one issue, one branch, one PR (section 1), branches and merging (section 2.1), review (section 3) and tests first (section 4).

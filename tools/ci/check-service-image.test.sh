@@ -104,6 +104,13 @@ check "an argument without = fails" test "$status" -ne 0
 check "it says how to call the script" grep -q 'Usage' <<<"$out"
 check "nothing is built" no_call '^docker build'
 
+# 6. --build-only: the image scan's one build (#280). Same tag, no container, and the tag on an image= line
+run "" --build-only BookingService
+check "--build-only passes when the image builds" test "$status" -eq 0
+check "--build-only builds with the usual tag" has_call '^docker build .* -t fitlife-check/bookingservice:local '
+check "--build-only starts no container" no_call '^docker run'
+check "--build-only prints the tag as image=<tag>" grep -qx 'image=fitlife-check/bookingservice:local' <<<"$out"
+
 echo
 if [ "$failures" -eq 0 ]; then
   echo "All check-service-image.sh cases pass."

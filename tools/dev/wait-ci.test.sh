@@ -17,6 +17,18 @@ if [[ " $* " == *" --watch "* ]]; then
   echo "NOISE a green row that must not be printed"
   exit 1
 fi
+# A "$STUB_CHECKS.none" file makes the first --json read fail the way real gh does before any
+# check is registered (seen with gh 2.103.3 right after a push): message on stderr, exit 1.
+if [ -f "$STUB_CHECKS.none" ]; then
+  rm "$STUB_CHECKS.none"
+  echo "no checks reported on the 'feature/42-x' branch" >&2
+  exit 1
+fi
+# A "$STUB_CHECKS.error" file makes every --json read fail with another gh error.
+if [ -f "$STUB_CHECKS.error" ]; then
+  echo "HTTP 502: 502 Bad Gateway (https://api.github.com/graphql)" >&2
+  exit 1
+fi
 # A "$STUB_CHECKS.first" file is printed once, by the first --json read (checks not registered yet).
 if [ -f "$STUB_CHECKS.first" ]; then
   cat "$STUB_CHECKS.first"
@@ -82,6 +94,17 @@ printf '[]' >"$tmp/checks.json.first"
 run "$green"
 [ "$out" = "all checks green" ] && [ "$code" -eq 0 ]
 expect "no checks yet (right after a push): waits and reads again" $?
+
+: >"$tmp/checks.json.none"
+run "$green"
+[ "$out" = "all checks green" ] && [ "$code" -eq 0 ]
+expect "no checks yet, as real gh reports it (exit 1, 'no checks reported'): waits and reads again" $?
+
+: >"$tmp/checks.json.error"
+run "$green"
+rm "$tmp/checks.json.error"
+[ "$code" -eq 2 ] && [ "$out" != "all checks green" ] && [ "$(grep -c -- --json "$tmp/log")" -eq 1 ]
+expect "another gh read error: exit 2 at once, no retry" $?
 
 if [ "$failures" -eq 0 ]; then echo "All wait-ci checks passed."; else echo "$failures check(s) failed."; fi
 exit $((failures > 0))

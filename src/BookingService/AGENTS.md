@@ -17,7 +17,7 @@ The Booking context (core subdomain): centres, class types, class sessions, rese
 
 - OpenAPI: [`contracts/openapi/bookingservice.json`](../../contracts/openapi/bookingservice.json). `dotnet build -c Release` regenerates it; commit it (`tools/ci/check-contracts.sh`).
 - Who may call what: the `BookingService` rows in [`docs/domain/ACCESS.md`](../../docs/domain/ACCESS.md).
-- Events: publishes `ReservationMade` (schema [`contracts/events/reservation-made.schema.json`](../../contracts/events/reservation-made.schema.json)); the domain event is raised, publishing is not wired yet ([`CONTEXT.md`](CONTEXT.md)). Consumes none.
+- Events: raises `ReservationMade`, `ReservationCancelled`, `WaitlistEntryExpired`, `ClassSessionCancelled` and `ClassSessionChanged` in `ClassSession.DomainEvents` ([`CONTEXT.md`](CONTEXT.md)); none is published yet. Of the cross-context ones, only `ReservationMade` has a schema ([`contracts/events/reservation-made.schema.json`](../../contracts/events/reservation-made.schema.json)); `ClassSessionChanged` (#242) has no schema in `contracts/events/` yet. Consumes none.
 - Postman: [`tests/postman/services/`](../../tests/postman/services/).
 
 ## Change here also touches

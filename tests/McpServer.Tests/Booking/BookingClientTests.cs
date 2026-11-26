@@ -118,6 +118,32 @@ public sealed class BookingClientTests
         await Assert.ThatAsync(() => Get(services, centerId: null), Throws.TypeOf<BookingUnavailableException>()).ConfigureAwait(false);
     }
 
+    [Test]
+    public async Task GetClassSessionsAsync_WhenBookingDoesntAnswer_ThrowsBookingUnavailable()
+    {
+        // Arrange: HttpClient gives up with a TaskCanceledException (inner TimeoutException) when nothing answers in time
+        using var gateway = StubGateway.ThatDoesntAnswer();
+        using ServiceProvider services = Services(gateway);
+
+        // Act & Assert
+        await Assert.ThatAsync(() => Get(services, centerId: null), Throws.TypeOf<BookingUnavailableException>()).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task GetClassSessionsAsync_WhenTheCallerCancels_StaysACancellation()
+    {
+        // Arrange
+        using var gateway = new StubGateway(HttpStatusCode.OK, "[]");
+        using ServiceProvider services = Services(gateway);
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync().ConfigureAwait(false);
+
+        // Act & Assert: the caller's own cancellation is not Booking's fault
+        await Assert.ThatAsync(
+            () => services.GetRequiredService<IBookingClient>().GetClassSessionsAsync(centerId: null, cancelled.Token),
+            Throws.InstanceOf<OperationCanceledException>()).ConfigureAwait(false);
+    }
+
     [TestCase("not json")]
     [TestCase("null")]
     public async Task GetClassSessionsAsync_WhenTheAnswerCantBeRead_ThrowsBookingUnavailable(string body)
@@ -152,7 +178,7 @@ public sealed class BookingClientTests
     {
         private readonly HttpStatusCode _status;
         private readonly string _body;
-        private readonly bool _cantBeReached;
+        private readonly Exception? _failure;
 
         public StubGateway(HttpStatusCode status, string body)
         {
@@ -160,10 +186,10 @@ public sealed class BookingClientTests
             _body = body;
         }
 
-        private StubGateway()
+        private StubGateway(Exception failure)
         {
             _body = string.Empty;
-            _cantBeReached = true;
+            _failure = failure;
         }
 
         public HttpMethod? Method { get; private set; }
@@ -174,7 +200,12 @@ public sealed class BookingClientTests
 
         public static StubGateway ThatCantBeReached()
         {
-            return new StubGateway();
+            return new StubGateway(new HttpRequestException("No connection could be made."));
+        }
+
+        public static StubGateway ThatDoesntAnswer()
+        {
+            return new StubGateway(new TaskCanceledException("The request timed out.", new TimeoutException()));
         }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -187,9 +218,9 @@ public sealed class BookingClientTests
                 CorrelationId = values.Single();
             }
 
-            if (_cantBeReached)
+            if (_failure is not null)
             {
-                throw new HttpRequestException("No connection could be made.");
+                throw _failure;
             }
 
             return Task.FromResult(new HttpResponseMessage(_status) { Content = new StringContent(_body, Encoding.UTF8, "application/json") });

@@ -98,28 +98,34 @@ public sealed partial class ClassSessionSeeder : IHostedService
         }
 
         IClassSessionRepository repository = scope.ServiceProvider.GetRequiredService<IClassSessionRepository>();
-        DateOnly today = DateOnly.FromDateTime(_clock.GetUtcNow().UtcDateTime);
+        var today = DateOnly.FromDateTime(_clock.GetUtcNow().UtcDateTime);
         int added = 0;
         for (int day = 1; day <= DaysAhead; day++)
         {
-            DateOnly date = today.AddDays(day);
-            for (int centerIndex = 0; centerIndex < Centers.Length; centerIndex++)
-            {
-                for (int slot = 0; slot < ClassSessionsPerCenterAndDay; slot++)
-                {
-                    Guid id = SeededId(date, centerIndex, slot);
-                    if (await repository.GetByIdAsync(id, cancellationToken).ConfigureAwait(false) is not null)
-                    {
-                        continue;
-                    }
+            added += await AddMissingClassSessionsAsync(repository, today.AddDays(day), cancellationToken).ConfigureAwait(false);
+        }
 
+        LogSeeded(added);
+    }
+
+    /// <summary>Adds the class sessions of one day that aren't stored yet, and says how many it added.</summary>
+    private static async Task<int> AddMissingClassSessionsAsync(IClassSessionRepository repository, DateOnly date, CancellationToken cancellationToken)
+    {
+        int added = 0;
+        for (int centerIndex = 0; centerIndex < Centers.Length; centerIndex++)
+        {
+            for (int slot = 0; slot < ClassSessionsPerCenterAndDay; slot++)
+            {
+                Guid id = SeededId(date, centerIndex, slot);
+                if (await repository.GetByIdAsync(id, cancellationToken).ConfigureAwait(false) is null)
+                {
                     await repository.AddAsync(ClassSessionAt(id, date, centerIndex, slot), cancellationToken).ConfigureAwait(false);
                     added++;
                 }
             }
         }
 
-        LogSeeded(added);
+        return added;
     }
 
     /// <summary>The same id for the same date, centre and slot on every run, so a later run sees what an earlier one stored.</summary>

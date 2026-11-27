@@ -30,7 +30,7 @@ pins=$(while IFS=: read -r file line text; do
   [ -n "$tag" ] || continue
   echo "$ref $tag $file:$line"
 done < <(grep -rnE '^[[:space:]-]*uses:' .github --include='*.yml' --include='*.yaml' | sort -t: -k1,1 -k2,2n))
-prev_ref= prev_tag= prev_where=
+prev_ref='' prev_tag='' prev_where=''
 while read -r ref tag where; do
   if [ "$ref" = "$prev_ref" ]; then
     if [ "$tag" != "$prev_tag" ]; then

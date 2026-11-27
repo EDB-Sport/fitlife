@@ -17,7 +17,7 @@ public sealed class CancelClassSessionCommandHandlerTests
     [SetUp]
     public void EverySaveSucceeds()
     {
-        _classSessions.Setup(repository => repository.SaveAsync(It.IsAny<ClassSession>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _classSessions.Setup(repository => repository.SaveAsync(It.IsAny<ClassSession>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
     }
 
     [Test]
@@ -71,17 +71,17 @@ public sealed class CancelClassSessionCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WhenAnotherRequestSavedFirst_SaysSo()
+    public void Handle_WhenAnotherRequestSavedFirst_LetsTheConflictThrough()
     {
         // Arrange
         ClassSession classSession = Stored();
-        _classSessions.Setup(repository => repository.SaveAsync(classSession, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _classSessions.Setup(repository => repository.SaveAsync(classSession, It.IsAny<CancellationToken>())).ThrowsAsync(new ConcurrencyConflictException());
 
         // Act
-        CancelClassSessionOutcome outcome = await Handler().Handle(new CancelClassSessionCommand(classSession.Id), CancellationToken.None).ConfigureAwait(false);
+        Task Act() => Handler().Handle(new CancelClassSessionCommand(classSession.Id), CancellationToken.None);
 
         // Assert
-        Assert.That(outcome, Is.EqualTo(CancelClassSessionOutcome.ChangedMeanwhile));
+        Assert.ThrowsAsync<ConcurrencyConflictException>(Act);
     }
 
     private ClassSession Stored()

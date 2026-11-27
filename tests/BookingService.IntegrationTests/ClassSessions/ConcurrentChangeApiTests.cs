@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using BookingService.Application;
 using BookingService.Domain;
+using FitLife.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
@@ -74,6 +75,23 @@ public sealed class ConcurrentChangeApiTests
 
         // Act
         using HttpResponseMessage response = await client.DeleteAsync(new Uri($"/class-sessions/{classSession.Id}/reservations/{memberId}", UriKind.Relative)).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(await AnswerOfAsync(response).ConfigureAwait(false), Is.EqualTo((HttpStatusCode.Conflict, "application/problem+json", "ConcurrentChange")));
+    }
+
+    [Test]
+    public async Task PostCancellation_WhenTheSaveIsRefused_Returns409ConcurrentChange()
+    {
+        // Arrange
+        using BookingApiFactory factory = Factory(everySaveIsStale: true);
+        ClassSession classSession = NewClassSession(capacity: 1);
+        await factory.AddAsync(classSession).ConfigureAwait(false);
+        using HttpClient client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", TestTokens.For(Guid.NewGuid(), FitLifeRoles.Traener));
+
+        // Act
+        using HttpResponseMessage response = await client.PostAsync(new Uri($"/class-sessions/{classSession.Id}/cancellation", UriKind.Relative), content: null).ConfigureAwait(false);
 
         // Assert
         Assert.That(await AnswerOfAsync(response).ConfigureAwait(false), Is.EqualTo((HttpStatusCode.Conflict, "application/problem+json", "ConcurrentChange")));

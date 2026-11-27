@@ -145,6 +145,22 @@ public sealed class MembershipClientTests
         Assert.That(result, Is.EqualTo(MemberLookup.Unavailable));
     }
 
+    [TestCase("""{"isActive": true}""")] // no memberId: it must not become Guid.Empty
+    [TestCase("""{"memberId": "6741f0c2-a9e1-4b3d-8c5f-60718a9e1b3d"}""")] // no isActive: not the same as "not active"
+    [TestCase("""{"memberId": null, "isActive": true}""")]
+    public async Task FindMemberAsync_WhenTheAnswerLacksAField_ReturnsUnavailable(string body)
+    {
+        // Arrange (#607)
+        using var membership = new StubMembership(HttpStatusCode.OK) { Body = body };
+        using ServiceProvider services = Services(membership);
+
+        // Act
+        MemberLookup result = await Find(services);
+
+        // Assert
+        Assert.That(result, Is.EqualTo(MemberLookup.Unavailable));
+    }
+
     [Test]
     public async Task FindMemberAsync_WhenTheCircuitIsOpen_ReturnsUnavailableWithoutAskingMembership()
     {

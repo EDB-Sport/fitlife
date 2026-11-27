@@ -31,8 +31,6 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
-          cache: true # NuGet global-packages from the Actions cache, keyed on the lock files (#601)
-          cache-dependency-path: '**/packages.lock.json'
 
       - name: tdd-check
         # The checked-out merge commit's first parent is the exact base it was built from;

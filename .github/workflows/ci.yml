@@ -128,8 +128,6 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0; mutation.test.sh builds and mutates a throwaway project
         with:
           global-json-file: global.json
-          cache: true # NuGet global-packages from the Actions cache, keyed on the lock files (#601)
-          cache-dependency-path: '**/packages.lock.json'
       # actionlint on the workflows and shellcheck on tools/ and deploy/ scripts, from pinned images (#273).
       - name: Static checks (actionlint, shellcheck)
         run: tools/ci/static-check.sh
@@ -156,8 +154,6 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
-          cache: true # NuGet global-packages from the Actions cache, keyed on the lock files (#601)
-          cache-dependency-path: '**/packages.lock.json'
       - name: Check that every build rule still fails the build
         run: tools/ci/summarize.sh build-rules "A build rule in Directory.Build.* no longer fails the build. Run tools/ci/check-build-rules.sh locally." -- tools/ci/check-build-rules.sh
 
@@ -204,8 +200,6 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
-          cache: true # NuGet global-packages from the Actions cache, keyed on the lock files (#601)
-          cache-dependency-path: '**/packages.lock.json'
       - name: Mutation testing on the changed C# files
         run: tools/ci/summarize.sh mutation "Add a test that kills the surviving mutants listed in the mutation report." -- tools/ci/mutation.sh
         env:

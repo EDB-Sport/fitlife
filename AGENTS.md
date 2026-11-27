@@ -10,6 +10,8 @@ Follow `docs/PR_RULES.md`. CI fails a PR whose description doesn't follow the te
 
 **Before a review:** run `tools/dev/review-ready.sh <pr>` (5 seconds; on WSL `GH=gh.exe tools/dev/review-ready.sh <pr>`). It checks required checks, conflicts, broken stacks and stale CI (a draft PR can still be reviewed, #470). Not ready means no review.
 
+**Trying a PR by hand:** `tools/dev/preview.sh <pr>` runs the PR's head in its own worktree with the compose stack and prints the URL and the demo log-ins (#521).
+
 **A red CI run:** run `gh run view <run id>` first. Its ANNOTATIONS name each failing check and its first error; the run's summary page in the browser adds a hint. Only then use `gh run view --log-failed`, which can be very long (#132).
 
 **Waiting for a PR's checks:** `tools/dev/wait-ci.sh <pr>` waits, prints `all checks green` on success, and otherwise prints only the checks that are not green (#377).

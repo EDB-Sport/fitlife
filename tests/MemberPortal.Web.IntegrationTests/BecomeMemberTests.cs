@@ -70,6 +70,24 @@ public sealed class BecomeMemberTests : IDisposable
     }
 
     [Test]
+    public async Task BecomeMember_WhenTheFirstFeeIsNotPaid_StaysOnThePageLoggedInWithTheSentence()
+    {
+        // Arrange
+        _factory.Membership.Answer = JoinMembershipAnswer.PaymentMissing;
+
+        // Act
+        using HttpResponseMessage response = await BecomeMemberAsync().ConfigureAwait(false);
+
+        // Assert
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.That(PortalForms.SetCookie(response, PortalForms.AuthenticationCookie), Is.Not.Null);
+        // Razor encodes å and ø, so the test reads the page as a browser shows it
+        string page = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
+        Assert.That(page, Does.Contain("Du er meldt ind, men betalingen mangler. Du kan ikke booke, før den er betalt."));
+        Assert.That(page, Does.Not.Contain("<form"));
+    }
+
+    [Test]
     public async Task BecomeMember_WhenItFails_NeverWritesThePasswordBackIntoThePage()
     {
         // Arrange
@@ -119,6 +137,8 @@ public sealed class BecomeMemberTests : IDisposable
     {
         public Exception? Failure { get; set; }
 
+        public JoinMembershipAnswer Answer { get; set; } = JoinMembershipAnswer.Joined;
+
         public string? AccessToken { get; private set; }
 
         public Task<JoinMembershipAnswer> JoinAsync(string? accessToken, CancellationToken cancellationToken)
@@ -130,7 +150,7 @@ public sealed class BecomeMemberTests : IDisposable
                 return Task.FromException<JoinMembershipAnswer>(Failure);
             }
 
-            return Task.FromResult(JoinMembershipAnswer.Joined);
+            return Task.FromResult(Answer);
         }
     }
 

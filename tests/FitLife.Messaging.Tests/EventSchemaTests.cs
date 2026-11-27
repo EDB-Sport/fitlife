@@ -80,6 +80,12 @@ public sealed class EventSchemaTests
         Assert.That(schemas, Is.EqualTo(new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [ReservationMade.RoutingKey] = EventSchema.Generate<ReservationMade>(),
+            [ReservationCancelled.RoutingKey] = EventSchema.Generate<ReservationCancelled>(),
+            [ClassSessionCancelled.RoutingKey] = EventSchema.Generate<ClassSessionCancelled>(),
+            [ClassSessionChanged.RoutingKey] = EventSchema.Generate<ClassSessionChanged>(),
+            [MembershipPaused.RoutingKey] = EventSchema.Generate<MembershipPaused>(),
+            [MembershipCancelled.RoutingKey] = EventSchema.Generate<MembershipCancelled>(),
+            [PaymentFailed.RoutingKey] = EventSchema.Generate<PaymentFailed>(),
         }));
     }
 

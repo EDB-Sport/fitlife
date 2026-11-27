@@ -1,6 +1,6 @@
 <Project>
   <!--
-    Test project conventions (docs/CSHARP_SETUP_TODO.md section 6, tests/README.md).
+    Test project conventions (docs/TECHNICAL_REFERENCE.md section 6, tests/README.md).
     MSBuild imports only the nearest Directory.Build.props, so pull in the root one first when it exists (issue #3).
   -->
   <PropertyGroup>

@@ -14,12 +14,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Shared code: correlation ID middleware and handler (docs/CSHARP_SETUP_TODO.md section 7) -->
+    <!-- Shared code: correlation ID middleware and handler (docs/TECHNICAL_REFERENCE.md section 7) -->
     <ProjectReference Include="$(RepoRoot)libs/FitLife.Correlation/FitLife.Correlation.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The shared NLog config (docs/CSHARP_SETUP_TODO.md section 7) -->
+    <!-- The shared NLog config (docs/TECHNICAL_REFERENCE.md section 7) -->
     <Content Include="$(RepoRoot)libs/nlog.config" Link="nlog.config" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

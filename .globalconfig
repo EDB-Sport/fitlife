@@ -1,4 +1,4 @@
-# Analyzer settings for every project (docs/CSHARP_SETUP_TODO.md sections 2 and 3).
+# Analyzer settings for every project (docs/TECHNICAL_REFERENCE.md sections 2 and 3).
 # Every disabled rule has a reason. Code-owned: changes need a review from the maintainers.
 is_global = true
 
@@ -28,7 +28,7 @@ dotnet_diagnostic.S1067.severity = error
 # IDE0079 unnecessary suppression: suppressions whose warning has gone away are removed
 dotnet_diagnostic.IDE0079.severity = error
 
-# --- Code style (docs/CSHARP_SETUP_TODO.md section 5): explicit code is easier for a junior to read ---
+# --- Code style (docs/TECHNICAL_REFERENCE.md section 5): explicit code is easier for a junior to read ---
 # Enforced in the build (EnforceCodeStyleInBuild) and by dotnet format.
 
 # var only when the type is apparent from the right-hand side (IDE0007, IDE0008)

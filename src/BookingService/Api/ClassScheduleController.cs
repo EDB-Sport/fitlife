@@ -96,7 +96,7 @@ public sealed class ClassScheduleController : ControllerBase
     /// <param name="cancellationToken">Stops the request.</param>
     /// <response code="403">The token has neither the role Træner nor Admin.</response>
     /// <response code="404">No such class session (code ClassSessionNotFound).</response>
-    /// <response code="409">The class session is already cancelled (code ClassSessionAlreadyCancelled), or another request changed it at the same time (code ChangedMeanwhile).</response>
+    /// <response code="409">The class session is already cancelled (code ClassSessionAlreadyCancelled), has started (code ClassSessionStarted), or another request changed it at the same time (code ChangedMeanwhile).</response>
     [HttpPost("{id:guid}/cancellation")]
     [Authorize(Roles = FitLifeRoles.Traener + "," + FitLifeRoles.Admin)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -116,6 +116,8 @@ public sealed class ClassScheduleController : ControllerBase
                 return CancellationProblem(StatusCodes.Status404NotFound, "No such class session.", outcome);
             case CancelClassSessionOutcome.ClassSessionAlreadyCancelled:
                 return CancellationProblem(StatusCodes.Status409Conflict, "The class session is already cancelled.", outcome);
+            case CancelClassSessionOutcome.ClassSessionStarted:
+                return CancellationProblem(StatusCodes.Status409Conflict, "The class session has started.", outcome);
             case CancelClassSessionOutcome.ChangedMeanwhile:
                 return CancellationProblem(StatusCodes.Status409Conflict, "The class session changed at the same time. Try again.", outcome);
             default:

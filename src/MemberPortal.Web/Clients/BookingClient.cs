@@ -1,0 +1,45 @@
+using System.Net.Http.Json;
+using System.Text.Json;
+
+namespace MemberPortal.Web.Clients;
+
+/// <summary>
+/// Booking's class schedule (<c>GET class-sessions</c>), reached through the gateway's route <c>api/booking</c>, over a typed client.
+/// Every failure becomes a <see cref="BookingUnavailableException"/>.
+/// </summary>
+/// <param name="http">A client with the gateway's base address, from <c>IHttpClientFactory</c>.</param>
+public sealed class BookingClient(HttpClient http) : IBookingClient
+{
+    private const string ClassSessionsPath = "api/booking/class-sessions";
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ClassSessionResponse>> GetClassSessionsAsync(CancellationToken cancellationToken)
+    {
+        ClassSessionResponse[]? sessions;
+        try
+        {
+            sessions = await http.GetFromJsonAsync<ClassSessionResponse[]>(new Uri(ClassSessionsPath, UriKind.Relative), cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpRequestException exception)
+        {
+            // No connection, or an error status (GetFromJsonAsync checks it)
+            throw new BookingUnavailableException("Booking can't be reached, or answered an error.", exception);
+        }
+        catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            // HttpClient's timeout. The caller's own cancellation passes on untouched
+            throw new BookingUnavailableException("Booking didn't answer in time.", exception);
+        }
+        catch (JsonException exception)
+        {
+            throw new BookingUnavailableException("Booking's answer isn't a list of class sessions.", exception);
+        }
+
+        if (sessions is null)
+        {
+            throw new BookingUnavailableException("Booking's answer is empty.");
+        }
+
+        return sessions;
+    }
+}

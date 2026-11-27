@@ -1,0 +1,66 @@
+@page "/hold"
+@using MemberPortal.Web.Clients
+
+<PageTitle>Hold - FitLife Digital</PageTitle>
+
+<div class="container py-4">
+    <h1 class="mb-4">Hold</h1>
+
+    @if (ErrorSentence is not null)
+    {
+        <div class="alert alert-danger" role="alert">@ErrorSentence</div>
+    }
+    else
+    {
+        <form method="get" action="hold" class="row g-2 align-items-end mb-4">
+            <div class="col-auto">
+                <label for="centerId" class="form-label">Center</label>
+                <select id="centerId" name="centerId" class="form-select">
+                    <option value="">Alle centre</option>
+                    @foreach (ScheduleCenter center in Centers)
+                    {
+                        <option value="@center.Id" selected="@IsChosen(center)">@center.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Vis</button>
+            </div>
+        </form>
+
+        @if (Days.Count == 0)
+        {
+            <p class="empty-schedule">@EmptySentence</p>
+        }
+
+        @foreach (ScheduleDay day in Days)
+        {
+            <section class="mb-4">
+                <h2 class="h4">@day.Date</h2>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Tid</th>
+                            <th>Hold</th>
+                            <th>Center</th>
+                            <th>Instruktør</th>
+                            <th>Ledige pladser</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (ClassSessionResponse session in day.ClassSessions)
+                        {
+                            <tr>
+                                <td>@Time(session)</td>
+                                <td>@session.ClassTypeName</td>
+                                <td>@session.CenterName</td>
+                                <td>@session.InstructorName</td>
+                                <td>@FreeSeats(session)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </section>
+        }
+    }
+</div>

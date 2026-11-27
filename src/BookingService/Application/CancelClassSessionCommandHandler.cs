@@ -4,18 +4,20 @@ namespace BookingService.Application;
 
 /// <summary>
 /// Handles <see cref="CancelClassSessionCommand"/> (#239): lets <see cref="ClassSession.Cancel"/> empty the reservations and the
-/// waitlist, and saves once. <see cref="ClassSession.Cancel"/> doesn't refuse a second call, so the handler checks
-/// <see cref="ClassSession.IsCancelled"/> first and then neither calls it nor saves.
+/// waitlist, and saves once. A class session that is already cancelled or has started (#538) is not saved.
 /// </summary>
 public sealed class CancelClassSessionCommandHandler
 {
     private readonly IClassSessionRepository _classSessions;
+    private readonly TimeProvider _clock;
 
     /// <summary>Creates the handler.</summary>
     /// <param name="classSessions">Where class sessions are stored.</param>
-    public CancelClassSessionCommandHandler(IClassSessionRepository classSessions)
+    /// <param name="clock">Tells the time now.</param>
+    public CancelClassSessionCommandHandler(IClassSessionRepository classSessions, TimeProvider clock)
     {
         _classSessions = classSessions;
+        _clock = clock;
     }
 
     /// <summary>Cancels the class session.</summary>
@@ -31,12 +33,16 @@ public sealed class CancelClassSessionCommandHandler
             return CancelClassSessionOutcome.ClassSessionNotFound;
         }
 
-        if (classSession.IsCancelled)
+        switch (classSession.Cancel(_clock))
         {
-            return CancelClassSessionOutcome.ClassSessionAlreadyCancelled;
+            case CancelResult.AlreadyCancelled:
+                return CancelClassSessionOutcome.ClassSessionAlreadyCancelled;
+            case CancelResult.ClassSessionStarted:
+                return CancelClassSessionOutcome.ClassSessionStarted;
+            default:
+                break;
         }
 
-        classSession.Cancel();
         if (!await _classSessions.SaveAsync(classSession, cancellationToken).ConfigureAwait(false))
         {
             return CancelClassSessionOutcome.ChangedMeanwhile;

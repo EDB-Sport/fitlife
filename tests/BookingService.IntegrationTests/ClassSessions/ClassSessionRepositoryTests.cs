@@ -93,4 +93,32 @@ public sealed class ClassSessionRepositoryTests
             Assert.That(changed?.Reservations.Single().IsFromBeforeAChangedStart, Is.True);
         });
     }
+
+    [Test]
+    public async Task RoundTrip_ACancelledClassSession_ComesBackCancelled()
+    {
+        // Arrange
+        var clock = new FakeTimeProvider(Now);
+        using var factory = new BookingApiFactory(MongoDbContainerSetUp.ConnectionString, $"booking-{Guid.NewGuid():N}", clock);
+        var classSession = new ClassSession(Guid.NewGuid(), new Capacity(2), Now.AddDays(1), new ClassSessionDetails(Guid.NewGuid(), Guid.NewGuid(), new Instructor("Mette"), TimeSpan.FromMinutes(60)));
+        classSession.Reserve(Guid.NewGuid(), clock);
+        await factory.AddAsync(classSession).ConfigureAwait(false);
+        using (IServiceScope cancelling = factory.Services.CreateScope())
+        {
+            IClassSessionRepository repository = cancelling.ServiceProvider.GetRequiredService<IClassSessionRepository>();
+            ClassSession stored = await repository.GetByIdAsync(classSession.Id, CancellationToken.None).ConfigureAwait(false)
+                ?? throw new InvalidOperationException("The class session wasn't stored.");
+            stored.Cancel();
+            await repository.SaveAsync(stored, CancellationToken.None).ConfigureAwait(false);
+        }
+
+        using IServiceScope reading = factory.Services.CreateScope();
+        IClassSessionRepository readingRepository = reading.ServiceProvider.GetRequiredService<IClassSessionRepository>();
+
+        // Act
+        ClassSession? cancelled = await readingRepository.GetByIdAsync(classSession.Id, CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Assert.That((cancelled?.IsCancelled, cancelled?.Reservations.Count), Is.EqualTo(((bool?)true, (int?)0)));
+    }
 }

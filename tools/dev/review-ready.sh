@@ -18,6 +18,9 @@ repo=EDB-Sport/fitlife
 gh_cmd=${GH:-gh}
 pr=${1:?usage: tools/dev/review-ready.sh <pr>}
 
+# jq on Windows prints CRLF (#527): strip the CR from everything read from it.
+jq() { command jq "$@" | tr -d '\r'; }
+
 pr_json=$("$gh_cmd" pr view "$pr" -R "$repo" \
   --json mergeable,mergeStateStatus,baseRefName,headRefOid,statusCheckRollup,body) || {
   echo "error: could not read PR #$pr" >&2

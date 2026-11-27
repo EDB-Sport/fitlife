@@ -33,6 +33,7 @@ try
     builder.Services.AddRepositories();
     builder.Services.AddScoped<GetClassSessionsQueryHandler>(); // the class schedule (#254)
     builder.Services.AddScoped<ScheduleClassSessionCommandHandler>(); // Træner or Admin (#238)
+    builder.Services.AddScoped<CancelClassSessionCommandHandler>(); // Træner or Admin (#239)
     builder.Services.AddWaitlistClosing(builder.Configuration); // closes each waitlist 2 hours before start, when enabled (#314)
 
     if (builder.Configuration.GetValue<bool>("Seed:Enabled"))

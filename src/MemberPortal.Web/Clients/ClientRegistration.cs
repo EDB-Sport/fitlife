@@ -16,16 +16,36 @@ public static class ClientRegistration
     {
         ArgumentNullException.ThrowIfNull(services);
         services.AddTransient<CorrelationIdHandler>();
-        services.AddHttpClient<IIdentityClient, IdentityClient>((provider, http) =>
-            {
-                // Read when the client is made, so the portal starts without it (TEAM010: no address literal)
-                string baseUrl = provider.GetRequiredService<IConfiguration>()[IdentityClient.BaseUrlConfigurationKey]
-                    ?? throw new InvalidOperationException(
-                        $"Found no {IdentityClient.BaseUrlConfigurationKey} in configuration. Set it to the gateway's address (deploy/compose/services.yml).");
-                http.BaseAddress = new Uri(baseUrl, UriKind.Absolute);
-            })
+        services.AddHttpClient<IIdentityClient, IdentityClient>((provider, http) => http.BaseAddress = GatewayAddress(provider))
             .AddHttpMessageHandler<CorrelationIdHandler>();
 
         return services;
+    }
+
+    /// <summary>
+    /// Adds <see cref="MembershipClient"/> as the <see cref="IMembershipClient"/>: a typed client with the gateway's address
+    /// from <see cref="IdentityClient.BaseUrlConfigurationKey"/>, the correlation ID handler and the <see cref="BearerTokenHandler"/>.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection.</returns>
+    public static IServiceCollection AddMembershipClient(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddTransient<CorrelationIdHandler>();
+        services.AddTransient<BearerTokenHandler>();
+        services.AddHttpClient<IMembershipClient, MembershipClient>((provider, http) => http.BaseAddress = GatewayAddress(provider))
+            .AddHttpMessageHandler<CorrelationIdHandler>()
+            .AddHttpMessageHandler<BearerTokenHandler>();
+
+        return services;
+    }
+
+    // Read when a client is made, so the portal starts without it (TEAM010: no address literal)
+    private static Uri GatewayAddress(IServiceProvider provider)
+    {
+        string baseUrl = provider.GetRequiredService<IConfiguration>()[IdentityClient.BaseUrlConfigurationKey]
+            ?? throw new InvalidOperationException(
+                $"Found no {IdentityClient.BaseUrlConfigurationKey} in configuration. Set it to the gateway's address (deploy/compose/services.yml).");
+        return new Uri(baseUrl, UriKind.Absolute);
     }
 }

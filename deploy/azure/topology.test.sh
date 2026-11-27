@@ -30,6 +30,8 @@
 #      deploy/azure
 #  15. Booking seeds the demo class schedule (#386): booking-svc has the seed setting at "true", under the one key
 #      src/BookingService/Program.cs reads, and compose's booking-svc block has the same key
+#  16. the member portal reaches the gateway (#599): member-portal has the gateway address under the key
+#      src/MemberPortal.Web reads, on the group's localhost and Nginx's port, and compose's member-portal sets the same key
 set -euo pipefail
 
 # The limit per container group for Linux containers without GPU in most regions, switzerlandnorth included
@@ -644,6 +646,26 @@ else:
         ok(f"compose's booking-svc sets the same key, {seed_setting}")
     else:
         fail(f"compose's booking-svc doesn't set {seed_setting}, the key Program.cs reads")
+
+# 16. The member portal's clients call the APIs through the gateway (#599): the key is the one
+#     src/MemberPortal.Web/Clients/IdentityClient.cs names, written as an environment variable (: becomes __), and in
+#     the group it is Nginx on localhost, where compose has http://gateway:80.
+with open(os.path.join(root, "src/MemberPortal.Web/Clients/IdentityClient.cs"), encoding="utf-8") as client:
+    portal_keys = re.findall(r'BaseUrlConfigurationKey\s*=\s*"([\w:]+)"', client.read())
+if len(portal_keys) != 1:
+    fail(f"expected one BaseUrlConfigurationKey in src/MemberPortal.Web/Clients/IdentityClient.cs, found {portal_keys}")
+else:
+    gateway_setting = portal_keys[0].replace(":", "__")
+    want = f"http://127.0.0.1:{scope.variable('gatewayPort')}"
+    got = environment("member-portal").get(gateway_setting, {}).get("value")
+    if got == want:
+        ok(f"member-portal: {gateway_setting} is {want}, Nginx in the group")
+    else:
+        fail(f"member-portal: {gateway_setting} should be {want!r} (Nginx in the group), got {got!r}")
+    if gateway_setting in compose_environment("member-portal"):
+        ok(f"compose's member-portal sets the same key, {gateway_setting}")
+    else:
+        fail(f"compose's member-portal doesn't set {gateway_setting}, the key the portal reads")
 
 if failures:
     print(f"\n{len(failures)} check(s) failed", file=sys.stderr)

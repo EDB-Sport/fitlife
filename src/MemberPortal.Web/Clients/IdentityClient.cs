@@ -29,7 +29,7 @@ public sealed class IdentityClient(HttpClient http) : IIdentityClient
             {
                 case HttpStatusCode.BadRequest:
                     return CreateAccountAnswer.Rejected;
-                case HttpStatusCode.Conflict when await HasCode(response, EmailAlreadyTakenCode, cancellationToken).ConfigureAwait(false):
+                case HttpStatusCode.Conflict when await ProblemCode.HasCode(response, EmailAlreadyTakenCode, cancellationToken).ConfigureAwait(false):
                     return CreateAccountAnswer.EmailAlreadyTaken;
                 default:
                     response.EnsureSuccessStatusCode();
@@ -86,23 +86,5 @@ public sealed class IdentityClient(HttpClient http) : IIdentityClient
         }
 
         return token ?? throw new IdentityUnavailableException("Identity's answer is empty.");
-    }
-
-    // Whether a problem answer carries this `code`. An answer that can't be read has none
-    private static async Task<bool> HasCode(HttpResponseMessage response, string code, CancellationToken cancellationToken)
-    {
-        try
-        {
-            using JsonDocument problem = await JsonDocument.ParseAsync(
-                await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false), cancellationToken: cancellationToken).ConfigureAwait(false);
-            return problem.RootElement.ValueKind == JsonValueKind.Object
-                && problem.RootElement.TryGetProperty("code", out JsonElement value)
-                && value.ValueKind == JsonValueKind.String
-                && string.Equals(value.GetString(), code, StringComparison.Ordinal);
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
     }
 }

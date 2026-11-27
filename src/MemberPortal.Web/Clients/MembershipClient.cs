@@ -5,12 +5,14 @@ namespace MemberPortal.Web.Clients;
 
 /// <summary>
 /// Membership's <c>POST members</c>, reached through the gateway's route <c>api/membership</c>, over a typed client.
-/// A 409 is already a member; every other failure becomes a <see cref="MembershipUnavailableException"/>.
+/// A 409 with <c>code</c> <c>AccountIsAlreadyAMember</c> is already a member (#542); every other failure becomes a <see cref="MembershipUnavailableException"/>.
 /// </summary>
 /// <param name="http">A client with the gateway's base address and the <see cref="BearerTokenHandler"/>, from <c>IHttpClientFactory</c>.</param>
 public sealed class MembershipClient(HttpClient http) : IMembershipClient
 {
     private const string MembersPath = "api/membership/members";
+
+    private const string AccountIsAlreadyAMemberCode = "AccountIsAlreadyAMember";
 
     /// <inheritdoc />
     public async Task<JoinMembershipAnswer> JoinAsync(string? accessToken, CancellationToken cancellationToken)
@@ -24,9 +26,9 @@ public sealed class MembershipClient(HttpClient http) : IMembershipClient
         try
         {
             using HttpResponseMessage response = await http.SendAsync(request, cancellationToken).ConfigureAwait(false);
-            if (response.StatusCode == HttpStatusCode.Conflict)
+            if (response.StatusCode == HttpStatusCode.Conflict
+                && await ProblemCode.HasCode(response, AccountIsAlreadyAMemberCode, cancellationToken).ConfigureAwait(false))
             {
-                // Membership's 409 carries no code (contracts/openapi/membershipservice.json): it means already a member
                 return JoinMembershipAnswer.AlreadyAMember;
             }
 

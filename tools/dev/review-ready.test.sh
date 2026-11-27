@@ -199,7 +199,8 @@ FAKE
 chmod +x "$work/crlf/jq"
 new_case; edit compare.json '.ahead_by=3 | .files=[{"filename":".github/workflows/ci.yml"},{"filename":".github/workflows/image-scan.yml"}]'
 out=$(PATH="$work/crlf:$PATH" GH="$fake" FAKE_GH_DIR="$fx" "$check" 1 2>&1); code=$?
-if [ "$code" -eq 1 ] && [ "$(grep -c '^not ready: ' <<<"$out")" -eq 1 ]   && grep -qF 'not ready: CI on the head is stale: develop changed .github/workflows/ci.yml since' <<<"$out"; then
+if [ "$code" -eq 1 ] && [ "$(grep -c '^not ready: ' <<<"$out")" -eq 1 ] &&
+  grep -qF 'not ready: CI on the head is stale: develop changed .github/workflows/ci.yml since' <<<"$out"; then
   echo "PASS  jq prints CRLF (Windows): changed workflows are read and the stale one named"
 else
   echo "FAIL  jq prints CRLF: expected exit 1 with only the stale-CI reason, got $code"

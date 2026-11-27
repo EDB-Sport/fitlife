@@ -100,7 +100,13 @@ none=$(context none.md '| Konto | A login | `Unlisted` |')
 sed -i.bak 's/^## Language in this context/## Something else/' "$none" && rm -f "$none.bak"
 expect 0 "a file without the language table: passes" - "$none"
 
-expect 0 "the repo's own GLOSSARY.md and every src/*/CONTEXT.md agree" - "$root"/src/*/CONTEXT.md
+if "$script" "$root"/src/*/CONTEXT.md >/dev/null 2>&1; then
+  echo "PASS  the repo's own GLOSSARY.md and every src/*/CONTEXT.md agree"
+else
+  echo "FAIL  the repo's own GLOSSARY.md and every src/*/CONTEXT.md agree"
+  "$script" "$root"/src/*/CONTEXT.md 2>&1 | sed 's/^/      /'
+  failures=$((failures + 1))
+fi
 if "$script" >/dev/null 2>&1; then
   echo "PASS  no arguments checks src/*/CONTEXT.md against GLOSSARY.md: passes"
 else

@@ -576,7 +576,7 @@ for context in SERVICES:
                 host, port = url.groups()
                 port = service_port.get(host[:-4], port) if host.endswith("-svc") else port
                 want = f"http://127.0.0.1:{port}"
-            elif key == "MongoDb__Host":
+            elif key in ("MongoDb__Host", "RabbitMq__HostName"):  # a bare container name, as in compose
                 want = "127.0.0.1"
             else:
                 want = value

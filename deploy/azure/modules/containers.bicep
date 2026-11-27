@@ -153,7 +153,17 @@ var serviceSettings = {
       value: 'true'
     }
   ]
-  membership: []
+  membership: [
+    {
+      // Publishes MembershipPaused and PaymentFailed (#251); a failed publish is only logged
+      name: 'RabbitMq__HostName'
+      value: '127.0.0.1'
+    }
+    {
+      name: 'RabbitMq__Port'
+      value: string(rabbitmqPort)
+    }
+  ]
   identity: [
     {
       name: 'Seed__DemoAccounts' // one demo account per role (#237); /health waits for them

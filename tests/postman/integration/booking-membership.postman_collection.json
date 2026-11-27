@@ -1,0 +1,550 @@
+{
+  "info": {
+    "_postman_id": "5b1f0c7e-2d4a-4e8b-9a61-228000000001",
+    "name": "Integration: booking needs an active membership (#228)",
+    "description": "Booking asks Membership before a reservation (CONTEXT-MAP section 4). Two services, the compose stack; the account and the class session are made by this collection. Run by Newman in the api-tests job (tools/ci/api-tests.sh).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Set-up: log in as the Træner demo account",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/identity/tokens",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "identity",
+            "tokens"
+          ]
+        },
+        "description": "The Træner demo account from the seeded data (#237), so it can schedule and cancel class sessions.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{traenerEmail}}\",\n  \"password\": \"{{traenerPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"accessToken is not empty\", function () {",
+              "    pm.expect(pm.response.json().accessToken).to.be.a(\"string\").and.not.empty;",
+              "});",
+              "pm.collectionVariables.set(\"traenerToken\", pm.response.json().accessToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Set-up: create the account",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/identity/accounts",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "identity",
+            "accounts"
+          ]
+        },
+        "description": "A new account, with the role Medlem only. It has no membership yet.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{accountEmail}}\",\n  \"password\": \"{{accountPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Resolve {{$guid}} once, so the e-mail and the account stay the same for the rest of the run.",
+              "pm.collectionVariables.set(\"accountEmail\", pm.variables.replaceIn(\"{{$guid}}\") + \"@example.test\");",
+              "pm.collectionVariables.set(\"accountPassword\", \"integration-test-password\");"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 201\", function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "pm.test(\"Body is the new account, without a password\", function () {",
+              "    const account = pm.response.json();",
+              "    pm.expect(account.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);",
+              "    pm.expect(account.email).to.eql(pm.collectionVariables.get(\"accountEmail\"));",
+              "    pm.expect(account).to.not.have.property(\"password\");",
+              "    pm.collectionVariables.set(\"accountId\", account.id);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Set-up: log in as the new account",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/identity/tokens",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "identity",
+            "tokens"
+          ]
+        },
+        "description": "The token that rows 2 to 5 use. The token carries the account id, not a member id (ADR 007), so it still works after joining (row 4); don't log in again.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{accountEmail}}\",\n  \"password\": \"{{accountPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"accessToken is not empty and its sub claim is the account id\", function () {",
+              "    const accessToken = pm.response.json().accessToken;",
+              "    pm.expect(accessToken).to.be.a(\"string\").and.not.empty;",
+              "    const payload = accessToken.split(\".\")[1].replace(/-/g, \"+\").replace(/_/g, \"/\");",
+              "    const claims = JSON.parse(require(\"atob\")(payload + \"=\".repeat((4 - (payload.length % 4)) % 4)));",
+              "    pm.expect(claims.sub).to.eql(pm.collectionVariables.get(\"accountId\"));",
+              "    pm.collectionVariables.set(\"accountToken\", accessToken);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Set-up: read the class schedule",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/booking/class-sessions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "booking",
+            "class-sessions"
+          ]
+        },
+        "description": "No login needed. Takes the centre and class type of the first class session for row 1."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"The schedule has a class session (demo data, #255)\", function () {",
+              "    pm.expect(pm.response.json(), \"the schedule is empty: seed the demo data first\").to.be.an(\"array\").that.is.not.empty;",
+              "});",
+              "const first = pm.response.json()[0];",
+              "pm.collectionVariables.set(\"centerId\", first.centerId);",
+              "pm.collectionVariables.set(\"classTypeId\", first.classTypeId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Schedule a class session",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{traenerToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/booking/class-sessions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "booking",
+            "class-sessions"
+          ]
+        },
+        "description": "The collection's own class session. Row 6 cancels it, which removes the reservation.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"centerId\": \"{{centerId}}\",\n  \"classTypeId\": \"{{classTypeId}}\",\n  \"instructorName\": \"Booking integration test\",\n  \"startsAt\": \"{{startsAt}}\",\n  \"durationMinutes\": 60,\n  \"capacity\": 10\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// One week ahead: inside the 4-week booking window, and in the future whenever the run happens.",
+              "pm.collectionVariables.set(\"startsAt\", new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString());"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 201\", function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "pm.test(\"The class session has an id\", function () {",
+              "    const classSession = pm.response.json();",
+              "    pm.expect(classSession.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);",
+              "    pm.collectionVariables.set(\"classSessionId\", classSession.id);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Reserve before joining",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accountToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/booking/class-sessions/{{classSessionId}}/reservations",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "booking",
+            "class-sessions",
+            "{{classSessionId}}",
+            "reservations"
+          ]
+        },
+        "description": "The account has no membership, so Membership refuses the booking."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 403\", function () {",
+              "    pm.response.to.have.status(403);",
+              "});",
+              "pm.test(\"code is MembershipNotActive\", function () {",
+              "    pm.expect(pm.response.json().code).to.eql(\"MembershipNotActive\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Look up before joining",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accountToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/membership/members/by-account/{{accountId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "membership",
+            "members",
+            "by-account",
+            "{{accountId}}"
+          ]
+        },
+        "description": "No member yet for this account."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 404\", function () {",
+              "    pm.response.to.have.status(404);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Join",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accountToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/membership/members",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "membership",
+            "members"
+          ]
+        },
+        "description": "Joining with the same token. The response has membershipStatus (not status), which is the enum name as a string."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 201\", function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "pm.test(\"memberId is a guid, the membership is Active\", function () {",
+              "    const member = pm.response.json();",
+              "    pm.expect(member.memberId).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);",
+              "    pm.expect(member.membershipStatus).to.eql(\"Active\");",
+              "    pm.collectionVariables.set(\"memberId\", member.memberId);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Reserve after joining",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accountToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/booking/class-sessions/{{classSessionId}}/reservations",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "booking",
+            "class-sessions",
+            "{{classSessionId}}",
+            "reservations"
+          ]
+        },
+        "description": "The same request as row 2, with the same token. Only joining (row 4) happens in between."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 201\", function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "pm.test(\"memberId is the member id from join, not the account id\", function () {",
+              "    const reservation = pm.response.json();",
+              "    pm.expect(reservation.memberId).to.eql(pm.collectionVariables.get(\"memberId\"));",
+              "    pm.expect(reservation.memberId).to.not.eql(pm.collectionVariables.get(\"accountId\"));",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Cancel the class session",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{traenerToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/booking/class-sessions/{{classSessionId}}/cancellation",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "booking",
+            "class-sessions",
+            "{{classSessionId}}",
+            "cancellation"
+          ]
+        },
+        "description": "Removes the reservation from row 5. The account and the member stay: no endpoint deletes them."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 204\", function () {",
+              "    pm.response.to.have.status(204);",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "accountEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "accountPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "accountId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "accountToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "traenerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "centerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "classTypeId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "startsAt",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "classSessionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "memberId",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

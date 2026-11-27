@@ -149,9 +149,44 @@ public sealed class JoinMembershipHandlerTests
         Assert.That(_payments.Charges, Has.Count.EqualTo(1));
     }
 
+    [Test]
+    public async Task HandleAsync_WhenTheRequestIsCancelledDuringTheCharge_StillSavesTheMembershipAsActive()
+    {
+        // Arrange: the caller goes away after the provider has taken the charge (#544)
+        using var request = new CancellationTokenSource();
+        _payments.DuringCharge = request.Cancel;
+        JoinMembershipHandler handler = Handler();
+
+        // Act
+        JoinResult result = await handler.HandleAsync(new JoinMembershipCommand("account-1"), request.Token);
+
+        // Assert
+        Assert.That(result.Joined, Is.True);
+        Assert.That(_memberships.Stored.Single().Status, Is.EqualTo(MembershipStatus.Active));
+    }
+
+    [Test]
+    public async Task HandleAsync_WhenTheRequestIsCancelledBeforeTheCharge_ChargesNothing()
+    {
+        // Arrange
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync().ConfigureAwait(false);
+        JoinMembershipHandler handler = Handler();
+
+        // Act
+        Func<Task> act = () => handler.HandleAsync(new JoinMembershipCommand("account-1"), request.Token);
+
+        // Assert
+        await Assert.ThatAsync(act, Throws.InstanceOf<OperationCanceledException>()).ConfigureAwait(false);
+        Assert.That(_payments.Charges, Is.Empty);
+    }
+
     private sealed class StubPaymentProvider : IPaymentProvider
     {
         public bool Paid { get; set; } = true;
+
+        /// <summary>Runs while the charge is being made, before the provider answers.</summary>
+        public Action? DuringCharge { get; set; }
 
         public bool Interrupt { get; set; }
 
@@ -165,6 +200,7 @@ public sealed class JoinMembershipHandlerTests
                 throw new OperationCanceledException("The request was cancelled while the fee was being charged.");
             }
 
+            DuringCharge?.Invoke();
             return Task.FromResult(Paid);
         }
     }
@@ -217,6 +253,8 @@ public sealed class JoinMembershipHandlerTests
 
         public Task SaveAsync(Membership membership, CancellationToken cancellationToken)
         {
+            // As the MongoDB driver: a cancelled token stops the save
+            cancellationToken.ThrowIfCancellationRequested();
             Stored.RemoveAll(stored => stored.Id == membership.Id);
             Stored.Add(Copy(membership));
             return Task.CompletedTask;

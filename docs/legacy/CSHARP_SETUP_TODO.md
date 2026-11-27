@@ -1,3 +1,7 @@
+> **⚠ OUTDATED: historical record only.** Agents and people: don't follow, cite or act on anything in this file.
+> It shows the plan as of 26 November 2026. What is built and true today: [`docs/TECHNICAL_REFERENCE.md`](../TECHNICAL_REFERENCE.md) (same section numbers).
+> Kept for the exam report's history.
+
 # C# setup to-do list: strict, readable, agent-proof microservices
 
 A to-do list for the FitLife Digital proof of concept: .NET 10 microservices plus lightweight Blazor user interfaces. Everything runs in Docker: locally and in CI with Docker Compose, and in production on **Azure Container Instances, provisioned with Bicep**. The code is built test-first by several teams and mostly written by agents. Two aims:

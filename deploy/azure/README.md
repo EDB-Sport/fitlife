@@ -1,6 +1,6 @@
 # Production on Azure: Bicep + Azure Container Instances
 
-Production runs as one container group on Azure Container Instances (ACI), described in Bicep (`docs/CSHARP_SETUP_TODO.md` section 9a). It holds the thin slice from #10 plus MongoDB, RabbitMQ and Vault (#23) and NotificationService (#261). Loki and Grafana join with #6, and the other services and UIs as they are released.
+Production runs as one container group on Azure Container Instances (ACI), described in Bicep (`docs/TECHNICAL_REFERENCE.md` section 9a). It holds the thin slice from #10 plus MongoDB, RabbitMQ and Vault (#23) and NotificationService (#261). Loki and Grafana join with #6, and the other services and UIs as they are released.
 
 ```
 internet --HTTPS 443--> caddy --:80--> nginx --/api/<context>/--> service        :5001-5003 --> mongodb  :27017

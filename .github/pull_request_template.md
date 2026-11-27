@@ -3,6 +3,9 @@ Closes #
 ## What changed and why
 <!-- One or two lines. -->
 
+## What to verify and how
+<!-- Optional, for feature PRs only: e.g. which request to send or page to open, and what to see. Delete this section if it isn't a feature PR. -->
+
 ## Tests
 - [ ] The change started with a failing test (or executable acceptance check)
 - [ ] No existing test was changed or removed

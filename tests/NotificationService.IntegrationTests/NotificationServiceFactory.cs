@@ -38,8 +38,9 @@ public sealed class NotificationServiceFactory(ILoggerProvider? logs = null) : W
             .UseSetting("MongoDb:Port", mongoDb.Port.ToString(CultureInfo.InvariantCulture))
             .UseSetting("MongoDb:Username", mongoDbUser[0])
             .UseSetting("MongoDb:Password", mongoDbUser[1])
-            // The container's user is MongoDB's root user; in compose it is notification-svc in its own database
-            .UseSetting("MongoDb:AuthDatabase", "admin");
+            // The container's user is MongoDB's root user; in compose it is notification-svc in its own database.
+            // The key is the one every service uses (#307)
+            .UseSetting("MongoDb:AuthSource", "admin");
         if (logs is not null)
         {
             builder.ConfigureServices(services => services.AddSingleton(logs));

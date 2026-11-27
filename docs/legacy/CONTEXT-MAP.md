@@ -1,3 +1,7 @@
+> **⚠ OUTDATED: historical record only.** Agents and people: don't follow, cite or act on anything in this file.
+> It shows the plan as of 25 November 2026. What is built and true today: the filled-in [`docs/domain/CONTEXT-MAP.md`](../domain/CONTEXT-MAP.md).
+> Kept for the exam report's history.
+
 # Context map: FitLife Digital
 
 > **Template.** Copy it to `docs/domain/CONTEXT-MAP.md` in the repo and fill it in during step 1 of `DDD_PLAN.md`.

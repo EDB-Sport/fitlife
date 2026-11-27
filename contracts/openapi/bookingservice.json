@@ -160,6 +160,91 @@
         }
       }
     },
+    "/class-sessions/{id}/cancellation": {
+      "post": {
+        "tags": [
+          "ClassSchedule"
+        ],
+        "summary": "Cancels a class session (#239): its reservations and waitlist entries are removed, the class schedule shows it as cancelled\nand nobody can reserve a seat on it. The members are not told yet (#242, #222).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The class session.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token has neither the role Træner nor Admin.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such class session (code ClassSessionNotFound).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The class session is already cancelled (code ClassSessionAlreadyCancelled), or another request changed it at the same time (code ChangedMeanwhile).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/class-sessions/{id}/reservations": {
       "post": {
         "tags": [

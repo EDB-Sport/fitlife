@@ -1,7 +1,9 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
 using BookingService.Application;
 using BookingService.Clients;
+using FitLife.Contracts.Testing;
 using FitLife.Correlation;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +21,17 @@ public sealed class MembershipClientTests
     private const string BearerToken = "the-members-own-token";
     private static readonly Guid AccountId = Guid.Parse("3f2b8c1d-4e5a-4b6c-8d7e-9f0a1b2c3d4e");
     private static readonly Guid MemberId = Guid.Parse("7d0f6c1a-2b3c-4d5e-8f90-a1b2c3d4e5f6");
+
+    // Every answer the stub gave in the current test, so the fake can't drift from Membership's contract (#522)
+    private static readonly ConcurrentQueue<FakeAnswer> Served = new();
+
+    [TearDown]
+    public void TheFakesAnswers_AreInMembershipsContract()
+    {
+        IReadOnlyList<string> missing = OpenApiContracts.Missing("membershipservice", Served);
+        Served.Clear();
+        Assert.That(missing, Is.Empty, "The stub answers with something contracts/openapi/membershipservice.json doesn't have.");
+    }
 
     [Test]
     public async Task FindMemberAsync_WhenMembershipAnswers200_ReturnsTheMemberIdAndWhetherItIsActive()
@@ -318,6 +331,7 @@ public sealed class MembershipClientTests
             {
                 _statuses.Dequeue();
             }
+            Served.Enqueue(new FakeAnswer(request.Method, request.RequestUri?.AbsolutePath ?? string.Empty, status));
             return new HttpResponseMessage(status) { Content = new StringContent(Body, Encoding.UTF8, "application/json") };
         }
     }

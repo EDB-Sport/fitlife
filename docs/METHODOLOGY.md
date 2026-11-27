@@ -50,7 +50,8 @@ Rules:
 - **Merge with merge commits, not squash.** That way the network graph shows feature, release and hotfix branches, as `git flow ... finish` would.
 - **The `git flow` CLI:** use it to start branches (`git flow feature start ...`). Finish through a PR instead of `git flow ... finish`, because finish merges and pushes locally, and branch protection blocks that.
 - **Delete** feature, release and hotfix branches after they are merged.
-- **Keep feature branches short-lived.** Rebase on, or merge in, `develop` often to avoid large conflicts between parallel agents.
+- **Keep feature branches short-lived** to avoid large conflicts between parallel agents.
+- **Merge `develop` (or the base) into a feature branch only** when GitHub shows a conflict, or when a fix on `develop` is needed for green CI, which includes stale CI (section 3). Don't merge it in just to be up to date.
 - **Start every branch from an up-to-date `develop`,** and get a PR signed off and merged before work that builds on it starts. A branch built on an unmerged one re-sends that code in its own diff and every reviewer reads it again (#106).
 - **When stacking can't be avoided,** the PR's base is its parent branch, so its diff shows only its own change. Retarget it to `develop` once the parent merges. The `stack-check` (#110) enforces this.
 
@@ -66,6 +67,21 @@ Every issue is a card on the group's GitHub Projects board. The board shows who 
 | Done | The issue is closed | Its PR is merged with `Closes #<issue>`, or the issue is closed (automatic) |
 
 **Starting a card.** Take only an unassigned card. Assign yourself, move it to In Progress, and write a short **Started** comment on the issue saying who (or whose agent) does it and what the first PR will be. An assignee or a Started comment means the card is taken. Ask on the issue before taking it over.
+
+Copy-paste block (Git Bash or another POSIX shell). Fill in the first four lines. `gh project` needs the `project` scope (`gh auth refresh -s project`) and takes no `-R`: `--owner` and the issue URL say where. Moving a card by field name needs a recent `gh` (tried with 2.105.0).
+
+```bash
+n=123                      # issue number
+name=short-name            # for the branch name
+who="you, or whose agent"
+pr="what the first PR will be"
+
+gh issue edit "$n" -R EDB-Sport/fitlife --add-assignee @me
+gh issue comment "$n" -R EDB-Sport/fitlife --body "Started: $who. First PR: $pr."
+gh project item-edit 7 --owner EDB-Sport --url "https://github.com/EDB-Sport/fitlife/issues/$n" --field Status --value "In Progress"
+git fetch origin
+git switch -c "feature/$n-$name" origin/develop --no-track
+```
 
 **Project automations** (the project's *Workflows* settings):
 
@@ -95,12 +111,18 @@ No PR merges without at least one signoff: a group member other than the author,
 An agent review starts from the shared prompt in `docs/REVIEW_PROMPT.md`, so every review checks the same things (#118).
 
 Rules for reviewers:
+- **Required checks first.** A PR is not ready for review while a required check (`gh pr checks <n> --required`) isn't green on its head, it conflicts with its base, its base branch has no open PR (a broken stack), or a workflow changed on `develop` since its merge base (stale CI). Run `tools/dev/review-ready.sh <n>`: if it says "not ready", that is the review. Give its lines as the reasons and don't read the diff. Making it ready is the author's job. "Behind the base" alone is not a reason, because the ruleset doesn't require an up-to-date branch. A draft PR can still be reviewed (#470).
 - **Changes to existing tests get extra scrutiny.** A weakened or deleted test is the usual way generated code fakes success. The PR has to explain the change.
 - **Don't re-run what CI already proved.** Read the diff and the CI result.
 - **A re-review reads only the commits since the last review.** When re-reviewing a PR after the author has pushed new commits, review `git diff <reviewed-sha>..<new-head>` plus the earlier review reasons, and say which reasons are resolved; do not re-read the entire PR from the beginning.
 - **A review comment records the head sha it reviewed.** Include a line ``Reviewed at `<sha>` `` in the review comment.
 - **Domain changes:** when a PR touches a domain model, go through the DDD checklist in section 11.3.
-- **Verdict:** approve, or request changes with at most three concrete reasons. Off-topic remarks go in a separate comment and never block.
+- **Verdict:** approve, or request changes with at most three concrete reasons. Post one review per round, with the verdict and the notes together. Notes never block: at most two.
+- **One reviewer per PR.** The review is requested from `@EDB-Sport/edb-team`; any member takes it first come first served. Once one member has reviewed, nobody else does, unless the author asks for a second review. A re-review goes to the member who reviewed first (#464).
+
+**After approval.** Once a PR is approved and green, merge it right away. The author doesn't push again, because every push dismisses the approval. A note that doesn't block becomes a new issue if it matters, or is dropped.
+
+If a merge-in (section 2.1) is still needed after the approval and it is clean (it changes none of the PR's own lines), a group member re-approves with one click, without starting an agent review. That is the member who reviewed first, or another member if that one pushed the merge-in: whoever pushed last can't approve (`require_last_push_approval`).
 
 ## 4. Testing
 

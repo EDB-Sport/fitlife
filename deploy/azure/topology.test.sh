@@ -18,6 +18,9 @@
 #      a secureValue
 #   8. the member portal is in the group only when main.bicepparam gets a UI version (UI_IMAGE_TAG), because
 #      until the portal has a release there is no image to pull (#198)
+#   9. NotificationService (#261): the container notification-svc has every setting of its compose block, on
+#      the group's localhost, with /health as both probes, and its database password is a secure parameter
+#  10. like the member portal, it is in the group only when main.bicepparam gets NOTIFICATION_IMAGE_TAG
 set -euo pipefail
 
 # The limit per container group for Linux containers without GPU in most regions, switzerlandnorth included
@@ -37,8 +40,9 @@ else
   az bicep build --file deploy/azure/main.bicep --stdout >"$WORK/main.json"
 fi
 
-# main.bicepparam as deploy.yml compiles it: once without a UI version, once with one. Made-up secrets, as
-# the file reads them from the environment and doesn't compile without them.
+# main.bicepparam as deploy.yml compiles it, with the optional versions $1 (UI_IMAGE_TAG) and $2
+# (NOTIFICATION_IMAGE_TAG), each left unset when empty. Made-up secrets, as the file reads them from the
+# environment and doesn't compile without them.
 build_params() {
   (
     for name in DOCKERHUB_USERNAME DOCKERHUB_PULL_TOKEN MONGO_ROOT_PASSWORD BOOKING_DB_PASSWORD \
@@ -46,8 +50,9 @@ build_params() {
       export "$name=made-up"
     done
     export JWT_SIGNING_KEY=made-up-signing-key-of-32-characters
-    unset UI_IMAGE_TAG
+    unset UI_IMAGE_TAG NOTIFICATION_IMAGE_TAG
     if [[ -n $1 ]]; then export UI_IMAGE_TAG=$1; fi
+    if [[ -n $2 ]]; then export NOTIFICATION_IMAGE_TAG=$2; fi
     if [[ -n ${BICEP:-} ]]; then
       "$BICEP" build-params deploy/azure/main.bicepparam --stdout
     else
@@ -55,8 +60,8 @@ build_params() {
     fi
   )
 }
-build_params "" >"$WORK/params-without-ui.json"
-build_params 1.2.3 >"$WORK/params-with-ui.json"
+build_params "" "" >"$WORK/params-without-ui.json"
+build_params 1.2.3 4.5.6 >"$WORK/params-with-ui.json"
 
 LIMIT_CPU=$LIMIT_CPU LIMIT_MEMORY_GB=$LIMIT_MEMORY_GB python3 -I - "$WORK/main.json" "$ROOT" \
   "$WORK/params-without-ui.json" "$WORK/params-with-ui.json" <<'PY'
@@ -232,15 +237,18 @@ for name, container in containers.items():
     else:
         fail(f"{name} has no Vault__Address on 127.0.0.1 and Vault__Token as a secureValue")
 
-# 8. The member portal only with a UI version. The filter drops exactly that container unless
-#    includeMemberPortal is true, and main.bicepparam sets includeMemberPortal from UI_IMAGE_TAG.
+# 8. The member portal only with a UI version. The filter drops it unless includeMemberPortal is true (and
+#    notification-svc likewise, check 10), and main.bicepparam sets includeMemberPortal from UI_IMAGE_TAG.
 if "member-portal" in containers:
     ok("container member-portal (when it has a release)")
 else:
     fail("no container member-portal in the group")
-expected_filter = "lambda('c', or(parameters('includeMemberPortal'), not(equals(lambdaVariables('c').name, 'member-portal'))))"
+def optional(flag, name):
+    return f"or(parameters('{flag}'), not(equals(lambdaVariables('c').name, '{name}')))"
+expected_filter = (f"lambda('c', and({optional('includeMemberPortal', 'member-portal')}, "
+                   f"{optional('includeNotificationService', 'notification-svc')}))")
 if containers_filter == expected_filter:
-    ok("member-portal is dropped from the group unless includeMemberPortal is true")
+    ok("member-portal and notification-svc are dropped from the group unless their include parameter is true")
 else:
     fail(f"the group's containers should be filtered with {expected_filter}, got {containers_filter}")
 def bicepparam(path):
@@ -255,6 +263,65 @@ if with_ui.get("includeMemberPortal") is True and with_ui.get("uiImageTag") == "
 else:
     fail(f"main.bicepparam with UI_IMAGE_TAG=1.2.3 sets includeMemberPortal {with_ui.get('includeMemberPortal')} "
          f"and uiImageTag {with_ui.get('uiImageTag')}, expected true and 1.2.3")
+
+# 9. NotificationService. The setting names come from its compose block, so a new one there fails here.
+compose = open(os.path.join(root, "deploy/compose/services.yml"), encoding="utf-8").read()
+block = re.search(r"^  notification-svc:\n((?:(?:    .*)?\n)+)", compose, re.MULTILINE)
+compose_settings = re.findall(r"^      (\w+__\w+):", block.group(1), re.MULTILINE) if block else []
+notification = containers.get("notification-svc")
+if notification is None:
+    fail("no container notification-svc in the group")
+else:
+    ok("container notification-svc (when it has a release)")
+    settings = {v["name"]: v for v in notification.get("environmentVariables", [])}
+    missing = [name for name in compose_settings if name not in settings]
+    if compose_settings and not missing:
+        ok(f"notification-svc has the {len(compose_settings)} settings of its compose block")
+    else:
+        fail(f"notification-svc lacks compose settings: {missing or 'none found in deploy/compose/services.yml'}")
+    # In the group everything is on localhost. A port is an expression that names its variable.
+    for name, wanted in [("RabbitMq__HostName", "127.0.0.1"), ("RabbitMq__Port", "rabbitmqPort"),
+                         ("MongoDb__Host", "127.0.0.1"), ("MongoDb__Port", "mongoPort"),
+                         ("Loki__Url", "http://127.0.0.1:3100"),
+                         ("ASPNETCORE_HTTP_PORTS", "servicePorts').notification")]:
+        value = str(resolve(settings.get(name, {}).get("value", "")))
+        if wanted in value:
+            ok(f"notification-svc: {name}")
+        else:
+            fail(f"notification-svc: {name} is '{value}', expected {wanted}")
+    for probe in ("livenessProbe", "readinessProbe"):
+        text = json.dumps(notification.get(probe, ""))
+        if "'/health'" in text and "servicePorts').notification" in text:
+            ok(f"notification-svc: {probe} is /health on its port")
+        else:
+            fail(f"notification-svc: {probe} should be /health on its port, got {text}")
+    if notification.get("image") == "[parameters('notificationImage')]":
+        ok("notification-svc runs the image in notificationImage")
+    else:
+        fail(f"notification-svc runs {notification.get('image')}, expected the parameter notificationImage")
+if main.get("parameters", {}).get("notificationDbPassword", {}).get("type") == "securestring":
+    ok("notificationDbPassword is a secure parameter")
+else:
+    fail("main.bicep has no secure parameter notificationDbPassword")
+for name in ["mongodb", "vault"]:
+    settings = {v["name"]: v for v in containers.get(name, {}).get("environmentVariables", [])}
+    if settings.get("NOTIFICATION_DB_PASSWORD", {}).get("secureValue") == "[parameters('notificationDbPassword')]":
+        ok(f"{name} gets NOTIFICATION_DB_PASSWORD from notificationDbPassword")
+    else:
+        fail(f"{name} doesn't get NOTIFICATION_DB_PASSWORD from notificationDbPassword as a secureValue")
+
+# 10. NotificationService only with a version (check 8 compares the filter).
+if without_ui.get("includeNotificationService") is False:
+    ok("main.bicepparam without NOTIFICATION_IMAGE_TAG: no notification-svc")
+else:
+    fail("main.bicepparam without NOTIFICATION_IMAGE_TAG sets includeNotificationService to "
+         f"{without_ui.get('includeNotificationService')}, expected false")
+if with_ui.get("includeNotificationService") is True and with_ui.get("notificationImageTag") == "4.5.6":
+    ok("main.bicepparam with NOTIFICATION_IMAGE_TAG=4.5.6: NotificationService 4.5.6")
+else:
+    fail("main.bicepparam with NOTIFICATION_IMAGE_TAG=4.5.6 sets includeNotificationService "
+         f"{with_ui.get('includeNotificationService')} and notificationImageTag "
+         f"{with_ui.get('notificationImageTag')}, expected true and 4.5.6")
 
 if failures:
     print(f"\n{len(failures)} check(s) failed", file=sys.stderr)

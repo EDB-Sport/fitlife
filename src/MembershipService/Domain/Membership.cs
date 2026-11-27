@@ -134,6 +134,22 @@ public sealed class Membership
         return EndPauseResult.PauseEnded;
     }
 
+    /// <summary>
+    /// The member paid the missing fee: Betaling mangler becomes Aktiv (TO-BE-kontekst §8, UC18). Any other status owes nothing,
+    /// and nothing changes.
+    /// </summary>
+    /// <returns><see cref="PaymentResult.Paid"/>, or <see cref="PaymentResult.NothingIsOwed"/>.</returns>
+    public PaymentResult RegisterPayment()
+    {
+        if (Status != MembershipStatus.PaymentMissing)
+        {
+            return PaymentResult.NothingIsOwed;
+        }
+
+        MarkPaid();
+        return PaymentResult.Paid;
+    }
+
     /// <summary>Rebuilds a stored membership. A stored pause period is given back with <see cref="RestorePausePeriod"/>.</summary>
     /// <param name="id">The membership id.</param>
     /// <param name="memberId">The member id.</param>

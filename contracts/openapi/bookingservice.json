@@ -54,6 +54,110 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "ClassSchedule"
+        ],
+        "summary": "Schedules a class session (#238). It then shows in the class schedule, and members can reserve a seat on it.",
+        "requestBody": {
+          "description": "Stops the request.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleClassSessionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleClassSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassSessionResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassSessionResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The start is not after now, the capacity or the duration is under 1, or the instructor's name is missing.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token has neither the role Træner nor Admin.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such center or class type.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/class-sessions/{id}/reservations": {
@@ -61,7 +165,7 @@
         "tags": [
           "ClassSessions"
         ],
-        "summary": "Reserves a seat for the member.",
+        "summary": "Reserves a seat for the member behind the token (#260). Membership says who the member is and whether they may book.",
         "parameters": [
           {
             "name": "id",
@@ -74,22 +178,6 @@
             }
           }
         ],
-        "requestBody": {
-          "description": "Stops the request.",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ReservationRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ReservationRequest"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "201": {
             "description": "Created",
@@ -111,6 +199,36 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token has no role Medlem, or the account has no active membership (code MembershipNotActive).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -122,7 +240,7 @@
             }
           },
           "409": {
-            "description": "The class session is full, cancelled or has started, or the member already has a seat.",
+            "description": "The class session rejected the reservation; code is the reason, e.g. ClassSessionFull or TooFarAhead.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -131,8 +249,8 @@
               }
             }
           },
-          "422": {
-            "description": "The class session starts more than 4 weeks from now.",
+          "503": {
+            "description": "Membership didn't answer (code MembershipUnavailable).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -400,20 +518,6 @@
           }
         }
       },
-      "ReservationRequest": {
-        "required": [
-          "memberId"
-        ],
-        "type": "object",
-        "properties": {
-          "memberId": {
-            "type": "string",
-            "description": "The member who wants the seat.",
-            "format": "uuid"
-          }
-        },
-        "description": "A member asks for a seat. Until the JWT issue (#172), the member id comes in the body."
-      },
       "ReservationResponse": {
         "required": [
           "classSessionId",
@@ -433,6 +537,57 @@
           }
         },
         "description": "A member's seat on a class session."
+      },
+      "ScheduleClassSessionRequest": {
+        "required": [
+          "centerId",
+          "classTypeId",
+          "instructorName",
+          "startsAt",
+          "durationMinutes",
+          "capacity"
+        ],
+        "type": "object",
+        "properties": {
+          "centerId": {
+            "type": "string",
+            "description": "The centre it takes place in.",
+            "format": "uuid"
+          },
+          "classTypeId": {
+            "type": "string",
+            "description": "The kind of class it is a run of.",
+            "format": "uuid"
+          },
+          "instructorName": {
+            "type": "string",
+            "description": "Who teaches it."
+          },
+          "startsAt": {
+            "type": "string",
+            "description": "When it starts; after now.",
+            "format": "date-time"
+          },
+          "durationMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "How long it lasts, in minutes; 1 or more.",
+            "format": "int32"
+          },
+          "capacity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "How many members can have a reservation; 1 or more.",
+            "format": "int32"
+          }
+        },
+        "description": "The body of `POST /class-sessions` (#238)."
       },
       "WaitlistEntryRequest": {
         "required": [

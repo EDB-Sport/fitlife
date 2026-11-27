@@ -39,6 +39,34 @@ public sealed class MembershipTests
     }
 
     [Test]
+    public void RegisterPayment_WhenPaymentIsMissing_MakesTheMembershipActive()
+    {
+        // Arrange
+        var membership = Membership.Start(Guid.NewGuid(), Today);
+
+        // Act
+        PaymentResult result = membership.RegisterPayment();
+
+        // Assert
+        Assert.That(result, Is.EqualTo(PaymentResult.Paid));
+        Assert.That(membership.Status, Is.EqualTo(MembershipStatus.Active));
+    }
+
+    [Test]
+    public void RegisterPayment_WhenNothingIsOwed_IsRejected()
+    {
+        // Arrange
+        var membership = Membership.Restore(Guid.NewGuid(), Guid.NewGuid(), MembershipType.Standard, MembershipStatus.Active, Today);
+
+        // Act
+        PaymentResult result = membership.RegisterPayment();
+
+        // Assert
+        Assert.That(result, Is.EqualTo(PaymentResult.NothingIsOwed));
+        Assert.That(membership.Status, Is.EqualTo(MembershipStatus.Active));
+    }
+
+    [Test]
     public void Start_NewMembership_HasTheOneMembershipTypeAndStartsToday()
     {
         // Arrange

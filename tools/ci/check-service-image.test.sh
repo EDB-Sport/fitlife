@@ -2,6 +2,7 @@
 # Tests for tools/ci/check-service-image.sh (#223). Stub `docker`, `curl` and `sleep` commands log their
 # arguments, so no Docker is needed. The stub service answers /health only when it got the settings it needs.
 # Usage: tools/ci/check-service-image.test.sh   (exit code 0 = every case passes)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -104,10 +105,11 @@ check "an argument without = fails" test "$status" -ne 0
 check "it says how to call the script" grep -q 'Usage' <<<"$out"
 check "nothing is built" no_call '^docker build'
 
-echo
-if [ "$failures" -eq 0 ]; then
-  echo "All check-service-image.sh cases pass."
-else
-  echo "$failures case(s) failed."
-fi
+# 6. --build-only: the image scan's one build (#280). Same tag, no container, and the tag on an image= line
+run "" --build-only BookingService
+check "--build-only passes when the image builds" test "$status" -eq 0
+check "--build-only builds with the usual tag" has_call '^docker build .* -t fitlife-check/bookingservice:local '
+check "--build-only starts no container" no_call '^docker run'
+check "--build-only prints the tag as image=<tag>" grep -qx 'image=fitlife-check/bookingservice:local' <<<"$out"
+
 exit "$failures"

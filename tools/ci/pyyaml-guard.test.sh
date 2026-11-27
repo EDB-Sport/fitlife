@@ -3,6 +3,7 @@
 # GitHub Actions), so a missing PyYAML can't turn ci-scripts green while the tests test nothing.
 # A python3 shim on PATH plays a python3 without PyYAML, as in #330.
 # Usage: tools/ci/pyyaml-guard.test.sh   (from anywhere in the repo; exit 0 = all pass)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 root=$(git -C "$(dirname "$0")" rev-parse --show-toplevel) || exit 2
@@ -36,9 +37,4 @@ for script in tools/ci/dependabot.test.sh tools/ci/release-single-build.test.sh;
   expect "$script without PyYAML on a laptop: skips" 0 '^SKIP: PyYAML not installed' unset "$script"
 done
 
-if [ "$failures" -gt 0 ]; then
-  echo
-  echo "$failures case(s) failed."
-  exit 1
-fi
-echo "All PyYAML guard cases pass."
+[ "$failures" -eq 0 ] || exit 1

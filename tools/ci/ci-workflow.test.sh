@@ -2,6 +2,7 @@
 # Checks that .github/workflows/ci.yml runs the CI scripts that aren't *.test.sh (issue #54),
 # and that it never cancels a push run on develop or main (issue #131).
 # Usage: tools/ci/ci-workflow.test.sh   (exit code 0 = every check passes)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -93,6 +94,24 @@ done
 mutation_timeout=$(sed -n 's/^    timeout-minutes: \([0-9][0-9]*\)$/\1/p' <<<"$(job_block mutation)")
 expect "mutation sets timeout-minutes of at least 30 (issue #335)" test "${mutation_timeout:-0}" -ge 30
 
+# Mutation testing is switched on by FITLIFE_MUTATION=1 alone, so CI and local runs of the script tests agree (issue #461).
+# The mutation job runs only with its original condition; ci-scripts sets FITLIFE_MUTATION=1 only then.
+mutation_enabled=0
+grep -qF "if: github.event_name == 'pull_request'" <<<"$(job_block mutation)" && mutation_enabled=1
+ci_scripts_switch=0
+grep -qE '^ +FITLIFE_MUTATION: "?1"?$' <<<"$(job_block ci-scripts)" && ci_scripts_switch=1
+expect "ci-scripts sets FITLIFE_MUTATION=1 exactly when the mutation job runs (job: $mutation_enabled, ci-scripts: $ci_scripts_switch)" \
+  test "$mutation_enabled" = "$ci_scripts_switch"
+expect "ci-scripts runs every tools/ci/*.test.sh, with no special case for mutation.test.sh" \
+  bash -c '! grep -qF "mutation.test.sh" <<<"$1"' _ "$(job_block ci-scripts | grep -v '^ *#\|- uses:')"
+if [ "$mutation_enabled" = 0 ]; then
+  skipped=$(env -u FITLIFE_MUTATION timeout 30 "$root/tools/ci/mutation.test.sh" 2>&1)
+  skipped_status=$?
+  expect "a local run of mutation.test.sh exits 0 while mutation is disabled (got $skipped_status)" test "$skipped_status" -eq 0
+  expect "a local run of mutation.test.sh says it is skipped while mutation is disabled" \
+    grep -qF "skipped: mutation testing is disabled" <<<"$skipped"
+fi
+
 # A hanging test is killed after 5 minutes and named, without a dump file (issue #276).
 hang_flags='--blame-hang-timeout 5m --blame-hang-dump-type none'
 expect "ci.yml's test step passes $hang_flags" \
@@ -115,10 +134,33 @@ for pair in stack-check:stack-check.sh mutation:mutation.sh build-rules:check-bu
   expect "$job runs tools/ci/$script through summarize.sh with a hint" runs_through_summarize "$job" "$job" "$script"
 done
 
-echo
-if [ "$failures" -eq 0 ]; then
-  echo "ci.yml runs every CI script."
-else
-  echo "$failures check(s) failed."
-fi
+# The ci-scripts job prints only what is wrong: FAIL lines and one summary per script; VERBOSE=1 adds the PASS lines (issue #375).
+# Runs the job's own run block on a copy of tools/ci/test-report.sh and one *.test.sh with a passing and a failing case.
+ci_scripts_run=$(job_block ci-scripts | awk '
+  /^        run: \|$/ { inside = 1; next }
+  inside && /^      - / { exit }
+  inside { sub(/^          /, ""); print }
+')
+job_repo=$(mktemp -d)
+trap 'rm -rf "$job_repo"' EXIT
+mkdir -p "$job_repo/tools/ci"
+cp "$root/tools/ci/test-report.sh" "$job_repo/tools/ci/"
+printf '%s\n' '#!/usr/bin/env bash' '. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"' \
+  'echo "PASS  one"' 'echo "FAIL  two: expected 1, got 2"' 'exit 1' >"$job_repo/tools/ci/sample.test.sh"
+chmod +x "$job_repo/tools/ci/sample.test.sh"
+# A tools/dev test of any name, to see that the job picks it up without being edited (issue #488).
+mkdir -p "$job_repo/tools/dev"
+printf '%s
+' '#!/usr/bin/env bash' 'echo "FAIL  dev tool case"' 'exit 1' >"$job_repo/tools/dev/any-name.test.sh"
+chmod +x "$job_repo/tools/dev/any-name.test.sh"
+quiet=$(cd "$job_repo" && env -u TEST_REPORT_RAW -u VERBOSE bash -c "$ci_scripts_run" 2>&1)
+verbose=$(cd "$job_repo" && env -u TEST_REPORT_RAW VERBOSE=1 bash -c "$ci_scripts_run" 2>&1)
+expect "ci-scripts hides the PASS lines by default" bash -c '! grep -q "^PASS" <<<"$1"' _ "$quiet"
+expect "ci-scripts prints the FAIL lines by default" grep -qxF "FAIL  two: expected 1, got 2" <<<"$quiet"
+expect "ci-scripts prints one summary line per script" grep -qxF "2 cases, 1 failed" <<<"$quiet"
+expect "ci-scripts with VERBOSE=1 prints the PASS lines" grep -qxF "PASS  one" <<<"$verbose"
+expect "ci-scripts with VERBOSE=1 prints the FAIL lines" grep -qxF "FAIL  two: expected 1, got 2" <<<"$verbose"
+expect "ci-scripts runs every tools/dev/*.test.sh" grep -qxF "FAIL  dev tool case" <<<"$quiet"
+expect "ci-scripts annotates a failing tools/dev test by name"   grep -qF "::error title=ci-scripts::tools/dev/any-name.test.sh failed" <<<"$quiet"
+
 exit "$failures"

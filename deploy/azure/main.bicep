@@ -48,6 +48,16 @@ param uiImage string
 @minLength(5)
 param uiImageTag string
 
+@description('Whether NotificationService is in the container group. False until it has a release (no image to pull yet).')
+param includeNotificationService bool
+
+@description('Docker Hub repository of NotificationService, without a tag.')
+param notificationImage string
+
+@description('Released version of the NotificationService image, X.Y.Z. Never latest. Unused while includeNotificationService is false.')
+@minLength(5)
+param notificationImageTag string
+
 @description('Health endpoint of the service, for its liveness and readiness probes (section 7).')
 param serviceHealthPath string = '/health'
 
@@ -157,6 +167,8 @@ module containers 'modules/containers.bicep' = {
     includeMemberPortal: includeMemberPortal
     uiImage: '${uiImage}:${uiImageTag}'
     uiHealthPath: uiHealthPath
+    includeNotificationService: includeNotificationService
+    notificationImage: '${notificationImage}:${notificationImageTag}'
     nginxImage: nginxImage
     caddyImage: caddyImage
     mongoImage: mongoImage

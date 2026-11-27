@@ -10,8 +10,8 @@ namespace MembershipService.Api;
 public static class MemberEndpoints
 {
     /// <summary>
-    /// Maps <c>POST /members</c>, <c>GET /members/me</c>, <c>GET /members/by-account/{accountId}</c>, and <c>PUT</c> and
-    /// <c>DELETE /members/me/pause</c>. All need a token from Identity. A status is the status on today, the UTC date.
+    /// Maps <c>POST /members</c>, <c>GET /members/me</c>, <c>POST /members/me/payment</c>, <c>GET /members/by-account/{accountId}</c>,
+    /// and <c>PUT</c> and <c>DELETE /members/me/pause</c>. All need a token from Identity. A status is the status on today, the UTC date.
     /// </summary>
     /// <param name="app">The routes.</param>
     /// <returns>The routes.</returns>
@@ -29,6 +29,10 @@ public static class MemberEndpoints
         members.MapGet("/me", GetMine)
             .WithName("GetMyMembership")
             .WithSummary("The membership of the account in the token: type, status and start date");
+        members.MapPost("/me/payment", Pay)
+            .WithName("PayMembership")
+            .WithSummary("The account in the token pays the missing fee of a membership with Betaling mangler, which becomes Aktiv")
+            .ProducesProblem(StatusCodes.Status409Conflict);
         members.MapPut("/me/pause", Pause)
             .WithName("PauseMyMembership")
             .WithSummary("Pauses the membership of the account in the token from one day to another, both included")
@@ -71,48 +75,40 @@ public static class MemberEndpoints
         ClaimsPrincipal user, [AsParameters] MembershipReaders readers, CancellationToken cancellationToken)
     {
         // The account comes from the token, never from the path, so a member only ever sees their own (ADR 007)
-        string accountId = user.GetAccountId();
-
-        Member? member = await readers.Members.FindByAccountIdAsync(accountId, cancellationToken).ConfigureAwait(false);
-        if (member is null)
+        MyMembershipResponse? mine = await FindMine(user.GetAccountId(), readers, cancellationToken).ConfigureAwait(false);
+        if (mine is null)
         {
             return TypedResults.NotFound();
         }
 
-        Membership? membership = await readers.Memberships.FindByMemberIdAsync(member.Id, cancellationToken).ConfigureAwait(false);
-        if (membership is null)
-        {
-            return TypedResults.NotFound();
-        }
-
-        DateOnly today = MembershipLookup.Today(readers.Clock);
-        return TypedResults.Ok(new MyMembershipResponse(member.Id, membership.Type, membership.StatusOn(today), membership.IsActiveOn(today), membership.StartDate));
+        return TypedResults.Ok(mine);
     }
 
-    private static async Task<Results<Ok<MemberResponse>, NotFound>> GetByAccount(
-        string accountId, ClaimsPrincipal user, [AsParameters] MembershipReaders readers, CancellationToken cancellationToken)
+    private static async Task<Results<Ok<MyMembershipResponse>, NotFound, ProblemHttpResult>> Pay(
+        ClaimsPrincipal user, PayMembershipHandler handler, [AsParameters] MembershipReaders readers, CancellationToken cancellationToken)
     {
-        // A member looks up only their own account. Another account answers as if it were unknown, so the lookup doesn't tell
-        // which accounts are members (review on #199).
-        if (!string.Equals(user.GetAccountId(), accountId, StringComparison.Ordinal))
+        string accountId = user.GetAccountId();
+        PayMembershipResult result = await handler.HandleAsync(new PayMembershipCommand(accountId), cancellationToken).ConfigureAwait(false);
+        switch (result)
+        {
+            case PayMembershipResult.NotAMember:
+                return TypedResults.NotFound();
+            case PayMembershipResult.NothingIsOwed:
+                return Conflict("The membership owes no fee", nameof(PayMembershipResult.NothingIsOwed));
+            case PayMembershipResult.ChargeDeclined:
+                return Conflict("The payment provider did not accept the charge", nameof(PayMembershipResult.ChargeDeclined));
+            default:
+                break;
+        }
+
+        // Paid: the answer is the body of GET /members/me
+        MyMembershipResponse? mine = await FindMine(accountId, readers, cancellationToken).ConfigureAwait(false);
+        if (mine is null)
         {
             return TypedResults.NotFound();
         }
 
-        Member? member = await readers.Members.FindByAccountIdAsync(accountId, cancellationToken).ConfigureAwait(false);
-        if (member is null)
-        {
-            return TypedResults.NotFound();
-        }
-
-        Membership? membership = await readers.Memberships.FindByMemberIdAsync(member.Id, cancellationToken).ConfigureAwait(false);
-        if (membership is null)
-        {
-            return TypedResults.NotFound();
-        }
-
-        DateOnly today = MembershipLookup.Today(readers.Clock);
-        return TypedResults.Ok(new MemberResponse(member.Id, membership.StatusOn(today), membership.IsActiveOn(today)));
+        return TypedResults.Ok(mine);
     }
 
     private static async Task<Results<Ok<MembershipPauseResponse>, NotFound, ProblemHttpResult, ValidationProblem>> Pause(
@@ -161,7 +157,7 @@ public static class MemberEndpoints
         return TypedResults.Ok(PauseResponse(result.Membership, MembershipLookup.Today(clock)));
     }
 
-    // 409 problem details whose extension "code" is the name of the root's answer, e.g. "PauseStartsInThePast"
+    // 409 problem details whose extension "code" names what was rejected, e.g. "PauseStartsInThePast"
     private static ProblemHttpResult Conflict(string title, string code)
     {
         return TypedResults.Problem(
@@ -174,5 +170,49 @@ public static class MemberEndpoints
     {
         return new MembershipPauseResponse(
             membership.MemberId, membership.Type, membership.StatusOn(today), membership.IsActiveOn(today), membership.StartDate, membership.PausedFrom, membership.PausedTo);
+    }
+
+    private static async Task<MyMembershipResponse?> FindMine(string accountId, MembershipReaders readers, CancellationToken cancellationToken)
+    {
+        Member? member = await readers.Members.FindByAccountIdAsync(accountId, cancellationToken).ConfigureAwait(false);
+        if (member is null)
+        {
+            return null;
+        }
+
+        Membership? membership = await readers.Memberships.FindByMemberIdAsync(member.Id, cancellationToken).ConfigureAwait(false);
+        if (membership is null)
+        {
+            return null;
+        }
+
+        DateOnly today = MembershipLookup.Today(readers.Clock);
+        return new MyMembershipResponse(member.Id, membership.Type, membership.StatusOn(today), membership.IsActiveOn(today), membership.StartDate);
+    }
+
+    private static async Task<Results<Ok<MemberResponse>, NotFound>> GetByAccount(
+        string accountId, ClaimsPrincipal user, [AsParameters] MembershipReaders readers, CancellationToken cancellationToken)
+    {
+        // A member looks up only their own account. Another account answers as if it were unknown, so the lookup doesn't tell
+        // which accounts are members (review on #199).
+        if (!string.Equals(user.GetAccountId(), accountId, StringComparison.Ordinal))
+        {
+            return TypedResults.NotFound();
+        }
+
+        Member? member = await readers.Members.FindByAccountIdAsync(accountId, cancellationToken).ConfigureAwait(false);
+        if (member is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        Membership? membership = await readers.Memberships.FindByMemberIdAsync(member.Id, cancellationToken).ConfigureAwait(false);
+        if (membership is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        DateOnly today = MembershipLookup.Today(readers.Clock);
+        return TypedResults.Ok(new MemberResponse(member.Id, membership.StatusOn(today), membership.IsActiveOn(today)));
     }
 }

@@ -318,9 +318,10 @@ The project description's test terms map onto this as: *unit tests* = Unit, *int
   - add `actions/setup-dotnet` with `global-json-file: global.json` as the toolchain step
   - make it a required check on `develop` **and** `main` (PRs target `develop` under Git Flow)
 
-  *Why:* it checks mechanically that production changes come with tests, that no test is deleted or skipped (commented-out test attributes don't count), and that the PR's tests fail without the change. A test that references a type that doesn't exist yet fails to compile on the base, and that counts as red. A run on the base that stops before any test is built (no project or solution found, `MSB1003`/`MSB1009`, or a restore error `NU1xxx`: `SETUP_ERRORS` in the script) doesn't count as red, and the check fails (#49). Its fixture tests are in `tools/ci/tdd-check.test.sh`.
+  *Why:* it checks mechanically that production changes come with tests, that no test is deleted or skipped (commented-out test attributes don't count), and that the PR's tests fail without the change. A test that references a type that doesn't exist yet fails to compile on the base, and that counts as red. A run on the base that stops before any test is built (no project or solution found, `MSB1003`/`MSB1009`, or a restore error `NU1xxx`: `SETUP_ERRORS` in the script) doesn't count as red, and the check fails (#49). A production file whose every added or removed line is blank or a comment (`//`, `///`, `/* */`) is skipped by checks 1 and 4, because a comment can't make a test go red (#361); a `#if` or `#pragma` line, or code with a trailing `//` comment, still counts. Its fixture tests are in `tools/ci/tdd-check.test.sh`.
 
   *Limits:* it proves the PR's tests **depend on the change**, not that they were written first: a test written after the code also fails on base. The optional `red:`/`green:` commits (METHODOLOGY §2) are the evidence of order. Only the suite's exit code on base is checked, so one real red test lets untested production code through, and because a compile error counts as red, a PR that adds a new project under `src/` always passes the red-on-base step. Stryker (above) is meant to cover both. Merging several `[TestCase]` lines into one `[TestCaseSource]` lowers the test count, so that cleanup fails the check.
+  *Running it locally* is optional: CI runs it on every PR. The cheap proof is to run the touched test projects on the `red:` commit (they fail), then on the `green:` commit (they pass), about 50 s. The script removes its base-copy worktree when it ends or is interrupted (#479). *On WSL* with the Windows `dotnet.exe`, a base copy under `/tmp` builds over `\\wsl.localhost` and takes 10+ minutes: set `TMPDIR` on the Windows drive (for example `TMPDIR=/mnt/c/Users/<you>/tmp`) and a narrow `TEST_CMD` (for example `TEST_CMD='dotnet test tests/<Name>.Tests -c Release'`).
 - [ ] **A test that loads each `NLog.config`** with `throwConfigExceptions` on, and asserts that the Loki target exists, the `app` label equals the service name, and only the allowed labels from section 7 are present.
   *Why:* NLog swallows config errors by default, so a typo makes logs disappear from Grafana without any error.
 
@@ -391,6 +392,12 @@ The project description asks for a user interface that demonstrates the implemen
   *Why:* with only the service folder as context, restore fails: central package versions and the lock-file settings would be missing, and the image would be built without the reviewed rules.
 - [ ] **hadolint** on every Dockerfile and **Trivy** on release images.
   *Why:* consistent, linted images, and known vulnerabilities in base images, which NuGet audit doesn't see. This covers **patching** in the course's security methods (M10).
+- [x] **Trivy on the images a PR changes** (`.github/workflows/image-scan.yml`, #280), with release.yml's settings, so a vulnerable base image fails the PR and not the release. `tools/ci/image-scan-plan.sh` picks each service whose Dockerfile copies a changed path. The image is built once, by `tools/ci/check-service-image.sh --build-only <Service>`, and Trivy scans that tag. A PR that changes no image skips the scan. To run it locally, with Docker and the [Trivy CLI](https://trivy.dev/latest/getting-started/installation/):
+  ```sh
+  git diff --name-only origin/develop... | tools/ci/image-scan-plan.sh   # e.g. ["BookingService"]
+  tools/ci/check-service-image.sh --build-only BookingService             # image=fitlife-check/bookingservice:local
+  trivy image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 fitlife-check/bookingservice:local
+  ```
 - [ ] **gitleaks** secret scan on every PR.
   *Why:* course rule #9, "secrets in Vault, never in code or committed files", checked by a tool instead of by hope.
 

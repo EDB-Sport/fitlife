@@ -5,10 +5,24 @@ One JSON Schema per RabbitMQ event that crosses a context boundary (`docs/domain
 - **File name:** the event name in kebab case, e.g. `ReservationMade` → `reservation-made.schema.json`.
 - **Fields:** camelCase names from `GLOSSARY.md`; other aggregates and contexts by id only.
 - **Strict:** `additionalProperties: false`, so a new field is a schema change that every consumer's tests see.
-- **`examples`:** one sample payload. Consumer tests read it with `EventSchemas.Example("<file name>")`.
+- **`examples`:** one sample payload, from the record's `Example`. Consumer tests read it with `EventSchemas.Example("<file name>")`.
 - **Headers:** the correlation ID travels in the `X-Correlation-ID` message header (#19), not in the body.
 
 Tests: `tests/FitLife.Contracts.Tests` checks each schema against a sample in the test. Producer and consumer tests validate with `EventSchemas.Validate` from `tests/FitLife.Contracts.Testing`.
+
+## Generated, don't edit by hand (#491)
+
+Each schema is generated from its integration event record in `libs/FitLife.Messaging/Events/`, the record the publisher sends and the consumer reads. Change the record, then regenerate:
+
+```bash
+dotnet build tools/EventSchemaGenerator    # or a plain `dotnet build`: it writes contracts/events/ too
+```
+
+Commit the changed `*.schema.json` with the record. The `contract` job (`tools/ci/check-contracts.sh`) builds, and it fails when `contracts/events/` then differs from the commit.
+
+- **Generator:** `EventSchema` in `libs/FitLife.Messaging`, with `System.Text.Json.Schema.JsonSchemaExporter` and the wire format's serializer options (`EventJson`). Fields come from the constructor, all required. `additionalProperties: false` is set in the exporter's `TransformSchemaNode` callback.
+- **From the record:** the `[Description]` on the record and on each property, `[MinLength]` on a property, and the static `Example` (`IIntegrationEvent.Example`), which becomes `examples`.
+- **A new event:** a record that implements `IIntegrationEvent`, plus one line in `EventSchema.GenerateAll`. A test fails until that line is there.
 
 ## On the wire (`libs/FitLife.Messaging`)
 

@@ -55,7 +55,7 @@ public static class MemberEndpoints
         JoinResult result = await handler.HandleAsync(new JoinMembershipCommand(accountId), cancellationToken).ConfigureAwait(false);
         if (result.Member is null || result.Membership is null)
         {
-            return TypedResults.Problem(title: "The account is already a member", statusCode: StatusCodes.Status409Conflict);
+            return Conflict("The account is already a member", "AccountIsAlreadyAMember");
         }
 
         var response = new MemberResponse(result.Member.Id, result.Membership.Status, result.Membership.IsActive);

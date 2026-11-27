@@ -1,6 +1,7 @@
 using Bunit;
 using MemberPortal.Web.Clients;
 using MemberPortal.Web.Components.Pages;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MemberPortal.Web.Tests;
@@ -151,6 +152,41 @@ public sealed class BecomeMemberTests : BunitContext
 
         // Assert
         Assert.That(cut.Find("[role=alert]").TextContent, Is.EqualTo("Du er allerede medlem."));
+    }
+
+    [Test]
+    public void BecomeMember_WhenTheFirstFeeIsNotPaid_ShowsThatPaymentIsMissing()
+    {
+        // Arrange
+        AddAuthorization().SetAuthorized("medlem@fitlife.test");
+        _membership.Answer = JoinMembershipAnswer.PaymentMissing;
+        IRenderedComponent<BecomeMember> cut = Render<BecomeMember>();
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/bliv-medlem");
+
+        // Act
+        SubmitName(cut);
+
+        // Assert: it stays on the page, with the sentence and no form
+        Assert.That(cut.Find("[role=status]").TextContent, Is.EqualTo("Du er meldt ind, men betalingen mangler. Du kan ikke booke, før den er betalt."));
+        Assert.That(cut.FindAll("form"), Is.Empty);
+        Assert.That(navigation.Uri, Is.EqualTo(navigation.BaseUri + "bliv-medlem"), "It left the page.");
+    }
+
+    [Test]
+    public void BecomeMember_WhenTheMembershipIsActive_GoesToTheFrontPage()
+    {
+        // Arrange
+        AddAuthorization().SetAuthorized("medlem@fitlife.test");
+        IRenderedComponent<BecomeMember> cut = Render<BecomeMember>();
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/bliv-medlem");
+
+        // Act
+        SubmitName(cut);
+
+        // Assert
+        Assert.That(navigation.Uri, Is.EqualTo(navigation.BaseUri));
     }
 
     [Test]

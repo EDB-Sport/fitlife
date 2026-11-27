@@ -1,4 +1,4 @@
-# IdentityService image (docs/CSHARP_SETUP_TODO.md section 8). Build from the repo root:
+# IdentityService image (docs/TECHNICAL_REFERENCE.md section 8). Build from the repo root:
 #   docker build -f src/IdentityService/Dockerfile .
 # A new service copies this file and replaces IdentityService (docs/ADDING_A_SERVICE.md).
 
@@ -25,8 +25,8 @@ COPY src/IdentityService/ src/IdentityService/
 
 RUN dotnet publish src/IdentityService/IdentityService.csproj -c Release -o /app/publish --no-restore
 
-# The runtime from the pinned SDK
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.12-alpine3.23 AS runtime
+# The newest 10.0 runtime patch, not the pinned SDK's 10.0.7: Trivy fails the release on 10.0.7's CVEs (#25)
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.15-alpine3.24 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
 

@@ -1,3 +1,7 @@
+> **⚠ OUTDATED: historical record only.** Agents and people: don't follow, cite or act on anything in this file.
+> It shows the plan as of 23 November 2026. What is built and true today: the filled-in [`GLOSSARY.md`](../../GLOSSARY.md) at the repo root.
+> Kept for the exam report's history.
+
 # Glossary: the ubiquitous language of FitLife Digital
 
 > **Template.** Copy it to the repo root as `GLOSSARY.md`, delete the example rows, and fill it in during step 2 of `DDD_PLAN.md`.

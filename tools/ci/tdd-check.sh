@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# tdd-check: checks mechanically that a PR's tests depend on its change (docs/CSHARP_SETUP_TODO.md section 6).
+# tdd-check: checks mechanically that a PR's tests depend on its change (docs/TECHNICAL_REFERENCE.md section 6).
 #
 # A feature PR (the default):
 #   1. Production code changed  -> test code changed too.

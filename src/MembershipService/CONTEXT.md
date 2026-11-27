@@ -40,7 +40,7 @@ Words from other contexts that we do **not** use here: *user* or *login* (that i
 | Command | `PauseMembershipCommand` | `PUT /members/me/pause` `{ "from": "2026-12-01", "to": "2026-12-31" }`: 200 with the body of `GET /members/me` plus `pausedFrom` and `pausedTo`, or 409 problem details whose `code` is the `PauseResult` name. A missing or malformed date is 400 |
 | Command | `EndPauseCommand` | `DELETE /members/me/pause`: 200 with the same body, or 409 with `"code": "NoPauseToEnd"`. Both commands: 404 when the account hasn't joined; "today" is the UTC date from `TimeProvider` |
 | Command | `CancelMembershipCommand` | `POST /members/me/cancellation`, no body (UC8): 200 `{ "lastTrainingDay": "2026-12-31" }`, or 409 with `"code": "MembershipAlreadyCancelled"`. 404 when the account hasn't joined; "today" is the UTC date from `TimeProvider` |
-| Query | by account id | `GET /members/by-account/{accountId}`: the `MemberId` and whether the membership is active today (`Paused` inside a pause period), 404 for an unknown account. Only for the account in the token: another account answers 404 too, so a member can't look up other members. Booking asks this before a reservation (#173) |
+| Query | by account id | `GET /members/by-account/{accountId}`: the `MemberId`, whether the membership is active today (`Paused` inside a pause period), and `pausedFrom` and `pausedTo` while a pause period is running or still to come (`HasPauseNotOverOn`), else both null (#536), 404 for an unknown account. Only for the account in the token: another account answers 404 too, so a member can't look up other members. Booking asks this before a reservation (#173) |
 | Query | my membership | `GET /members/me`: the membership of the account in the token (`sub`, never the path): `memberId`, `membershipType`, `membershipStatus`, `isActive`, `startDate`, `lastTrainingDay` (null unless cancelled). 404 when the account hasn't joined. The member portal's "Mit medlemskab" reads it (#210) |
 
 No events yet. `MembershipPaused` comes with #251, `MembershipCancelled` with #251.
@@ -51,7 +51,7 @@ No events yet. `MembershipPaused` comes with #251, `MembershipCancelled` with #2
 |---|---|---|---|
 | Identity | The JWT, checked with `libs/FitLife.Authentication` | Open Host Service (upstream) | Every service checks the same token the same way |
 | Booking; Access (NEXT) | REST, the lookup by account id | Open Host Service (we are upstream) | Several contexts need the same answer, synchronously |
-| Payment provider | REST, `POST /v1/charges` at `PaymentProvider:BaseUrl`; a Postman Mock Server in the PoC (`tests/postman/mocks/payment-provider.*`) | ACL: `PaymentProvider/PaymentProviderClient` is the only class that knows its field names | External system (P5). Declined, a provider error and no answer all mean the fee is not paid |
+| Payment provider | REST, `POST /v1/charges` at `PaymentProvider:BaseUrl`; a Postman Mock Server in the PoC (`tests/postman/mocks/payment-provider.*`) | ACL: `PaymentProvider/PaymentProviderClient` is the only class that knows its field names | External system (P5). Declined, a provider error and no answer all mean the fee is not paid. Once a charge starts, a cancelled request stops neither the charge nor the save of its result, so a paid fee is never left as `PaymentMissing`; the client's 10 s time-out still applies (#544) |
 
 ## Rules for this folder
 

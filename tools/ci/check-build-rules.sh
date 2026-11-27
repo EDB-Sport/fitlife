@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Executable acceptance check for the build rules (issue #3, docs/CSHARP_SETUP_TODO.md sections 1-3).
+# Executable acceptance check for the build rules (issue #3, docs/TECHNICAL_REFERENCE.md sections 1-3).
 # Builds small throwaway projects inside src/ and tests/, so the root Directory.Build.* files apply,
 # and checks that each rule fails the build, and that clean code still builds.
 # Usage: tools/ci/check-build-rules.sh   (exit code 0 = every rule works)
@@ -291,7 +291,7 @@ write_project "$a"
 model_code "$a" Customer
 expect_error "a *.Models type that isn't in GLOSSARY.md fails (TEAM008)" "$a" "is not in the 'In code' column of GLOSSARY.md"
 
-# 15. Unit-test projects can't reference real infrastructure (issue #13, docs/CSHARP_SETUP_TODO.md section 6)
+# 15. Unit-test projects can't reference real infrastructure (issue #13, docs/TECHNICAL_REFERENCE.md section 6)
 write_project "$t" '<ItemGroup><PackageReference Include="Testcontainers.MongoDb" /></ItemGroup>'
 expect_error "*.Tests project referencing Testcontainers.MongoDb fails" "$t" "FITLIFE002"
 

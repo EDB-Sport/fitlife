@@ -125,6 +125,14 @@ public sealed class Membership
         return PauseResult.Paused;
     }
 
+    /// <summary>Whether the pause period is running or still to come on a day: it has one, and its last day isn't before it.</summary>
+    /// <param name="day">The day, usually today.</param>
+    /// <returns>True while the pause period isn't over.</returns>
+    public bool HasPauseNotOverOn(DateOnly day)
+    {
+        return PausedTo is { } to && day <= to;
+    }
+
     /// <summary>
     /// Ends the pause early (UC6): a pause period that isn't over on <paramref name="today"/>, running or still to come, is
     /// removed, so the membership is Aktiv from today.
@@ -133,7 +141,7 @@ public sealed class Membership
     /// <returns><see cref="EndPauseResult.PauseEnded"/>, or <see cref="EndPauseResult.NoPauseToEnd"/>.</returns>
     public EndPauseResult EndPause(DateOnly today)
     {
-        if (PausedTo is not { } to || to < today)
+        if (!HasPauseNotOverOn(today))
         {
             return EndPauseResult.NoPauseToEnd;
         }

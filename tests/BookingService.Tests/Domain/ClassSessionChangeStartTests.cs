@@ -78,12 +78,50 @@ public sealed class ClassSessionChangeStartTests
         });
     }
 
+    [TestCase(0)] // exactly at the start
+    [TestCase(30)] // while it runs
+    public void ChangeStart_AfterTheClassSessionHasStarted_IsRejected(int minutesAfterStart)
+    {
+        // Arrange: #538, a class session that has started keeps its start and its reservations
+        var clock = new FakeTimeProvider(Now); // its own: the fixture's clock is shared between tests
+        ClassSession classSession = ClassSessionStartingAt(Now.AddHours(1));
+        DateTimeOffset start = classSession.StartTime;
+        int eventsBefore = classSession.DomainEvents.Count;
+        clock.SetUtcNow(start.AddMinutes(minutesAfterStart));
+
+        // Act
+        ChangeStartResult result = classSession.ChangeStart(start.AddDays(1), clock);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(ChangeStartResult.ClassSessionStarted));
+            Assert.That(classSession.StartTime, Is.EqualTo(start));
+            Assert.That(classSession.DomainEvents, Has.Count.EqualTo(eventsBefore));
+        });
+    }
+
+    [Test]
+    public void ChangeStart_JustBeforeTheStart_Changes()
+    {
+        // Arrange: a clock of its own, because the fixture's clock is shared between tests
+        var clock = new FakeTimeProvider(Now);
+        ClassSession classSession = ClassSessionStartingAt(Now.AddHours(1));
+        clock.SetUtcNow(classSession.StartTime.AddTicks(-1));
+
+        // Act
+        ChangeStartResult result = classSession.ChangeStart(Now.AddDays(1), clock);
+
+        // Assert
+        Assert.That(result, Is.EqualTo(ChangeStartResult.Changed));
+    }
+
     [Test]
     public void ChangeStart_OnACancelledClassSession_IsRejected()
     {
         // Arrange
         ClassSession classSession = ClassSessionStartingAt(Now.AddDays(1));
-        classSession.Cancel();
+        classSession.Cancel(_clock);
         int events = classSession.DomainEvents.Count;
 
         // Act

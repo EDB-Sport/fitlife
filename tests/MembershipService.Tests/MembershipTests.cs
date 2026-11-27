@@ -99,6 +99,35 @@ public sealed class MembershipTests
         Assert.That(membership.StatusOn(new DateOnly(year, month, day)), Is.EqualTo(expected));
     }
 
+    [TestCase(2026, 11, 30, true)] // still to come
+    [TestCase(2026, 12, 31, true)] // its last day
+    [TestCase(2027, 1, 1, false)] // over
+    public void HasPauseNotOverOn_IsTrueUntilTheLastDayOfThePause(int year, int month, int day, bool expected)
+    {
+        // Arrange
+        Membership membership = ActiveMembership();
+        membership.Pause(new DateOnly(2026, 12, 1), new DateOnly(2026, 12, 31), Today);
+
+        // Act
+        bool notOver = membership.HasPauseNotOverOn(new DateOnly(year, month, day));
+
+        // Assert
+        Assert.That(notOver, Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void HasPauseNotOverOn_WithoutAPause_IsFalse()
+    {
+        // Arrange
+        Membership membership = ActiveMembership();
+
+        // Act
+        bool notOver = membership.HasPauseNotOverOn(Today);
+
+        // Assert
+        Assert.That(notOver, Is.False);
+    }
+
     [Test]
     public void Pause_StartingToday_IsPausedToday()
     {

@@ -3,8 +3,10 @@
 # deploy/azure/modules/containers.bicep too, or on the local-only list below (issue #524). So compose and Azure can't
 # drift apart unnoticed (#519 was such a drift). Step 8 of tools/ci/deploy-check.sh.
 # Usage: tools/ci/compose-azure-env.sh [services.yml containers.bicep main.bicepparam]   (default: the repo's files)
-# Compared: the services that have a container in Azure (the thin slice). The gateway is Azure's "nginx" container, and
-# '${serviceContext}-svc' is the context main.bicepparam sets. A service with no Azure container is named and skipped.
+# Compared: the services that have a container in Azure. The gateway is Azure's "nginx" container. The services' containers
+# come from the `for service in services` loop: one '${service.context}-svc' per entry of services in main.bicepparam, with
+# the names in its concat(...): the shared list and its own <var>[service.context] (serviceSettings). A service with no
+# Azure container is named and skipped.
 # Fails, naming the service and key, for a compose key the container lacks, and for a local-only entry that matches no
 # compose key (so the list can't go stale). COMPOSE_AZURE_LOCAL_ONLY replaces the list (tests). Needs python3.
 # Tests: tools/ci/compose-azure-env.test.sh
@@ -14,10 +16,7 @@ set -uo pipefail
 # A real gap in Azure is listed here with its issue, so deploy-check stays green until that issue closes it.
 LOCAL_ONLY='
 *:Loki__Url Azure runs no Loki container, so there is no address to give (only notification-svc sets one)
-booking-svc:MongoDb__* #519: Azure Booking has no MongoDb__Host or MongoDb__Port yet
 booking-svc:Seed__Enabled #386: the demo class schedule in Azure
-booking-svc:WaitlistClosing__Enabled #386: Booking with its compose settings in Azure
-booking-svc:Membership__BaseUrl the thin slice has no membership-svc in Azure (#386)
 member-portal:Gateway__BaseUrl #599: a real gap, the portal in Azure has no gateway address yet
 '
 
@@ -53,21 +52,50 @@ for line in open(services_file, encoding="utf-8"):
     elif in_env and service and (m := re.match(r"^      ([A-Za-z0-9_]+):", line)):
         compose[service].append(m.group(1))
 
-context = re.search(r"param serviceContext = '([^']+)'", open(bicepparam_file, encoding="utf-8").read())
-context = context.group(1) if context else ""
+# main.bicepparam: the contexts of param services, in order
+contexts, in_services = [], False
+for line in open(bicepparam_file, encoding="utf-8"):
+    if re.match(r"^param services = \[", line):
+        in_services = True
+    elif in_services and re.match(r"^\]", line):
+        in_services = False
+    elif in_services and (m := re.match(r"^\s*context: '([^']+)'", line)):
+        contexts.append(m.group(1))
 
-# bicep: container name -> the names in its environmentVariables
-azure, container, in_env, env_indent = {}, None, False, 0
+# bicep: container name -> the names in its environmentVariables, either a list or concat(lists, <var>[service.context]);
+# and each `var <name> = {` object of lists (serviceSettings) -> key -> the names in that key's list
+azure, container, in_env, env_end, refs = {}, None, False, None, {}
+objects, obj, obj_key = {}, None, None
 for line in open(bicep_file, encoding="utf-8"):
-    if m := re.match(r"^    name: '([^']+)'", line):
-        container, in_env = m.group(1).replace("${serviceContext}", context), False
-        azure[container] = set()
-    elif m := re.match(r"^(\s*)environmentVariables: \[", line):
-        in_env, env_indent = True, len(m.group(1))
-    elif in_env and re.match(r"^\s{%d}\]" % env_indent, line):
+    if m := re.match(r"^var (\w+) = \{\s*$", line):
+        obj, obj_key = m.group(1), None
+        objects[obj] = {}
+    elif obj and re.match(r"^\}", line):
+        obj = None
+    elif obj and (m := re.match(r"^  (\w+): \[", line)):
+        obj_key = m.group(1)
+        objects[obj][obj_key] = set()
+    elif obj and obj_key and (m := re.match(r"^\s*name: '([A-Za-z0-9_]+)'", line)):
+        objects[obj][obj_key].add(m.group(1))
+    elif m := re.match(r"^    name: '([^']+)'", line):
+        container, in_env = m.group(1), False
+        azure[container], refs[container] = set(), []
+    elif m := re.match(r"^(\s*)environmentVariables: (\[|concat\()", line):
+        in_env, env_end = True, re.compile(r"^\s{%d}%s" % (len(m.group(1)), re.escape("]" if m.group(2) == "[" else ")")))
+    elif in_env and env_end.match(line):
         in_env = False
     elif in_env and container and (m := re.match(r"^\s*name: '([A-Za-z0-9_]+)'", line)):
         azure[container].add(m.group(1))
+    elif in_env and container and (m := re.match(r"^\s*(\w+)\[service\.context\]", line)):
+        refs[container].append(m.group(1))
+
+# the loop's container: one per context, with the shared names and the context's own
+template = "${service.context}-svc"
+if template in azure:
+    for context in contexts:
+        azure[f"{context}-svc"] = azure[template] | set().union(
+            *(objects.get(var, {}).get(context, set()) for var in refs[template]))
+    del azure[template]
 
 entries = []
 for line in local_only_text.splitlines():

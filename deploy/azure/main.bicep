@@ -1,5 +1,5 @@
 // FitLife production on Azure Container Instances (docs/TECHNICAL_REFERENCE.md section 9a, issues #10 and #23).
-// One container group: Caddy (HTTPS) -> Nginx -> the service and the member portal, with MongoDB, RabbitMQ
+// One container group: Caddy (HTTPS) -> Nginx -> the services and the member portal, with MongoDB, RabbitMQ
 // and Vault next to them. Loki and Grafana join with #6, the other services and UIs as they are released.
 // Deploy: see deploy/azure/README.md. Values for production are in main.bicepparam.
 targetScope = 'resourceGroup'
@@ -23,20 +23,21 @@ param dockerHubUsername string
 @minLength(1)
 param dockerHubToken string
 
-@description('Bounded context of the one service in the thin slice. Nginx routes /api/<context>/ to it.')
-@allowed([
-  'booking'
-  'membership'
-  'identity'
-])
-param serviceContext string
+@description('A service of the group.')
+type service = {
+  @description('Its bounded context. Nginx routes /api/<context>/ to it.')
+  context: 'booking' | 'membership' | 'identity'
 
-@description('Docker Hub repository of that service, without a tag, e.g. albertarnason/bookingservice.')
-param serviceImage string
+  @description('Its Docker Hub repository, without a tag, e.g. albertarnason/bookingservice.')
+  image: string
 
-@description('Released version of the service image, X.Y.Z (section 9). Never latest.')
-@minLength(5)
-param serviceImageTag string
+  @description('Its released version, X.Y.Z (section 9). Never latest.')
+  @minLength(5)
+  imageTag: string
+}
+
+@description('The services in the container group besides NotificationService, one container each. A further service is one more entry (and its port and settings in modules/containers.bicep).')
+param services service[]
 
 @description('Whether the member portal is in the container group. False until it has a release (no image to pull yet); then Nginx answers 502 on its routes.')
 param includeMemberPortal bool
@@ -57,9 +58,6 @@ param notificationImage string
 @description('Released version of the NotificationService image, X.Y.Z. Never latest. Unused while includeNotificationService is false.')
 @minLength(5)
 param notificationImageTag string
-
-@description('Health endpoint of the service, for its liveness and readiness probes (section 7).')
-param serviceHealthPath string = '/health'
 
 @description('Health endpoint of the member portal, for its liveness and readiness probes (section 7).')
 param uiHealthPath string = '/health'
@@ -128,6 +126,24 @@ param vaultRootToken string
 @minLength(32)
 param jwtSigningKey string
 
+// The demo accounts' passwords (#237). Made-up demo data for the public URL, so not the values of deploy/compose/.env.example,
+// and not in Vault: Identity gets them as settings, as in compose.
+
+@description('Password of the demo account with the role Medlem, which the smoke test logs in with.')
+@secure()
+@minLength(1)
+param demoMedlemPassword string
+
+@description('Password of the demo account with the role Træner.')
+@secure()
+@minLength(1)
+param demoTraenerPassword string
+
+@description('Password of the demo account with the role Admin.')
+@secure()
+@minLength(1)
+param demoAdminPassword string
+
 // Caddy keeps its Let's Encrypt certificate here, so a restart doesn't request a new one.
 var caddyShareName = 'caddy-data'
 // MongoDB's data directory. Loki and Grafana get their shares here with #6.
@@ -161,9 +177,10 @@ module containers 'modules/containers.bicep' = {
     mongoShareName: mongoShareName
     dockerHubUsername: dockerHubUsername
     dockerHubToken: dockerHubToken
-    serviceContext: serviceContext
-    serviceImage: '${serviceImage}:${serviceImageTag}'
-    serviceHealthPath: serviceHealthPath
+    services: map(services, s => {
+      context: s.context
+      image: '${s.image}:${s.imageTag}'
+    })
     includeMemberPortal: includeMemberPortal
     uiImage: '${uiImage}:${uiImageTag}'
     uiHealthPath: uiHealthPath
@@ -184,11 +201,11 @@ module containers 'modules/containers.bicep' = {
     rabbitmqPassword: rabbitmqPassword
     vaultRootToken: vaultRootToken
     jwtSigningKey: jwtSigningKey
+    demoMedlemPassword: demoMedlemPassword
+    demoTraenerPassword: demoTraenerPassword
+    demoAdminPassword: demoAdminPassword
   }
 }
 
 @description('The public HTTPS address of the gateway. The hand-in links start here.')
 output publicUrl string = containers.outputs.publicUrl
-
-@description('Where the thin-slice service is reached through the gateway, e.g. /api/booking. Used by the smoke test.')
-output serviceBasePath string = '/api/${serviceContext}'

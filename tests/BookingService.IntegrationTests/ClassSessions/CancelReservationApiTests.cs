@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using BookingService.Api;
 using BookingService.Application;
 using BookingService.Domain;
+using FitLife.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Time.Testing;
 
@@ -28,6 +29,29 @@ public sealed class CancelReservationApiTests
 
         // Assert
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
+    }
+
+    [Test]
+    public async Task DeleteMyReservation_WithoutTheRoleMedlem_Returns403()
+    {
+        // Arrange
+        using BookingApiFactory factory = Factory();
+        var memberId = Guid.NewGuid();
+        factory.Membership.Answer = MemberLookup.Found(memberId, isActive: true);
+        ClassSession classSession = await StoredAsync(factory, reservedBy: memberId).ConfigureAwait(false);
+        using HttpClient client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", TestTokens.For(Guid.NewGuid(), FitLifeRoles.Traener));
+
+        // Act
+        using HttpResponseMessage response = await client.DeleteAsync(MyReservationOn(classSession)).ConfigureAwait(false);
+
+        // Assert: the token's account is a member with a reservation here, so only the role stops the cancellation
+        int? freeSeats = await FreeSeatsAsync(client, classSession).ConfigureAwait(false);
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Forbidden));
+            Assert.That(freeSeats, Is.Zero, "the reservation is kept");
+        });
     }
 
     [Test]

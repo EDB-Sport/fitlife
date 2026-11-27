@@ -20,9 +20,8 @@ This table is a reference, not a second spec. When an issue and the table disagr
 | `DELETE /accounts/{id}/roles/traener` | IdentityService | – | – | – | yes | [#365](https://github.com/EDB-Sport/fitlife/issues/365) |
 | `GET /class-sessions` | BookingService | yes | yes | yes | yes | [#254](https://github.com/EDB-Sport/fitlife/issues/254), stays open in [#369](https://github.com/EDB-Sport/fitlife/issues/369) |
 | `POST /class-sessions/{id}/reservations` | BookingService | – | yes | – | – | [#260](https://github.com/EDB-Sport/fitlife/issues/260) |
-| `DELETE /class-sessions/{id}/reservations/{memberId}` | BookingService | yes | yes | yes | yes | [#369](https://github.com/EDB-Sport/fitlife/issues/369) makes it Medlem only |
 | `POST /class-sessions/{id}/waitlist` | BookingService | yes | yes | yes | yes | [#369](https://github.com/EDB-Sport/fitlife/issues/369) makes it Medlem only; [#263](https://github.com/EDB-Sport/fitlife/issues/263) |
-| `DELETE /class-sessions/{id}/reservations/mine` (planned) | BookingService | – | yes | – | – | [#262](https://github.com/EDB-Sport/fitlife/issues/262) |
+| `DELETE /class-sessions/{id}/reservations/mine` | BookingService | – | yes | – | – | [#262](https://github.com/EDB-Sport/fitlife/issues/262) |
 | `DELETE /class-sessions/{id}/waitlist/mine` (planned) | BookingService | – | yes | – | – | [#264](https://github.com/EDB-Sport/fitlife/issues/264) |
 | `GET /reservations/mine` (planned) | BookingService | – | yes | – | – | [#265](https://github.com/EDB-Sport/fitlife/issues/265) |
 | `POST /class-sessions` | BookingService | – | – | yes | yes | [#238](https://github.com/EDB-Sport/fitlife/issues/238) |

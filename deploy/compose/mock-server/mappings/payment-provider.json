@@ -1,0 +1,132 @@
+{
+  "mappings": [
+    {
+      "priority": 1,
+      "request": {
+        "method": "POST",
+        "urlPath": "/v1/charges",
+        "headers": {
+          "x-mock-response-name": {
+            "equalTo": "charge-approved"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": "{\n  \"charge_id\": \"ch_1001\",\n  \"outcome\": \"approved\",\n  \"amount_minor\": 35000,\n  \"currency\": \"DKK\",\n  \"created\": \"2026-11-24T09:00:00Z\"\n}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "priority": 1,
+      "request": {
+        "method": "POST",
+        "urlPath": "/v1/charges",
+        "headers": {
+          "x-mock-response-name": {
+            "equalTo": "charge-declined"
+          }
+        }
+      },
+      "response": {
+        "status": 402,
+        "body": "{\n  \"charge_id\": \"ch_1002\",\n  \"outcome\": \"declined\",\n  \"decline_code\": \"insufficient_funds\",\n  \"amount_minor\": 35000,\n  \"currency\": \"DKK\",\n  \"created\": \"2026-11-24T09:00:00Z\"\n}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "priority": 1,
+      "request": {
+        "method": "POST",
+        "urlPath": "/v1/charges",
+        "headers": {
+          "x-mock-response-name": {
+            "equalTo": "provider-error"
+          }
+        }
+      },
+      "response": {
+        "status": 503,
+        "body": "{\n  \"error\": \"service_unavailable\",\n  \"message\": \"The provider is down for maintenance. Try again later.\"\n}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPath": "/v1/charges",
+        "headers": {
+          "x-mock-response-code": {
+            "equalTo": "201"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": "{\n  \"charge_id\": \"ch_1001\",\n  \"outcome\": \"approved\",\n  \"amount_minor\": 35000,\n  \"currency\": \"DKK\",\n  \"created\": \"2026-11-24T09:00:00Z\"\n}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPath": "/v1/charges",
+        "headers": {
+          "x-mock-response-code": {
+            "equalTo": "402"
+          }
+        }
+      },
+      "response": {
+        "status": 402,
+        "body": "{\n  \"charge_id\": \"ch_1002\",\n  \"outcome\": \"declined\",\n  \"decline_code\": \"insufficient_funds\",\n  \"amount_minor\": 35000,\n  \"currency\": \"DKK\",\n  \"created\": \"2026-11-24T09:00:00Z\"\n}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPath": "/v1/charges",
+        "headers": {
+          "x-mock-response-code": {
+            "equalTo": "503"
+          }
+        }
+      },
+      "response": {
+        "status": 503,
+        "body": "{\n  \"error\": \"service_unavailable\",\n  \"message\": \"The provider is down for maintenance. Try again later.\"\n}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "priority": 5,
+      "request": {
+        "method": "POST",
+        "urlPath": "/v1/charges"
+      },
+      "response": {
+        "status": 201,
+        "body": "{\n  \"charge_id\": \"ch_1001\",\n  \"outcome\": \"approved\",\n  \"amount_minor\": 35000,\n  \"currency\": \"DKK\",\n  \"created\": \"2026-11-24T09:00:00Z\"\n}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    }
+  ]
+}

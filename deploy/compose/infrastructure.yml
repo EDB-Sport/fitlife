@@ -1,4 +1,4 @@
-# Infrastructure group: MongoDB, RabbitMQ and Vault.
+# Infrastructure group: MongoDB, RabbitMQ, Vault and the mock server that stands in for external systems.
 # Image versions are pinned, never :latest (docs/TECHNICAL_REFERENCE.md section 7).
 # Passwords come from .env (copy .env.example); none are written here.
 
@@ -79,6 +79,21 @@ services:
       timeout: 5s
       retries: 30
       start_period: 10s
+
+  mock-server:
+    # Stands in for the external systems (#279): it serves the saved examples of tests/postman/mocks/*.mock collections,
+    # picked by x-mock-response-name or x-mock-response-code as the Postman Mock Server does, so compose and api-tests
+    # don't depend on Postman's cloud. The mappings are made by tools/ci/mock-mappings.sh --write (README.md, "Mock server").
+    image: wiremock/wiremock:3.13.2-3
+    volumes:
+      - ./mock-server/mappings:/home/wiremock/mappings:ro
+    ports:
+      - "127.0.0.1:${MOCK_SERVER_HOST_PORT:-8090}:8080" # for the mock-tests collections (environments/ci)
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/__admin/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
   mongodb-data:

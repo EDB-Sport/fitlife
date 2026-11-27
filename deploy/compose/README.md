@@ -33,6 +33,7 @@ docker compose up -d --wait
 | MongoDB | `mongodb://localhost:27018` (27018, so it doesn't clash with a local MongoDB on 27017) |
 | Grafana | http://localhost:8080/grafana/, user and password `GRAFANA_ADMIN_*` from `.env` |
 | Loki | http://localhost:3100 (`/ready`, push and query API), for services run outside compose |
+| Mock server | http://localhost:8090 (`MOCK_SERVER_HOST_PORT`), the stand-in for the payment provider and user registration (below) |
 
 Stop, keeping the data:
 
@@ -116,6 +117,22 @@ A floating tag (`aspnet:10.0-alpine`, as in `src/MemberPortal.Web/Dockerfile`) d
 One group on its own: `docker compose -f infrastructure.yml up -d --wait`.
 
 Two stacks side by side (two worktrees, say): give each its own project name and ports, e.g. `docker compose -p fitlife-6 up -d --wait` with other `*_PORT` values in that folder's `.env`.
+
+## Mock server
+
+The `mock-server` container (WireMock, in `infrastructure.yml`) stands in for the external systems, so the stack and `api-tests` don't depend on Postman's cloud (#279). It serves the saved examples of `tests/postman/mocks/*.mock.postman_collection.json` and picks one the way the Postman Mock Server does: by the `x-mock-response-name` header, else by `x-mock-response-code`, else the first example saved for that path.
+
+The mappings in `mock-server/mappings/` are made from the collections. Don't edit them by hand. After changing a collection, run `tools/ci/mock-mappings.sh --write` and commit both. `tools/ci/mock-mappings.test.sh` fails when they differ.
+
+Which mock each environment uses:
+
+| Where | Payment provider | User registration |
+|---|---|---|
+| compose (`membership-svc`) | `http://mock-server:8080` (`PaymentProvider__BaseUrl`) | – (no service calls it yet) |
+| `environments/ci` (`api-tests`) | `http://localhost:8090` (`paymentProviderMockUrl`) | `http://localhost:8090` (`userRegistrationMockUrl`) |
+| `environments/local`, `environments/azure` | not created yet (`tests/postman/README.md`) | the public Postman Mock Server |
+
+`api-tests` also runs each mock-tests collection once more against the public Postman Mock Server, with `environments/local`. Its report is the project's evidence for the mock server. A failure there only warns, because Postman's cloud is not ours to fix.
 
 ## Passwords
 

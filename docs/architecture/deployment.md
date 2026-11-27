@@ -28,6 +28,7 @@ node "Docker host: compose project fitlife" {
     database "mongodb\none database per service:\nbooking, membership,\nidentity, notification" as mongodb
     queue "rabbitmq\nexchange fitlife.events" as rabbitmq
     rectangle "vault\ndev mode, secret/<name>-svc" as vault
+    rectangle "mock-server\nWireMock: the payment provider's\nstand-in (#279)" as mockserver
   }
 
   package "monitoring.yml" {
@@ -36,7 +37,6 @@ node "Docker host: compose project fitlife" {
   }
 }
 
-cloud "Postman Mock Server\npayment provider\n(outside the stack,\nnot created yet)" as payment
 
 person --> gateway : HTTP, the only entry point
 
@@ -51,7 +51,7 @@ gateway --> grafana : HTTP /grafana/
 portal --> gateway : HTTP to the services' APIs\n(Gateway:BaseUrl)
 mcp --> gateway : HTTP /api/booking/\n(class schedule)
 booking --> membership : HTTP: is the member active?\n(account id → MemberId)
-membership ..> payment : HTTPS: charge the fee\n(anticorruption layer;\nno address in compose, #279)
+membership --> mockserver : HTTP: charge the fee\n(anticorruption layer,\nPaymentProvider:BaseUrl, #279)
 
 booking ..> rabbitmq : event: ReservationMade, ...\n(publish, #192, #242)
 membership ..> rabbitmq : event: MembershipPaused, ...\n(publish, #251)

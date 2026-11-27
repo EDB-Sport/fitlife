@@ -24,7 +24,7 @@
 #  11. Booking, Membership and Identity are in the group (#371), each on its own port (the one Nginx routes to),
 #      with ASPNETCORE_HTTP_PORTS and both probes on /health
 #  12. each of the three gets the settings its block in deploy/compose/services.yml has, with 127.0.0.1 addresses
-#      and its secrets as secureValue, and nothing else (only Loki__Url is left out, #277)
+#      and its secrets as secureValue, and nothing else (only Loki__Url, #277, and PaymentProvider__BaseUrl, #279, are left out)
 #  13. the Nginx container has a value for every ${...} in the template
 #  14. the demo accounts' passwords reach Identity from their own secrets, and no password of .env.example is in
 #      deploy/azure
@@ -554,6 +554,7 @@ for context in SERVICES:
 #     ASPNETCORE_HTTP_PORTS.
 LEFT_OUT = {
     "Loki__Url": "Loki isn't in the group (#277)",
+    "PaymentProvider__BaseUrl": "the group has no payment provider mock yet (#279, #578)",
 }
 for context in SERVICES:
     name = f"{context}-svc"

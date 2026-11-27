@@ -87,7 +87,8 @@ check() {
   failed=1
   echo "FAIL $name"
   echo "  command: $*"
-  tr -d '\r' <"$log" | { grep -E -A15 '^\s*Failed |error [A-Z]+[0-9]+:' || true; } | head -15 | sed 's/^/  /' >"$log.short"
+  # sed -n reads all its input, so a large log never ends the pipe early with SIGPIPE under pipefail.
+  tr -d '\r' <"$log" | { grep -E -A15 '^\s*Failed |error [A-Z]+[0-9]+:' || true; } | sed -n '1,15s/^/  /p' >"$log.short"
   if [ ! -s "$log.short" ]; then
     tr -d '\r' <"$log" | tail -15 | sed 's/^/  /' >"$log.short"
   fi

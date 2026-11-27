@@ -35,6 +35,8 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
+          cache: true # NuGet global-packages from the Actions cache, keyed on the lock files (#601)
+          cache-dependency-path: '**/packages.lock.json'
       - name: Restore from the lock files
         run: dotnet restore --locked-mode
 
@@ -46,6 +48,8 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
+          cache: true # NuGet global-packages from the Actions cache, keyed on the lock files (#601)
+          cache-dependency-path: '**/packages.lock.json'
       - run: dotnet restore --locked-mode
       - name: Build (compiler, analyzers, TEAM rules)
         run: tools/ci/summarize.sh build "Fix the first compiler or analyzer error, the others often follow from it. Run dotnet build -c Release locally." -- dotnet build -c Release --no-restore -v q -clp:NoSummary -tl:off
@@ -60,6 +64,8 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
+          cache: true # NuGet global-packages from the Actions cache, keyed on the lock files (#601)
+          cache-dependency-path: '**/packages.lock.json'
       - run: dotnet restore --locked-mode
       - name: Check formatting
         run: tools/ci/summarize.sh format "Run dotnet format locally and commit what it changes." -- dotnet format --verify-no-changes --no-restore
@@ -74,6 +80,8 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
+          cache: true # NuGet global-packages from the Actions cache, keyed on the lock files (#601)
+          cache-dependency-path: '**/packages.lock.json'
       - run: dotnet restore --locked-mode
       - run: dotnet build -c Release --no-restore -v q -clp:NoSummary -tl:off
       - name: Test with coverage
@@ -103,6 +111,8 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
+          cache: true # NuGet global-packages from the Actions cache, keyed on the lock files (#601)
+          cache-dependency-path: '**/packages.lock.json'
       - run: dotnet restore --locked-mode
       - name: Regenerate the contracts and compare them with the commit
         run: tools/ci/summarize.sh contract "Run tools/ci/check-contracts.sh locally and commit the regenerated contracts." -- tools/ci/check-contracts.sh
@@ -118,6 +128,8 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0; mutation.test.sh builds and mutates a throwaway project
         with:
           global-json-file: global.json
+          cache: true # NuGet global-packages from the Actions cache, keyed on the lock files (#601)
+          cache-dependency-path: '**/packages.lock.json'
       # actionlint on the workflows and shellcheck on tools/ and deploy/ scripts, from pinned images (#273).
       - name: Static checks (actionlint, shellcheck)
         run: tools/ci/static-check.sh
@@ -144,6 +156,8 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
+          cache: true # NuGet global-packages from the Actions cache, keyed on the lock files (#601)
+          cache-dependency-path: '**/packages.lock.json'
       - name: Check that every build rule still fails the build
         run: tools/ci/summarize.sh build-rules "A build rule in Directory.Build.* no longer fails the build. Run tools/ci/check-build-rules.sh locally." -- tools/ci/check-build-rules.sh
 
@@ -190,6 +204,8 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
+          cache: true # NuGet global-packages from the Actions cache, keyed on the lock files (#601)
+          cache-dependency-path: '**/packages.lock.json'
       - name: Mutation testing on the changed C# files
         run: tools/ci/summarize.sh mutation "Add a test that kills the surviving mutants listed in the mutation report." -- tools/ci/mutation.sh
         env:

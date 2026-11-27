@@ -19,12 +19,37 @@ param notificationDbPassword = readEnvironmentVariable('NOTIFICATION_DB_PASSWORD
 param rabbitmqPassword = readEnvironmentVariable('RABBITMQ_PASSWORD')
 param vaultRootToken = readEnvironmentVariable('VAULT_DEV_ROOT_TOKEN')
 param jwtSigningKey = readEnvironmentVariable('JWT_SIGNING_KEY')
+// The demo accounts' passwords (#371): GitHub secrets of the environment production, not the values of .env.example.
+param demoMedlemPassword = readEnvironmentVariable('DEMO_MEDLEM_PASSWORD')
+param demoTraenerPassword = readEnvironmentVariable('DEMO_TRAENER_PASSWORD')
+param demoAdminPassword = readEnvironmentVariable('DEMO_ADMIN_PASSWORD')
 
-// The thin slice: one service and the member portal. One image tag per service, never latest.
-param serviceContext = 'booking'
-param serviceImage = 'albertarnason/bookingservice'
-param serviceImageTag = readEnvironmentVariable('SERVICE_IMAGE_TAG', '0.1.0')
+// The services in the group. One image tag per service, never latest: deploy.yml sets each from the newest
+// <prefix>/v* release tag (tools/ci/deploy-versions.sh). A further service is one more entry. NotificationService
+// (#261) has its own parameters below, as it is left out while it has no release.
+param services = [
+  {
+    context: 'booking'
+    image: 'albertarnason/bookingservice'
+    imageTag: readEnvironmentVariable('BOOKING_IMAGE_TAG', '0.1.0')
+  }
+  {
+    context: 'membership'
+    image: 'albertarnason/membershipservice'
+    imageTag: readEnvironmentVariable('MEMBERSHIP_IMAGE_TAG', '0.1.0')
+  }
+  {
+    context: 'identity'
+    image: 'albertarnason/identityservice'
+    imageTag: readEnvironmentVariable('IDENTITY_IMAGE_TAG', '0.1.0')
+  }
+]
+
 param uiImage = 'albertarnason/memberportal'
 param uiImageTag = readEnvironmentVariable('UI_IMAGE_TAG', '0.1.0')
 // No UI_IMAGE_TAG, no member portal: deploy.yml sets it only once the portal has a release (#198).
 param includeMemberPortal = !empty(readEnvironmentVariable('UI_IMAGE_TAG', ''))
+param notificationImage = 'albertarnason/notificationservice'
+param notificationImageTag = readEnvironmentVariable('NOTIFICATION_IMAGE_TAG', '0.1.0')
+// Likewise: no NOTIFICATION_IMAGE_TAG, no NotificationService.
+param includeNotificationService = !empty(readEnvironmentVariable('NOTIFICATION_IMAGE_TAG', ''))

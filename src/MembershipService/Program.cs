@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using FitLife.Authentication;
 using FitLife.Configuration;
 using FitLife.Correlation;
+using FitLife.Messaging;
 using MembershipService.Api;
 using MembershipService.Application;
 using MembershipService.PaymentProvider;
@@ -40,7 +41,16 @@ try
     builder.Services.AddMongoRepositories();
     builder.Services.AddOptions<MembershipFeeSettings>().BindConfiguration(MembershipFeeSettings.Section);
     builder.Services.AddPaymentProvider();
+    // Integration events to RabbitMQ (#251). RabbitMq:Username and RabbitMq:Password come from Vault; nothing connects until
+    // the first publish
+    builder.Services.AddRabbitMq(builder.Configuration);
+    builder.Services.AddEventPublisher();
+    builder.Services.AddScoped<MembershipEventPublisher>();
+    builder.Services.AddScoped<MembershipFee>();
     builder.Services.AddScoped<JoinMembershipHandler>();
+    builder.Services.AddScoped<PauseMembershipHandler>();
+    builder.Services.AddScoped<EndPauseHandler>();
+    builder.Services.AddScoped<PayMembershipHandler>();
 
     WebApplication app = builder.Build();
 

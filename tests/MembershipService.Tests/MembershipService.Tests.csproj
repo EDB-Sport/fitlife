@@ -6,10 +6,13 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="Moq" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\MembershipService\MembershipService.csproj" />
+    <!-- Validates the published events against contracts/events/ (#251) -->
+    <ProjectReference Include="..\FitLife.Contracts.Testing\FitLife.Contracts.Testing.csproj" />
   </ItemGroup>
 
 </Project>

@@ -6,6 +6,7 @@
 # root build file counts as a change of the service; a libs/ project it doesn't reference doesn't.
 # Linked files (issue #182): a libs/ file the service links in as Content, None or Compile counts too.
 # Needs git and Docker (the breaking-change check runs oasdiff from its image). Usage: tools/ci/release-gate.test.sh
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -178,6 +179,4 @@ link_nlog BookingService
 commit "raise booking"
 expect 0 release/1.7.0 "a changed linked libs/ file with a raised version passes" "BookingService: 1.7.0 -> 1.8.0"
 
-echo
-if [ "$failures" -eq 0 ]; then echo "release-gate.sh works."; else echo "$failures check(s) failed."; fi
 exit "$failures"

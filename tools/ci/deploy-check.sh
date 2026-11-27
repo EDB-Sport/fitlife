@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # deploy-check: broken deployment files fail on the PR, not during a deploy.
-# Issue #21, docs/CSHARP_SETUP_TODO.md section 10 job 9. CI runs it in .github/workflows/deploy-check.yml.
+# Issue #21, docs/TECHNICAL_REFERENCE.md section 10. CI runs it in .github/workflows/deploy-check.yml.
 #
 # Run it locally from anywhere in the repo:  tools/ci/deploy-check.sh
 # Needs bash, git, jq, python3 and Docker with Compose v2. Every other tool (nginx, yq, gcx, az bicep)
@@ -17,10 +17,11 @@
 #   6. every acceptance check deploy/**/*.test.sh, e.g. Vault in compose (#17) and the ACI topology (#23),
 #      with BICEP set to the pinned Bicep CLI in a container (#77)
 #   7. tools/ci/image-versions.sh: every image a full version, the same version for the same image (#275)
+#   8. tools/ci/compose-azure-env.sh: every compose env key of a service in Azure is in its container, or local only (#524)
 # Every check runs, and the script exits 1 at the end if any of them failed.
 set -euo pipefail
 
-# Pinned tool versions. Never :latest (docs/CSHARP_SETUP_TODO.md section 7).
+# Pinned tool versions. Never :latest (docs/TECHNICAL_REFERENCE.md section 7).
 YQ_IMAGE=mikefarah/yq:4.54.2
 GCX_VERSION=1.7.1 # https://github.com/grafana/gcx/releases, checksums from gcx_<version>_checksums.txt
 GCX_SHA256_AMD64=5f1601feac13d850017064a9b556f11983de6def2986ba0bee402a947659c3e9
@@ -339,6 +340,14 @@ if (cd "$ROOT" && tools/ci/image-versions.sh "$ROOT"); then
   ok "tools/ci/image-versions.sh"
 else
   fail "tools/ci/image-versions.sh found problems (see above)"
+fi
+
+# ---------------------------------------------------------------------------------------------------
+step "8. Compose env keys are in the Azure containers, or on the local-only list"
+if tools/ci/compose-azure-env.sh; then
+  ok "compose-azure-env"
+else
+  fail "compose-azure-env: a compose env key is missing in Azure (tools/ci/compose-azure-env.sh)"
 fi
 
 # ---------------------------------------------------------------------------------------------------

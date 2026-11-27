@@ -93,15 +93,184 @@
           }
         }
       }
+    },
+    "/members/me/payment": {
+      "post": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "The account in the token pays the missing fee of a membership with Betaling mangler, which becomes Aktiv",
+        "operationId": "PayMembership",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyMembershipResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/members/me/pause": {
+      "put": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Pauses the membership of the account in the token from one day to another, both included",
+        "operationId": "PauseMyMembership",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PauseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MembershipPauseResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Ends the pause of the membership of the account in the token: it is active from today",
+        "operationId": "EndMyPause",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MembershipPauseResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "HttpValidationProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
       "MemberResponse": {
         "required": [
           "memberId",
           "membershipStatus",
-          "isActive"
+          "isActive",
+          "pausedFrom",
+          "pausedTo"
         ],
         "type": "object",
         "properties": {
@@ -117,16 +286,86 @@
           "isActive": {
             "type": "boolean",
             "description": "Whether the member may book and enter."
+          },
+          "pausedFrom": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The first day of a pause period that is running or still to come, or null.",
+            "format": "date"
+          },
+          "pausedTo": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The last day of that pause period, or null.",
+            "format": "date"
           }
         },
         "description": "A member and whether the membership gives access and the right to book."
       },
+      "MembershipPauseResponse": {
+        "required": [
+          "memberId",
+          "membershipType",
+          "membershipStatus",
+          "isActive",
+          "startDate",
+          "pausedFrom",
+          "pausedTo"
+        ],
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "string",
+            "description": "The member id.",
+            "format": "uuid"
+          },
+          "membershipType": {
+            "description": "The kind of membership.",
+            "$ref": "#/components/schemas/MembershipType"
+          },
+          "membershipStatus": {
+            "description": "Where the membership is today.",
+            "$ref": "#/components/schemas/MembershipStatus"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Whether the member may book and enter today."
+          },
+          "startDate": {
+            "type": "string",
+            "description": "The day the membership started.",
+            "format": "date"
+          },
+          "pausedFrom": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The first day of the pause period, or null.",
+            "format": "date"
+          },
+          "pausedTo": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The last day of the pause period, or null.",
+            "format": "date"
+          }
+        },
+        "description": "The signed-in member's membership after a pause was set or ended: the body of `GET /members/me` plus the pause period."
+      },
       "MembershipStatus": {
         "enum": [
           "Active",
-          "PaymentMissing"
+          "PaymentMissing",
+          "Paused"
         ],
-        "description": "Medlemskabets tilstand: where a membership is in its life (TO-BE-kontekst §8). Only MembershipStatus.Active\ngives access and the right to book. The other states (Pause, Opsagt, Afsluttet) come with their issues."
+        "description": "Medlemskabets tilstand: where a membership is in its life (TO-BE-kontekst §8). Only MembershipStatus.Active\ngives access and the right to book. The other states (Opsagt, Afsluttet) come with their issues."
       },
       "MembershipType": {
         "enum": [
@@ -168,6 +407,32 @@
           }
         },
         "description": "The signed-in member's own membership, for the page \"Mit medlemskab\" (#210)."
+      },
+      "PauseRequest": {
+        "required": [
+          "from",
+          "to"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The first day of the pause. Missing is a 400.",
+            "format": "date"
+          },
+          "to": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The last day of the pause. Missing is a 400.",
+            "format": "date"
+          }
+        },
+        "description": "The body of `PUT /members/me/pause`: `{ \"from\": \"2026-12-01\", \"to\": \"2026-12-31\" }`, both days included."
       },
       "ProblemDetails": {
         "type": "object",

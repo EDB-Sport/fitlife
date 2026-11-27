@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Tests for tools/ci/check-pr-body.sh (issue #34).
 # Usage: tools/ci/check-pr-body.test.sh   (exit code 0 = all cases pass)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 check="$(dirname "$0")/check-pr-body.sh"
@@ -152,10 +153,20 @@ else
   failures=$((failures + 1))
 fi
 
-echo
-if [ "$failures" -eq 0 ]; then
-  echo "All PR description checks work."
+# 16. "What to verify and how" is optional, for feature PRs (issue #520): no rule asks for it, so a body passes
+# with the section deleted, left as the template gives it, or filled in
+verify_section=$(awk '/^## / { inside = ($0 == "## What to verify and how") } inside && NF' <<<"$template")
+expect "body without What to verify and how passes" pass <<<"Closes #520$rest"
+expect "What to verify and how left as in the template passes" pass <<<"Closes #520$rest"$'\n\n'"$verify_section"
+expect "What to verify and how filled in passes" pass <<<"Closes #520$rest"$'\n\n## What to verify and how\nOpen the page and read the heading.'
+
+# 17. The template has that section: the heading and an HTML comment saying it is optional, 3 lines at most, no checkbox
+if [ "$(wc -l <<<"$verify_section")" -le 3 ] && grep -qE '^<!-- Optional, for feature PRs only.*-->$' <<<"$verify_section" \
+  && ! grep -qF -- '- [' <<<"$verify_section"; then
+  echo "PASS  the template has a short, optional What to verify and how section without a checkbox"
 else
-  echo "$failures case(s) failed."
+  echo "FAIL  the template's What to verify and how section is missing, too long, not marked optional or has a checkbox: $verify_section"
+  failures=$((failures + 1))
 fi
+
 exit "$failures"

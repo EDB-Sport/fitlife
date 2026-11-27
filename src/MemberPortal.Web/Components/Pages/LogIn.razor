@@ -1,0 +1,28 @@
+@page "/log-ind"
+
+<PageTitle>Log ind - FitLife Digital</PageTitle>
+
+<div class="container py-4" style="max-width: 28rem;">
+    <h1 class="mb-4">Log ind</h1>
+
+    @if (ErrorSentence is not null)
+    {
+        <div class="alert alert-danger" role="alert">@ErrorSentence</div>
+    }
+
+    <EditForm Model="Fields" FormName="log-ind" OnValidSubmit="LogInAsync" method="post">
+        <DataAnnotationsValidator />
+        <div class="mb-3">
+            <label for="email" class="form-label">E-mail</label>
+            <InputText id="email" type="email" class="form-control" autocomplete="username" @bind-Value="Fields.Email" />
+            <ValidationMessage For="() => Fields.Email" />
+        </div>
+        <div class="mb-3">
+            <label for="password" class="form-label">Adgangskode</label>
+            @* The password is never written back into the page (#612): the input always renders empty, also after a failed log-in *@
+            <InputText id="password" type="password" class="form-control" autocomplete="current-password" Value="@string.Empty" ValueChanged="SetPassword" ValueExpression="() => Fields.Password" />
+            <ValidationMessage For="() => Fields.Password" />
+        </div>
+        <button type="submit" class="btn btn-primary">Log ind</button>
+    </EditForm>
+</div>

@@ -25,14 +25,17 @@ param dockerHubUsername string
 @secure()
 param dockerHubToken string
 
-@description('Bounded context of the thin-slice service: booking, membership or identity.')
-param serviceContext string
+@description('A service of the group.')
+type service = {
+  @description('Its bounded context: the key in servicePorts and serviceSettings, the route /api/<context>/ and the container name <context>-svc.')
+  context: string
 
-@description('Service image with its tag, e.g. albertarnason/bookingservice:0.1.0.')
-param serviceImage string
+  @description('Its image with its tag, e.g. albertarnason/bookingservice:0.1.0.')
+  image: string
+}
 
-@description('Health endpoint of the service.')
-param serviceHealthPath string
+@description('The services in the group besides NotificationService, one container each. A further service is one more entry here, with its port in servicePorts and its settings in serviceSettings.')
+param services service[]
 
 @description('Whether the member portal is in the group. False until it has a release, as there is no image to pull.')
 param includeMemberPortal bool
@@ -42,6 +45,12 @@ param uiImage string
 
 @description('Health endpoint of the member portal.')
 param uiHealthPath string
+
+@description('Whether NotificationService is in the group. False until it has a release, as there is no image to pull.')
+param includeNotificationService bool
+
+@description('NotificationService image with its tag. Unused while includeNotificationService is false.')
+param notificationImage string
 
 @description('Nginx image with its tag.')
 param nginxImage string
@@ -96,6 +105,18 @@ param vaultRootToken string
 @secure()
 param jwtSigningKey string
 
+@description('See main.bicep.')
+@secure()
+param demoMedlemPassword string
+
+@description('See main.bicep.')
+@secure()
+param demoTraenerPassword string
+
+@description('See main.bicep.')
+@secure()
+param demoAdminPassword string
+
 // Containers in a group share localhost, so each one listens on its own port.
 // Compose reaches the same apps as http://<name>:8080 instead; the Nginx template takes either (course rule #13).
 var gatewayPort = 80 // `listen 80` in deploy/compose/nginx/default.conf.template
@@ -104,6 +125,7 @@ var servicePorts = {
   booking: 5001
   membership: 5002
   identity: 5003
+  notification: 5004
   mcp: 5005
 }
 var uiPort = 5101
@@ -111,6 +133,56 @@ var mongoPort = 27017
 var rabbitmqPort = 5672
 var rabbitmqManagementPort = 15672 // inside the group only
 var vaultPort = 8200 // inside the group only; dev mode also takes 8201 for its cluster listener
+
+// What a service gets besides what every service gets (ASPNETCORE_HTTP_PORTS, Vault, MongoDB): the rest of its block in
+// deploy/compose/services.yml, with the group's 127.0.0.1 in place of the container name. Loki isn't in the group yet
+// (#277), so Loki__Url is not set.
+var serviceSettings = {
+  booking: [
+    {
+      name: 'Membership__BaseUrl' // who the member behind an account is (#256)
+      value: 'http://127.0.0.1:${servicePorts.membership}'
+    }
+    {
+      name: 'WaitlistClosing__Enabled' // closes each waitlist 2 hours before start (#314)
+      value: 'true'
+    }
+    {
+      // The demo class schedule (#255, #386): every start tops it up to 4 weeks from then; /health waits for it
+      name: 'Seed__Enabled'
+      value: 'true'
+    }
+  ]
+  membership: [
+    {
+      // Publishes MembershipPaused and PaymentFailed (#251); a failed publish is only logged
+      name: 'RabbitMq__HostName'
+      value: '127.0.0.1'
+    }
+    {
+      name: 'RabbitMq__Port'
+      value: string(rabbitmqPort)
+    }
+  ]
+  identity: [
+    {
+      name: 'Seed__DemoAccounts' // one demo account per role (#237); /health waits for them
+      value: 'true'
+    }
+    {
+      name: 'Seed__MedlemPassword'
+      secureValue: demoMedlemPassword
+    }
+    {
+      name: 'Seed__TraenerPassword'
+      secureValue: demoTraenerPassword
+    }
+    {
+      name: 'Seed__AdminPassword'
+      secureValue: demoAdminPassword
+    }
+  ]
+}
 
 // One database and one user per service, as SERVICE_DATABASES in deploy/compose/infrastructure.yml.
 // MongoDB's init script creates the users from it, and Vault's seed script writes the passwords.
@@ -169,7 +241,8 @@ func commandProbe(command string[], initialDelaySeconds int) object => {
   failureThreshold: 3
 }
 
-// Every container the group can hold. The member portal is dropped below until it has a release (#198).
+// Every container the group can hold besides the ones of services (below). The member portal (#198) and
+// NotificationService (#261) are dropped below until they have a release.
 var containerDefinitions = [
   {
     name: 'caddy'
@@ -244,6 +317,12 @@ var containerDefinitions = [
           value: 'http://127.0.0.1:${servicePorts.identity}'
         }
         {
+          // The template's /api/notification/ route (#221). Notification isn't in the group yet,
+          // so nothing listens on this port and the route answers 502, like /grafana/.
+          name: 'NOTIFICATION_URL'
+          value: 'http://127.0.0.1:5004'
+        }
+        {
           name: 'MCP_SERVER_URL'
           value: 'http://127.0.0.1:${servicePorts.mcp}'
         }
@@ -279,37 +358,6 @@ var containerDefinitions = [
     }
   }
   {
-    name: '${serviceContext}-svc'
-    properties: {
-      image: serviceImage
-      resources: dotnetContainer
-      ports: [
-        {
-          port: servicePorts[serviceContext]
-          protocol: 'TCP'
-        }
-      ]
-      environmentVariables: [
-        {
-          name: 'ASPNETCORE_HTTP_PORTS'
-          value: string(servicePorts[serviceContext])
-        }
-        {
-          // Its secret, secret/<context>-svc, from the Vault container in this group (#17). The service
-          // waits for Vault and the seed job itself (Vault:WaitSeconds), as in compose.
-          name: 'Vault__Address'
-          value: 'http://127.0.0.1:${vaultPort}'
-        }
-        {
-          name: 'Vault__Token'
-          secureValue: vaultRootToken
-        }
-      ]
-      livenessProbe: healthProbe(serviceHealthPath, servicePorts[serviceContext], 30)
-      readinessProbe: healthProbe(serviceHealthPath, servicePorts[serviceContext], 10)
-    }
-  }
-  {
     name: 'member-portal'
     properties: {
       image: uiImage
@@ -325,9 +373,69 @@ var containerDefinitions = [
           name: 'ASPNETCORE_HTTP_PORTS'
           value: string(uiPort)
         }
+        {
+          // Where the portal's clients reach the services' APIs: Nginx in the group (compose: http://gateway:80)
+          name: 'Gateway__BaseUrl'
+          value: 'http://127.0.0.1:${gatewayPort}'
+        }
       ]
       livenessProbe: healthProbe(uiHealthPath, uiPort, 30)
       readinessProbe: healthProbe(uiHealthPath, uiPort, 10)
+    }
+  }
+  {
+    // Consumes ReservationMade from RabbitMQ (#191), with the settings of compose's notification-svc. Nginx has
+    // no route to it.
+    name: 'notification-svc'
+    properties: {
+      image: notificationImage
+      resources: dotnetContainer
+      ports: [
+        {
+          port: servicePorts.notification
+          protocol: 'TCP'
+        }
+      ]
+      environmentVariables: [
+        {
+          name: 'ASPNETCORE_HTTP_PORTS'
+          value: string(servicePorts.notification)
+        }
+        {
+          // Loki isn't in the group yet (#6), so nothing listens here and the log lines aren't collected.
+          name: 'Loki__Url'
+          value: 'http://127.0.0.1:3100'
+        }
+        {
+          name: 'RabbitMq__HostName'
+          value: '127.0.0.1'
+        }
+        {
+          name: 'RabbitMq__Port'
+          value: string(rabbitmqPort)
+        }
+        {
+          name: 'MongoDb__Host'
+          value: '127.0.0.1'
+        }
+        {
+          name: 'MongoDb__Port'
+          value: string(mongoPort)
+        }
+        {
+          // secret/notification-svc: MongoDb:Password, RabbitMq:Username and RabbitMq:Password (#259)
+          name: 'Vault__Address'
+          value: 'http://127.0.0.1:${vaultPort}'
+        }
+        {
+          name: 'Vault__Token'
+          secureValue: vaultRootToken
+        }
+      ]
+      // /health is unhealthy until it consumes (#258), so liveness waits for RabbitMQ's start-up, as
+      // compose's start_period does.
+      livenessProbe: healthProbe('/health', servicePorts.notification, 60)
+      readinessProbe: healthProbe('/health', servicePorts.notification, 10)
     }
   }
   {
@@ -495,6 +603,53 @@ var containerDefinitions = [
   }
 ]
 
+// One container per entry of services. Each gets what the group's services share, then its own settings.
+var serviceContainers = [
+  for service in services: {
+    name: '${service.context}-svc'
+    properties: {
+      image: service.image
+      resources: dotnetContainer
+      ports: [
+        {
+          port: servicePorts[service.context]
+          protocol: 'TCP'
+        }
+      ]
+      environmentVariables: concat(
+        [
+          {
+            name: 'ASPNETCORE_HTTP_PORTS'
+            value: string(servicePorts[service.context])
+          }
+          {
+            // Its secret, secret/<context>-svc, from the Vault container in this group (#17). The service
+            // waits for Vault and the seed job itself (Vault:WaitSeconds), as in compose.
+            name: 'Vault__Address'
+            value: 'http://127.0.0.1:${vaultPort}'
+          }
+          {
+            name: 'Vault__Token'
+            secureValue: vaultRootToken
+          }
+          {
+            // Its database and user are in appsettings.json, the password in its Vault secret (#17). The group's MongoDB.
+            name: 'MongoDb__Host'
+            value: '127.0.0.1'
+          }
+          {
+            name: 'MongoDb__Port'
+            value: string(mongoPort)
+          }
+        ],
+        serviceSettings[service.context]
+      )
+      livenessProbe: healthProbe('/health', servicePorts[service.context], 30)
+      readinessProbe: healthProbe('/health', servicePorts[service.context], 10)
+    }
+  }
+]
+
 resource storageAccount 'Microsoft.Storage/storageAccounts@2025-06-01' existing = {
   name: storageAccountName
 }
@@ -523,7 +678,7 @@ resource containerGroup 'Microsoft.ContainerInstance/containerGroups@2025-09-01'
         }
       ]
     }
-    containers: filter(containerDefinitions, c => includeMemberPortal || c.name != 'member-portal')
+    containers: concat(filter(containerDefinitions, c => (includeMemberPortal || c.name != 'member-portal') && (includeNotificationService || c.name != 'notification-svc')), serviceContainers)
     volumes: [
       {
         // One source for the gateway config: the compose template, mounted as a file.

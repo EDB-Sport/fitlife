@@ -1,6 +1,6 @@
 # Tests
 
-How tests are organised. The reasons are in `docs/CSHARP_SETUP_TODO.md` section 6 and `docs/METHODOLOGY.md` section 4.
+How tests are organised. The reasons are in `docs/TECHNICAL_REFERENCE.md` section 6 and `docs/METHODOLOGY.md` section 4.
 
 ## Layout
 

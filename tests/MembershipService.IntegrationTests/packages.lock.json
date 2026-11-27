@@ -31,6 +31,12 @@
         "resolved": "5.6.0",
         "contentHash": "Kcobt3pnOdO0A+6CKiMHZdTEluJpsfxiV20axtZdmfBQnDmiWTKPJADlgAfdTuKNAnVarrkJa0UEGwuOo91muw=="
       },
+      "Microsoft.Extensions.TimeProvider.Testing": {
+        "type": "Direct",
+        "requested": "[10.11.1, )",
+        "resolved": "10.11.1",
+        "contentHash": "+ao8Sj5oSSANi3rM1JN0u/76bTE61Afxb2idMhlLjB84Z/bFArnUQeRrXOqzqaqj8bxqPQQUKXwv3jai+IN+GA=="
+      },
       "Microsoft.NET.Test.Sdk": {
         "type": "Direct",
         "requested": "[18.12.0, )",
@@ -631,6 +637,11 @@
           "Microsoft.IdentityModel.Tokens": "8.19.2"
         }
       },
+      "System.Threading.RateLimiting": {
+        "type": "Transitive",
+        "resolved": "8.0.0",
+        "contentHash": "7mu9v0QDv66ar3DpGSZHg9NuNcxDaaAcnMULuZlaTpP9+hwXhrxNGsF5GmLkSHxFdb5bBc1TzeujsRgTrPWi+Q=="
+      },
       "Testcontainers": {
         "type": "Transitive",
         "resolved": "4.17.0",
@@ -660,12 +671,20 @@
       "fitlife.correlation": {
         "type": "Project"
       },
+      "fitlife.messaging": {
+        "type": "Project",
+        "dependencies": {
+          "FitLife.Correlation": "[0.1.0, )",
+          "RabbitMQ.Client": "[7.2.2, )"
+        }
+      },
       "membershipservice": {
         "type": "Project",
         "dependencies": {
-          "FitLife.Authentication": "[0.1.0, )",
+          "FitLife.Authentication": "[0.3.0, )",
           "FitLife.Configuration": "[0.1.0, )",
           "FitLife.Correlation": "[0.1.0, )",
+          "FitLife.Messaging": "[0.2.0, )",
           "Microsoft.AspNetCore.OpenApi": "[10.0.15, )",
           "MongoDB.Driver": "[3.14.1, )",
           "NLog.Targets.Loki": "[2.7.1, )",
@@ -721,6 +740,15 @@
         "contentHash": "37r7FrgeTDdhTq1TA/T+XB+vAqeKZLyXItnw5LV2O8mpkRKATh4m+AhG6A9tFj2K3dsN1WTqIZHySmM8gP5UPw==",
         "dependencies": {
           "NLog.Extensions.Logging": "6.2.2"
+        }
+      },
+      "RabbitMQ.Client": {
+        "type": "CentralTransitive",
+        "requested": "[7.2.2, )",
+        "resolved": "7.2.2",
+        "contentHash": "k4b6RnTXpLbsF96V93ooNYxgPMnoA2tEm24B6AXNJr1mG8wwNYdA1XJtgU66L5xqeGyveS7SJriRzlX3cbqQNA==",
+        "dependencies": {
+          "System.Threading.RateLimiting": "8.0.0"
         }
       },
       "Scalar.AspNetCore": {

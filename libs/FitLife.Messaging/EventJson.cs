@@ -5,7 +5,8 @@ namespace FitLife.Messaging;
 /// <summary>The JSON format of an event body: camelCase, as in the schemas in <c>contracts/events/</c>.</summary>
 public static class EventJson
 {
-    private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
+    /// <summary>Gets the serializer options of the wire format, also used for the generated schemas.</summary>
+    internal static JsonSerializerOptions Options { get; } = new(JsonSerializerDefaults.Web)
     {
         // A missing or null field is an error, not a null in a non-nullable property
         RespectNullableAnnotations = true,

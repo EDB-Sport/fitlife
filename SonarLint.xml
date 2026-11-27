@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Size limits for SonarAnalyzer.CSharp (docs/CSHARP_SETUP_TODO.md section 3).
+  Size limits for SonarAnalyzer.CSharp (docs/TECHNICAL_REFERENCE.md section 3).
   Short, flat methods with few inputs are what you can explain line by line at the exam.
   Code-owned: changes need a review from the maintainers.
 -->

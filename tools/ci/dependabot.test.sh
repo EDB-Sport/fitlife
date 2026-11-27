@@ -2,6 +2,7 @@
 # Checks .github/dependabot.yml for the rules of issue #281: three ecosystems, monthly, one group each,
 # the .NET SDK image ignored, and a low open-pull-requests-limit (METHODOLOGY section 10).
 # Usage: tools/ci/dependabot.test.sh   (from the repo root, or anywhere in the repo; exit 0 = all pass)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)" || exit 2
@@ -84,8 +85,5 @@ check("NuGet" in text and "packages.lock.json" in text,
 check("SDK" in text and "global.json" in text and "#" in text,
       "the file says why the SDK image is ignored, in a comment")
 
-if failures:
-    print(f"{len(failures)} case(s) failed.")
-    sys.exit(1)
-print("All Dependabot checks work.")
+sys.exit(1 if failures else 0)
 PY

@@ -34,7 +34,9 @@
     <Project Path="tests/MemberPortal.Web.IntegrationTests/MemberPortal.Web.IntegrationTests.csproj" />
     <Project Path="tests/MemberPortal.Web.Tests/MemberPortal.Web.Tests.csproj" />
   </Folder>
-  <Folder Name="/tools/" />
+  <Folder Name="/tools/">
+    <Project Path="tools/EventSchemaGenerator/EventSchemaGenerator.csproj" />
+  </Folder>
   <Folder Name="/tools/Analyzers/">
     <Project Path="tools/Analyzers/Team.Analyzers.Tests/Team.Analyzers.Tests.csproj" />
     <Project Path="tools/Analyzers/Team.Analyzers/Team.Analyzers.csproj" />

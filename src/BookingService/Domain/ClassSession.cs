@@ -116,7 +116,7 @@ public sealed class ClassSession
     /// <see cref="WaitlistResult.ClassSessionCancelled"/>, <see cref="WaitlistResult.MemberAlreadyHasReservation"/>,
     /// <see cref="WaitlistResult.MemberAlreadyOnWaitlist"/>,
     /// <see cref="WaitlistResult.ClassSessionNotFull"/> when a seat is free, or <see cref="WaitlistResult.WaitlistClosed"/>
-    /// less than 2 hours before start; then nothing changes.
+    /// from 2 hours before start; then nothing changes.
     /// </returns>
     public WaitlistResult JoinWaitlist(Guid memberId, TimeProvider clock)
     {
@@ -142,7 +142,8 @@ public sealed class ClassSession
             return WaitlistResult.ClassSessionNotFull;
         }
 
-        if (StartTime - clock.GetUtcNow() < WhenTheWaitlistClosesBeforeStart)
+        // At exactly 2 hours the waitlist is closed: the instant CloseWaitlist may run (#314)
+        if (StartTime - clock.GetUtcNow() <= WhenTheWaitlistClosesBeforeStart)
         {
             return WaitlistResult.WaitlistClosed;
         }
@@ -217,8 +218,8 @@ public sealed class ClassSession
     /// <param name="newStart">When the class session starts from now on.</param>
     /// <param name="clock">Tells the time now.</param>
     /// <returns>
-    /// <see cref="ChangeStartResult.ClassSessionCancelled"/> or <see cref="ChangeStartResult.StartNotInTheFuture"/> when the start
-    /// doesn't change; then nothing changes and nothing is raised.
+    /// <see cref="ChangeStartResult.ClassSessionCancelled"/>, <see cref="ChangeStartResult.ClassSessionStarted"/> or
+    /// <see cref="ChangeStartResult.StartNotInTheFuture"/> when the start doesn't change; then nothing changes and nothing is raised.
     /// </returns>
     public ChangeStartResult ChangeStart(DateTimeOffset newStart, TimeProvider clock)
     {
@@ -227,6 +228,11 @@ public sealed class ClassSession
         if (IsCancelled)
         {
             return ChangeStartResult.ClassSessionCancelled;
+        }
+
+        if (HasStarted(clock))
+        {
+            return ChangeStartResult.ClassSessionStarted;
         }
 
         if (newStart <= clock.GetUtcNow())
@@ -248,13 +254,23 @@ public sealed class ClassSession
 
     /// <summary>
     /// Cancels the class session: every reservation and waitlist entry is removed, and <see cref="ClassSessionCancelled"/> names
-    /// their members. A cancelled class session can't be reserved. Cancelling it again changes nothing and raises no second event.
+    /// their members. A cancelled class session can't be reserved. Cancelling it again, or once it has started (from the start
+    /// on, #538), changes nothing and raises no event.
     /// </summary>
-    public void Cancel()
+    /// <param name="clock">Tells the time now.</param>
+    /// <returns><see cref="CancelResult.Cancelled"/>, or why nothing changed.</returns>
+    public CancelResult Cancel(TimeProvider clock)
     {
+        ArgumentNullException.ThrowIfNull(clock);
+
         if (IsCancelled)
         {
-            return;
+            return CancelResult.AlreadyCancelled;
+        }
+
+        if (HasStarted(clock))
+        {
+            return CancelResult.ClassSessionStarted;
         }
 
         var memberIds = _reservations.Select(reservation => reservation.MemberId)
@@ -264,6 +280,13 @@ public sealed class ClassSession
         _waitlist.Clear();
         IsCancelled = true;
         _domainEvents.Add(new ClassSessionCancelled(Id, memberIds.AsReadOnly()));
+        return CancelResult.Cancelled;
+    }
+
+    // The start is the cut-off (#312): from that moment on the class session has started
+    private bool HasStarted(TimeProvider clock)
+    {
+        return clock.GetUtcNow() >= StartTime;
     }
 
     /// <summary>

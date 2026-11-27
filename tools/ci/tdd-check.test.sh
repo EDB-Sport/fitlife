@@ -4,6 +4,7 @@
 # The fixture's test suite is a stand-in for `dotnet test`: every `// needs: <word>` line in
 # tests/ must appear somewhere under src/ or libs/, so a test "fails on base" when its word isn't there yet.
 # Usage: tools/ci/tdd-check.test.sh   (exit code 0 = all cases pass)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -375,7 +376,7 @@ expect "a // comment added under libs/ passes without a test" pass "$(libs_comme
 worktrees_left() { git -C "$1" worktree list | wc -l; }
 repo=$(feature_pr)
 runner=$(cat "$repo/run-tests.sh")
-{ echo '#!/usr/bin/env bash'; echo '[ -f src/Subtractor.cs ] || kill -TERM "$(cat '$repo.pid')"'; tail -n +2 <<<"$runner"; } > "$repo/run-tests.sh"
+{ echo '#!/usr/bin/env bash'; echo '[ -f src/Subtractor.cs ] || kill -TERM "$(cat '"$repo".pid')"'; tail -n +2 <<<"$runner"; } > "$repo/run-tests.sh"
 git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
 (cd "$repo" && BASE_SHA=$(git rev-parse HEAD^) TEST_CMD="bash run-tests.sh" bash -c 'echo $$ > "$0"; exec "$1"' "$repo.pid" "$check" >/dev/null 2>&1)
 if [ "$(worktrees_left "$repo")" -eq 1 ]; then echo "PASS  an interrupted check leaves no worktree"; else echo "FAIL  an interrupted check leaves no worktree"; git -C "$repo" worktree list | sed 's/^/      /'; failures=$((failures + 1)); fi
@@ -407,6 +408,4 @@ else
   echo "PASS  workflow no longer uses pull_request.base.sha"
 fi
 
-echo
-if (( failures == 0 )); then echo "All tdd-check tests pass."; else echo "$failures tdd-check test(s) failed."; fi
 exit $(( failures > 0 ))

@@ -8,6 +8,7 @@ How tests are organised. The reasons are in `docs/TECHNICAL_REFERENCE.md` sectio
 |---|---|
 | `tests/<Service>.Tests/` | NUnit **unit tests**: one class in isolation, with stubs, fakes or Moq for the boundaries |
 | `tests/<Service>.IntegrationTests/` | **Integration tests**: `WebApplicationFactory` (in-process HTTP) and Testcontainers (real MongoDB/RabbitMQ) |
+| `tests/FitLife.Flows.IntegrationTests/` | **Flow tests**: two services in one test (one `WebApplicationFactory` each, an `extern alias` per service because every `Program` is global), over one RabbitMQ and MongoDB (#192) |
 | `tests/<Name>.Web.Tests/` | bUnit component tests for a Blazor UI (issue #8) |
 | `tests/postman/` | Postman collections run by Newman (see `tests/postman/README.md`) |
 

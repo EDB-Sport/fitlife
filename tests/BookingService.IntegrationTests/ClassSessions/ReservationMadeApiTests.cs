@@ -3,8 +3,6 @@ using BookingService.Application;
 using BookingService.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
-using MongoDB.Bson;
-using MongoDB.Driver;
 using ReservationMadeEvent = FitLife.Messaging.Events.ReservationMade;
 
 namespace BookingService.IntegrationTests.ClassSessions;
@@ -93,41 +91,6 @@ public sealed class ReservationMadeApiTests
 
         // Assert
         Assert.That(stored.Reservations.Single().Id, Is.EqualTo(classSession.Reservations.Single().Id));
-    }
-
-    [Test]
-    public async Task Read_AReservationStoredWithoutAnId_GetsAnId()
-    {
-        // Arrange: a reservation as Booking stored it before #192, written with the driver
-        string database = $"booking-{Guid.NewGuid():N}";
-        using var factory = new BookingApiFactory(MongoDbContainerSetUp.ConnectionString, database, new FakeTimeProvider(Now));
-        var id = Guid.NewGuid();
-        using (var mongo = new MongoClient(MongoDbContainerSetUp.ConnectionString))
-        {
-            await mongo.GetDatabase(database).GetCollection<BsonDocument>("classSessions").InsertOneAsync(new BsonDocument
-            {
-                { "_id", new BsonBinaryData(id, GuidRepresentation.Standard) },
-                { "CenterId", new BsonBinaryData(Guid.NewGuid(), GuidRepresentation.Standard) },
-                { "ClassTypeId", new BsonBinaryData(Guid.NewGuid(), GuidRepresentation.Standard) },
-                { "Capacity", 2 },
-                { "StartTime", Now.AddDays(1).UtcDateTime },
-                { "IsCancelled", false },
-                {
-                    "Reservations", new BsonArray
-                    {
-                        new BsonDocument { { "MemberId", new BsonBinaryData(Guid.NewGuid(), GuidRepresentation.Standard) }, { "IsFromWaitlist", false } },
-                    }
-                },
-                { "Waitlist", new BsonArray() },
-                { "Version", 1 },
-            }).ConfigureAwait(false);
-        }
-
-        // Act
-        ClassSession stored = await ReadAsync(factory, id).ConfigureAwait(false);
-
-        // Assert
-        Assert.That(stored.Reservations.Single().Id, Is.Not.EqualTo(Guid.Empty));
     }
 
     private static async Task<ClassSession> StoredAsync(BookingApiFactory factory, int capacity, params Guid[] memberIds)

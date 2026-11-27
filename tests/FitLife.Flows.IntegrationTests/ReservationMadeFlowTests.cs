@@ -38,16 +38,21 @@ public sealed class ReservationMadeFlowTests
 
         using HttpClient member = bookings.CreateClient();
         member.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", FlowTokens.Medlem(Guid.NewGuid()));
+        string correlationId = $"flow-{Guid.NewGuid():N}";
+        member.DefaultRequestHeaders.Add("X-Correlation-ID", correlationId);
 
         // Act
         using HttpResponseMessage response = await member.PostAsync(new Uri($"/class-sessions/{classSession.Id}/reservations", UriKind.Relative), content: null).ConfigureAwait(false);
 
-        // Assert: the notification carries the stored reservation's id and the class session's start (the wire mapping)
+        // Assert: Notification logs the line once the notification is stored, with the request's correlation ID; the
+        // notification carries the stored reservation's id and the class session's start (the wire mapping)
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        string line = await notifications.Logs.WaitForAsync($"Notification to member {bookings.MemberId}:", Timeout).ConfigureAwait(false);
         Guid reservationId = await StoredReservationIdAsync(bookings, classSession.Id).ConfigureAwait(false);
         Notification received = await NotificationForAsync(notifications, bookings.MemberId).ConfigureAwait(false);
         Assert.Multiple(() =>
         {
+            Assert.That(line, Does.Contain(correlationId));
             Assert.That(received.Id, Is.EqualTo($"reservation-made:{reservationId}"));
             Assert.That(received.Text, Does.Contain(start.ToString("dd.MM.yyyy 'kl.' HH:mm", CultureInfo.InvariantCulture)));
         });
@@ -60,21 +65,11 @@ public sealed class ReservationMadeFlowTests
         return stored?.Reservations.Single().Id ?? Guid.Empty;
     }
 
-    /// <summary>Waits for Notification to store one notification for the member; Notification answers on its own time.</summary>
     private static async Task<Notification> NotificationForAsync(NotificationHost notifications, Guid memberId)
     {
-        using var timeout = new CancellationTokenSource(Timeout);
         using IServiceScope scope = notifications.Services.CreateScope();
-        INotificationRepository repository = scope.ServiceProvider.GetRequiredService<INotificationRepository>();
-        while (true)
-        {
-            IReadOnlyList<Notification> found = await repository.ListForMemberAsync(memberId.ToString(), timeout.Token).ConfigureAwait(false);
-            if (found.Count > 0)
-            {
-                return found.Single();
-            }
-
-            await Task.Delay(TimeSpan.FromMilliseconds(200), timeout.Token).ConfigureAwait(false);
-        }
+        IReadOnlyList<Notification> stored = await scope.ServiceProvider.GetRequiredService<INotificationRepository>()
+            .ListForMemberAsync(memberId.ToString(), CancellationToken.None).ConfigureAwait(false);
+        return stored.Single();
     }
 }

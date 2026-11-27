@@ -78,6 +78,7 @@ public sealed class ClassSessionsController : ControllerBase
     /// <summary>Cancels the member's reservation. When someone is on the waitlist, the first waitlist entry gets the seat.</summary>
     /// <param name="id">The class session.</param>
     /// <param name="memberId">The member who gives up the seat.</param>
+    /// <param name="events">Publishes ReservationMade for a seat from the waitlist (#192).</param>
     /// <param name="cancellationToken">Stops the request.</param>
     /// <response code="404">No such class session, or the member has no seat on it.</response>
     [HttpDelete("{id:guid}/reservations/{memberId:guid}")]
@@ -85,7 +86,7 @@ public sealed class ClassSessionsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
-    public async Task<Results<NoContent, ProblemHttpResult>> DeleteReservation(Guid id, Guid memberId, CancellationToken cancellationToken)
+    public async Task<Results<NoContent, ProblemHttpResult>> DeleteReservation(Guid id, Guid memberId, [FromServices] BookingEventPublisher events, CancellationToken cancellationToken)
     {
         ClassSession? classSession = await _repository.GetByIdAsync(id, cancellationToken).ConfigureAwait(false);
         if (classSession is null)
@@ -103,6 +104,7 @@ public sealed class ClassSessionsController : ControllerBase
             return TypedResults.Problem(statusCode: StatusCodes.Status409Conflict, title: ChangedMeanwhileTitle);
         }
 
+        await events.PublishReservationsMadeAsync(classSession).ConfigureAwait(false); // the seat the first waitlist entry got (#192)
         return TypedResults.NoContent();
     }
 

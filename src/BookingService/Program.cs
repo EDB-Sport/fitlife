@@ -9,6 +9,7 @@ using BookingService.Seed;
 using FitLife.Authentication;
 using FitLife.Configuration;
 using FitLife.Correlation;
+using FitLife.Messaging;
 using Microsoft.AspNetCore.OpenApi;
 using NLog;
 using NLog.Web;
@@ -39,6 +40,11 @@ try
     builder.Services.AddRepositories();
     builder.Services.AddScoped<GetClassSessionsQueryHandler>(); // the class schedule (#254)
     builder.Services.AddScoped<ScheduleClassSessionCommandHandler>(); // Træner or Admin (#238)
+    // ReservationMade to RabbitMQ after the save (#192). RabbitMq:Username and RabbitMq:Password come from Vault; nothing
+    // connects until the first publish
+    builder.Services.AddRabbitMq(builder.Configuration);
+    builder.Services.AddEventPublisher();
+    builder.Services.AddScoped<BookingEventPublisher>();
     builder.Services.AddScoped<CancelClassSessionCommandHandler>(); // Træner or Admin (#239)
     builder.Services.AddWaitlistClosing(builder.Configuration); // closes each waitlist 2 hours before start, when enabled (#314)
 

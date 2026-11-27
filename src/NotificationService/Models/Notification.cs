@@ -21,12 +21,13 @@ public sealed record Notification(string Id, string MemberId, string Kind, strin
     public static Notification For(ReservationMade reservationMade, DateTimeOffset occurredAt)
     {
         ArgumentNullException.ThrowIfNull(reservationMade);
-        string startTime = reservationMade.StartTime.ToString("yyyy-MM-dd HH:mm zzz", CultureInfo.InvariantCulture);
+        // In the offset the event carries, not Danish local time (#545)
+        string startTime = reservationMade.StartTime.ToString("dd.MM.yyyy 'kl.' HH:mm", CultureInfo.InvariantCulture);
         return new Notification(
             $"{ReservationMade.RoutingKey}:{reservationMade.ReservationId}",
             reservationMade.MemberId,
             nameof(ReservationMade),
-            $"Your seat on class session {reservationMade.ClassSessionId} at {startTime} is reserved.",
+            $"Din booking på holdet den {startTime} er bekræftet.",
             occurredAt);
     }
 }

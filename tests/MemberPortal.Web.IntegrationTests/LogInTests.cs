@@ -16,6 +16,7 @@ namespace MemberPortal.Web.IntegrationTests;
 [FixtureLifeCycle(LifeCycle.InstancePerTestCase)] // a new portal and cookie jar per test, so no test sees another's log-in
 public sealed class LogInTests : IDisposable
 {
+    private const string Password = "hemmelig-adgangskode";
     private static readonly DateTimeOffset ExpiresAt = new(2030, 1, 1, 12, 0, 0, TimeSpan.Zero);
 
     private readonly PortalFactory _factory = new();
@@ -103,6 +104,49 @@ public sealed class LogInTests : IDisposable
     }
 
     [Test]
+    public async Task LogIn_WithWrongPassword_NeverWritesThePasswordBackIntoThePage()
+    {
+        // Arrange
+        _factory.Identity.Token = null;
+
+        // Act
+        using HttpResponseMessage response = await LogInAsync().ConfigureAwait(false);
+
+        // Assert
+        string page = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        Assert.That(page, Does.Contain("Forkert e-mail eller adgangskode."));
+        Assert.That(page, Does.Not.Contain(Password));
+    }
+
+    [Test]
+    public async Task LogIn_WhenIdentityIsUnavailable_NeverWritesThePasswordBackIntoThePage()
+    {
+        // Arrange
+        _factory.Identity.Failure = new IdentityUnavailableException("Identity is not reachable.");
+
+        // Act
+        using HttpResponseMessage response = await LogInAsync().ConfigureAwait(false);
+
+        // Assert
+        // Razor encodes ø, so the test reads the page as a browser shows it
+        string page = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
+        Assert.That(page, Does.Contain("Vi kan ikke logge dig ind lige nu. Prøv igen om lidt."));
+        Assert.That(page, Does.Not.Contain(Password));
+    }
+
+    [Test]
+    public async Task LogIn_WithoutAnEmail_ShowsTheSentenceAndNeverWritesThePasswordBackIntoThePage()
+    {
+        // Act
+        using HttpResponseMessage response = await LogInAsync(email: string.Empty).ConfigureAwait(false);
+
+        // Assert
+        string page = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        Assert.That(page, Does.Contain("Skriv din e-mail."));
+        Assert.That(page, Does.Not.Contain(Password));
+    }
+
+    [Test]
     public async Task LogOut_WhenLoggedIn_ClearsTheCookieAndRedirectsToTheFrontPage()
     {
         // Arrange
@@ -134,12 +178,12 @@ public sealed class LogInTests : IDisposable
         Assert.That(PortalForms.SetCookie(response, PortalForms.AuthenticationCookie), Is.Null);
     }
 
-    private async Task<HttpResponseMessage> LogInAsync()
+    private async Task<HttpResponseMessage> LogInAsync(string email = "medlem@fitlife.test")
     {
         string page = await _client.GetStringAsync(new Uri("/log-ind", UriKind.Relative)).ConfigureAwait(false);
         Dictionary<string, string> fields = PortalForms.HiddenFields(page);
-        fields["Form.Email"] = "medlem@fitlife.test";
-        fields["Form.Password"] = "hemmelig";
+        fields["Form.Email"] = email;
+        fields["Form.Password"] = Password;
         using var form = new FormUrlEncodedContent(fields);
         return await _client.PostAsync(new Uri("/log-ind", UriKind.Relative), form).ConfigureAwait(false);
     }
@@ -150,6 +194,8 @@ public sealed class LogInTests : IDisposable
 
         public TokenResponse? Token { get; set; } = new(AccessToken, ExpiresAt);
 
+        public Exception? Failure { get; set; }
+
         public Task<CreateAccountAnswer> CreateAccountAsync(CreateAccountRequest request, CancellationToken cancellationToken)
         {
             throw new NotSupportedException("Logging in creates no account.");
@@ -157,6 +203,11 @@ public sealed class LogInTests : IDisposable
 
         public Task<TokenResponse?> LogInAsync(LogInRequest request, CancellationToken cancellationToken)
         {
+            if (Failure is not null)
+            {
+                return Task.FromException<TokenResponse?>(Failure);
+            }
+
             return Task.FromResult(Token);
         }
     }

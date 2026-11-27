@@ -37,14 +37,14 @@ expect() { # expect <label> <condition exit status>
 has() { grep -qxF -- "$1" <<<"$out"; }
 
 run "$tmp/no-domain.txt" 523
-[ "$code" -eq 0 ] && [ "$(head -1 <<<"$out")" = "Closes #523" ]
-ok=$?
-expect "the body starts with 'Closes #<issue>'" "$ok"
+starts_with_closes() { [ "$code" -eq 0 ] && [ "$(head -1 <<<"$out")" = "Closes #523" ]; }
+starts_with_closes
+expect "the body starts with 'Closes #<issue>'" $?
 
 missing=$(grep -E '^## ' "$template" | grep -v '^## Domain' | while IFS= read -r heading; do has "$heading" || echo "$heading"; done)
-[ -z "$missing" ]
-ok=$?
-expect "the body has every heading of the template (Domain aside)" "$ok"
+nothing_missing() { [ -z "$missing" ]; }
+nothing_missing
+expect "the body has every heading of the template (Domain aside)" $?
 
 PR_BODY="$out" HEAD_REF=feature/523-pr-body tools/ci/check-pr-body.sh >/dev/null
 expect "the body passes tools/ci/check-pr-body.sh" $?

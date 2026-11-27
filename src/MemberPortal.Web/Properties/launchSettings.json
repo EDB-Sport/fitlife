@@ -18,6 +18,16 @@
         "environmentVariables": {
           "ASPNETCORE_ENVIRONMENT": "Development"
         }
+      },
+      "stack": {
+        "commandName": "Project",
+        "launchBrowser": false,
+        "applicationUrl": "http://localhost:5066",
+        "environmentVariables": {
+          "ASPNETCORE_ENVIRONMENT": "Development",
+          "Loki__Url": "http://localhost:3100",
+          "Gateway__BaseUrl": "http://localhost:8080"
+        }
       }
     }
   }

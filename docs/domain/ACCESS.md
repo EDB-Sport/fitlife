@@ -31,8 +31,8 @@ This table is a reference, not a second spec. When an issue and the table disagr
 | `POST /members` | MembershipService | – | yes | yes | yes | [#170](https://github.com/EDB-Sport/fitlife/issues/170), any role in [#368](https://github.com/EDB-Sport/fitlife/issues/368) |
 | `GET /members/me` | MembershipService | – | yes | yes | yes | [#247](https://github.com/EDB-Sport/fitlife/issues/247), any role in [#368](https://github.com/EDB-Sport/fitlife/issues/368) |
 | `GET /members/by-account/{accountId}` | MembershipService | – | yes | yes | yes | [#170](https://github.com/EDB-Sport/fitlife/issues/170), any role in [#368](https://github.com/EDB-Sport/fitlife/issues/368) |
-| `PUT /members/me/pause` (planned) | MembershipService | – | not decided | not decided | not decided | [#248](https://github.com/EDB-Sport/fitlife/issues/248) |
-| `DELETE /members/me/pause` (planned) | MembershipService | – | not decided | not decided | not decided | [#248](https://github.com/EDB-Sport/fitlife/issues/248) |
+| `PUT /members/me/pause` | MembershipService | – | yes | yes | yes | [#248](https://github.com/EDB-Sport/fitlife/issues/248), any role in [#368](https://github.com/EDB-Sport/fitlife/issues/368) |
+| `DELETE /members/me/pause` | MembershipService | – | yes | yes | yes | [#248](https://github.com/EDB-Sport/fitlife/issues/248), any role in [#368](https://github.com/EDB-Sport/fitlife/issues/368) |
 | `POST /members/me/cancellation` (planned) | MembershipService | – | not decided | not decided | not decided | [#249](https://github.com/EDB-Sport/fitlife/issues/249) |
 | `POST /members/me/payment` (planned) | MembershipService | – | not decided | not decided | not decided | [#250](https://github.com/EDB-Sport/fitlife/issues/250), [#267](https://github.com/EDB-Sport/fitlife/issues/267) |
 | `GET /notifications?memberId={id}` | NotificationService | – | – | yes | yes | [#221](https://github.com/EDB-Sport/fitlife/issues/221) |

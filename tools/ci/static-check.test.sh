@@ -2,6 +2,7 @@
 # Tests for tools/ci/static-check.sh (#273): actionlint on the workflows, shellcheck on tools/ and deploy/ scripts.
 # Fixture repos (actionlint needs a git root): a clean one passes; an expression typo, an unquoted variable and a plain-scalar "run: x: y" fail.
 # Needs docker. Usage: tools/ci/static-check.test.sh   (exit 0 = all pass)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 root=$(git -C "$(dirname "$0")" rev-parse --show-toplevel) || exit 2

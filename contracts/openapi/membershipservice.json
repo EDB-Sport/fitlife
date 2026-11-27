@@ -93,6 +93,40 @@
           }
         }
       }
+    },
+    "/members/me/payment": {
+      "post": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "The account in the token pays the missing fee of a membership with Betaling mangler, which becomes Aktiv",
+        "operationId": "PayMembership",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyMembershipResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {

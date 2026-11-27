@@ -11,14 +11,15 @@ namespace NotificationService.Subscribers;
 /// The PoC only logs the notification; real SMS, e-mail or push sit behind an ACL later.
 /// </summary>
 /// <param name="notifications">The notifications sent so far.</param>
+/// <param name="time">The clock the notification's time comes from.</param>
 /// <param name="logger">The logger the notification is written to.</param>
-public sealed partial class ReservationMadeSubscriber(INotificationRepository notifications, ILogger<ReservationMadeSubscriber> logger)
+public sealed partial class ReservationMadeSubscriber(INotificationRepository notifications, TimeProvider time, ILogger<ReservationMadeSubscriber> logger)
     : IEventSubscriber<ReservationMade>
 {
     /// <inheritdoc />
     public async Task HandleAsync(ReservationMade integrationEvent, CancellationToken cancellationToken)
     {
-        var notification = Notification.For(integrationEvent);
+        var notification = Notification.For(integrationEvent, time.GetUtcNow());
         if (!await notifications.TryAddAsync(notification, cancellationToken).ConfigureAwait(false))
         {
             LogAlreadySent(notification.Id);

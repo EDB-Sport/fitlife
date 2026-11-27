@@ -353,6 +353,7 @@
       "notificationservice": {
         "type": "Project",
         "dependencies": {
+          "FitLife.Authentication": "[0.3.0, )",
           "FitLife.Configuration": "[0.1.0, )",
           "FitLife.Correlation": "[0.1.0, )",
           "FitLife.Messaging": "[0.1.0, )",

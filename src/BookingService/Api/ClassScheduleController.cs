@@ -8,8 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace BookingService.Api;
 
 /// <summary>
-/// The class schedule over HTTP: reading it (#254, <see cref="GetClassSessionsQueryHandler"/>) and scheduling a class session on it
-/// (#238, <see cref="ScheduleClassSessionCommandHandler"/>).
+/// The class schedule over HTTP: reading it (#254, <see cref="GetClassSessionsQueryHandler"/>), scheduling a class session on it
+/// (#238, <see cref="ScheduleClassSessionCommandHandler"/>), cancelling one (#239) and moving one to a new start (#241).
 /// </summary>
 [ApiController]
 [Route("class-sessions")]
@@ -126,12 +126,64 @@ public sealed class ClassScheduleController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Moves a class session to a new start time (#241). Its reservations and waitlist entries are kept, and the members who had a
+    /// reservation can cancel free. The members are not told yet (#242, #222).
+    /// </summary>
+    /// <param name="id">The class session.</param>
+    /// <param name="request">The new start time.</param>
+    /// <param name="changeStart">Moves and saves the class session.</param>
+    /// <param name="cancellationToken">Stops the request.</param>
+    /// <response code="403">The token has neither the role Træner nor Admin.</response>
+    /// <response code="404">No such class session (code ClassSessionNotFound).</response>
+    /// <response code="409">The class session is cancelled (code ClassSessionCancelled), has started (code ClassSessionStarted), the new start is not after now (code StartNotInTheFuture), or another request changed it at the same time (code ChangedMeanwhile).</response>
+    [HttpPut("{id:guid}/start")]
+    [Authorize(Roles = FitLifeRoles.Traener + "," + FitLifeRoles.Admin)]
+    [Consumes("application/json")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+    public async Task<Results<NoContent, ProblemHttpResult>> PutStart(
+        Guid id,
+        ChangeStartRequest request,
+        [FromServices] ChangeClassSessionStartCommandHandler changeStart,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(changeStart);
+        ChangeClassSessionStartOutcome outcome = await changeStart.Handle(new ChangeClassSessionStartCommand(id, request.StartsAt), cancellationToken).ConfigureAwait(false);
+        switch (outcome)
+        {
+            case ChangeClassSessionStartOutcome.Changed:
+                return TypedResults.NoContent();
+            case ChangeClassSessionStartOutcome.ClassSessionNotFound:
+                return CodedProblem(StatusCodes.Status404NotFound, "No such class session.", outcome.ToString());
+            case ChangeClassSessionStartOutcome.ClassSessionCancelled:
+                return CodedProblem(StatusCodes.Status409Conflict, "The class session is cancelled.", outcome.ToString());
+            case ChangeClassSessionStartOutcome.ClassSessionStarted:
+                return CodedProblem(StatusCodes.Status409Conflict, "The class session has started.", outcome.ToString());
+            case ChangeClassSessionStartOutcome.StartNotInTheFuture:
+                return CodedProblem(StatusCodes.Status409Conflict, "The new start time must be after now.", outcome.ToString());
+            case ChangeClassSessionStartOutcome.ChangedMeanwhile:
+                return CodedProblem(StatusCodes.Status409Conflict, "The class session changed at the same time. Try again.", outcome.ToString());
+            default:
+                throw new UnreachableException($"ChangeClassSessionStartOutcome.{outcome} has no status code.");
+        }
+    }
+
     private static ProblemHttpResult CancellationProblem(int status, string title, CancelClassSessionOutcome outcome)
+    {
+        return CodedProblem(status, title, outcome.ToString());
+    }
+
+    private static ProblemHttpResult CodedProblem(int status, string title, string code)
     {
         return TypedResults.Problem(
             statusCode: status,
             title: title,
-            extensions: new Dictionary<string, object?>(StringComparer.Ordinal) { [ReservationProblems.CodeExtension] = outcome.ToString() });
+            extensions: new Dictionary<string, object?>(StringComparer.Ordinal) { [ReservationProblems.CodeExtension] = code });
     }
 
     private static ClassSessionResponse ToResponse(ClassSessionSummary summary)

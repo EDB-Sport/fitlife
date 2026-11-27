@@ -40,7 +40,7 @@ public sealed class ClassSessionsController : ControllerBase
     /// <response code="409">The class session rejected the reservation; code is the reason, e.g. ClassSessionFull or TooFarAhead.</response>
     /// <response code="503">Membership didn't answer (code MembershipUnavailable).</response>
     [HttpPost("{id:guid}/reservations")]
-    [Authorize(Roles = FitLifeRoles.Medlem)]
+    [Authorize(Policy = FitLifePolicies.Medlem)]
     [ProducesResponseType<ReservationResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
@@ -87,7 +87,7 @@ public sealed class ClassSessionsController : ControllerBase
     /// <response code="409">Another request changed the class session at the same time (code ChangedMeanwhile).</response>
     /// <response code="503">Membership didn't answer (code MembershipUnavailable).</response>
     [HttpDelete("{id:guid}/reservations/mine")]
-    [Authorize(Roles = FitLifeRoles.Medlem)]
+    [Authorize(Policy = FitLifePolicies.Medlem)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -127,6 +127,7 @@ public sealed class ClassSessionsController : ControllerBase
     /// <param name="cancellationToken">Stops the request.</param>
     /// <response code="409">A seat is free, the waitlist has closed, the class session is cancelled, or the member already has a place.</response>
     [HttpPost("{id:guid}/waitlist")]
+    [Authorize(Policy = FitLifePolicies.Medlem)]
     [Consumes("application/json")]
     [ProducesResponseType<WaitlistEntryResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]

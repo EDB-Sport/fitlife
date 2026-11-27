@@ -42,13 +42,16 @@ public sealed class PayMembershipHandler(
             return PayMembershipResult.NothingIsOwed;
         }
 
-        if (!await payments.ChargeMembershipFeeAsync(member.Id, fee.Value.MonthlyFeeDkk, cancellationToken).ConfigureAwait(false))
+        // Once the charge starts, a cancelled request stops neither it nor the save of its result (#544): the provider's own
+        // time-out still applies
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!await payments.ChargeMembershipFeeAsync(member.Id, fee.Value.MonthlyFeeDkk, CancellationToken.None).ConfigureAwait(false))
         {
             return PayMembershipResult.ChargeDeclined;
         }
 
         membership.RegisterPayment();
-        await memberships.SaveAsync(membership, cancellationToken).ConfigureAwait(false);
+        await memberships.SaveAsync(membership, CancellationToken.None).ConfigureAwait(false);
         return PayMembershipResult.Paid;
     }
 }

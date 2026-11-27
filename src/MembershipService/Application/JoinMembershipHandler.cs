@@ -45,11 +45,14 @@ public sealed class JoinMembershipHandler(
 
         // Charged once the membership is stored, so a paid fee always has a membership. It is stored with Betaling mangler and
         // made active only after the charge is approved: a join stopped before or during the charge leaves no free access.
-        bool paid = await payments.ChargeMembershipFeeAsync(member.Id, fee.Value.MonthlyFeeDkk, cancellationToken).ConfigureAwait(false);
+        // Once the charge starts, a cancelled request stops neither it nor the save of its result (#544): the provider's own
+        // time-out still applies
+        cancellationToken.ThrowIfCancellationRequested();
+        bool paid = await payments.ChargeMembershipFeeAsync(member.Id, fee.Value.MonthlyFeeDkk, CancellationToken.None).ConfigureAwait(false);
         if (paid)
         {
             membership.MarkPaid();
-            await memberships.SaveAsync(membership, cancellationToken).ConfigureAwait(false);
+            await memberships.SaveAsync(membership, CancellationToken.None).ConfigureAwait(false);
         }
 
         return JoinResult.Success(member, membership);

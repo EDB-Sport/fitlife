@@ -268,7 +268,9 @@
         "required": [
           "memberId",
           "membershipStatus",
-          "isActive"
+          "isActive",
+          "pausedFrom",
+          "pausedTo"
         ],
         "type": "object",
         "properties": {
@@ -284,6 +286,22 @@
           "isActive": {
             "type": "boolean",
             "description": "Whether the member may book and enter."
+          },
+          "pausedFrom": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The first day of a pause period that is running or still to come, or null.",
+            "format": "date"
+          },
+          "pausedTo": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The last day of that pause period, or null.",
+            "format": "date"
           }
         },
         "description": "A member and whether the membership gives access and the right to book."

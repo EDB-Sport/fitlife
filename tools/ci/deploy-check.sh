@@ -17,6 +17,7 @@
 #   6. every acceptance check deploy/**/*.test.sh, e.g. Vault in compose (#17) and the ACI topology (#23),
 #      with BICEP set to the pinned Bicep CLI in a container (#77)
 #   7. tools/ci/image-versions.sh: every image a full version, the same version for the same image (#275)
+#   8. tools/ci/compose-azure-env.sh: every compose env key of a service in Azure is in its container, or local only (#524)
 # Every check runs, and the script exits 1 at the end if any of them failed.
 set -euo pipefail
 
@@ -339,6 +340,14 @@ if (cd "$ROOT" && tools/ci/image-versions.sh "$ROOT"); then
   ok "tools/ci/image-versions.sh"
 else
   fail "tools/ci/image-versions.sh found problems (see above)"
+fi
+
+# ---------------------------------------------------------------------------------------------------
+step "8. Compose env keys are in the Azure containers, or on the local-only list"
+if tools/ci/compose-azure-env.sh; then
+  ok "compose-azure-env"
+else
+  fail "compose-azure-env: a compose env key is missing in Azure (tools/ci/compose-azure-env.sh)"
 fi
 
 # ---------------------------------------------------------------------------------------------------

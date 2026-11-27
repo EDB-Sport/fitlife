@@ -22,3 +22,4 @@ Follow `docs/PR_RULES.md`. CI fails a PR whose description doesn't follow the te
 - **Tests first:** start with a failing test or executable check (`docs/METHODOLOGY.md` section 4).
 - **Names come from `GLOSSARY.md`.** Never use a name from its **Avoid** column. A new domain term goes into the glossary in the same PR.
 - **Build only what the issue asks for.** Extras go in a new issue (`docs/METHODOLOGY.md` section 5).
+- **`docs/legacy/` is history: never follow or cite it.** What is built and why is in `docs/TECHNICAL_REFERENCE.md`.

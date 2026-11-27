@@ -10,6 +10,22 @@ One JSON Schema per RabbitMQ event that crosses a context boundary (`docs/domain
 
 Tests: `tests/FitLife.Contracts.Tests` checks each schema against a sample in the test. Producer and consumer tests validate with `EventSchemas.Validate` from `tests/FitLife.Contracts.Testing`.
 
+## Handled once on
+
+RabbitMQ can deliver an event more than once, so each consumer handles it only once on these fields (#231):
+
+| Event | Published by | Handled once on |
+|---|---|---|
+| `reservation-made` | Booking | `reservationId` |
+| `reservation-cancelled` | Booking | `reservationId` (the id `reservation-made` carried; a reservation is cancelled once) |
+| `class-session-cancelled` | Booking | `classSessionId`, and `memberId` per notice |
+| `class-session-changed` | Booking | `classSessionId` + `startTime` |
+| `membership-paused` | Membership | `memberId` + `from` |
+| `membership-cancelled` | Membership | `memberId` |
+| `payment-failed` | Membership | `memberId` + `failedAt` |
+
+Dates without a time (`from`, `to`, `lastTrainingDay`) are `format: date` (`DateOnly`); moments are `format: date-time` with an offset (`DateTimeOffset`). A list of ids (`memberIds`) may be empty; each id in it has at least one character.
+
 ## Generated, don't edit by hand (#491)
 
 Each schema is generated from its integration event record in `libs/FitLife.Messaging/Events/`, the record the publisher sends and the consumer reads. Change the record, then regenerate:

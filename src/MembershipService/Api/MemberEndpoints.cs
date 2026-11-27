@@ -67,7 +67,7 @@ public static class MemberEndpoints
         }
 
         DateOnly today = MembershipLookup.Today(clock);
-        var response = new MemberResponse(result.Member.Id, result.Membership.StatusOn(today), result.Membership.IsActiveOn(today));
+        MemberResponse response = Lookup(result.Member, result.Membership, today);
         return TypedResults.Created(new Uri($"/members/by-account/{Uri.EscapeDataString(accountId)}", UriKind.Relative), response);
     }
 
@@ -213,6 +213,18 @@ public static class MemberEndpoints
         }
 
         DateOnly today = MembershipLookup.Today(readers.Clock);
-        return TypedResults.Ok(new MemberResponse(member.Id, membership.StatusOn(today), membership.IsActiveOn(today)));
+        return TypedResults.Ok(Lookup(member, membership, today));
+    }
+
+    // The pause period is named while it is running or still to come, so Booking can refuse a class session inside it (#536)
+    private static MemberResponse Lookup(Member member, Membership membership, DateOnly today)
+    {
+        bool pauseNotOver = membership.HasPauseNotOverOn(today);
+        return new MemberResponse(
+            member.Id,
+            membership.StatusOn(today),
+            membership.IsActiveOn(today),
+            pauseNotOver ? membership.PausedFrom : null,
+            pauseNotOver ? membership.PausedTo : null);
     }
 }

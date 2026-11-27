@@ -21,6 +21,6 @@ public sealed class MongoDbOptions
     /// <summary>Gets or sets the password. From .env or Vault, never from appsettings.json.</summary>
     public string Password { get; set; } = string.Empty;
 
-    /// <summary>Gets or sets the database the user is defined in; the service's own database when not set.</summary>
-    public string? AuthDatabase { get; set; }
+    /// <summary>Gets or sets the database the user is defined in (<c>MongoDb:AuthSource</c>, as every service, #307); the service's own database when not set.</summary>
+    public string? AuthSource { get; set; }
 }

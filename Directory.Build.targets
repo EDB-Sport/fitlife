@@ -1,5 +1,5 @@
 <!--
-  Strictness settings (docs/CSHARP_SETUP_TODO.md section 2).
+  Strictness settings (docs/TECHNICAL_REFERENCE.md section 2).
   This file is imported after each .csproj, so these values always win.
   Code-owned: changes need a review from the maintainers.
 -->
@@ -28,7 +28,7 @@
   </PropertyGroup>
 
   <!--
-    No references between services (docs/CSHARP_SETUP_TODO.md section 1).
+    No references between services (docs/TECHNICAL_REFERENCE.md section 1).
     A project under src/<A>/ may not reference a project under src/<B>/. Services talk over HTTP and events only.
   -->
   <PropertyGroup>
@@ -51,7 +51,7 @@
     </ItemGroup>
     <Error Condition="'@(_FitLifeCrossServiceReference)' != ''"
            Code="FITLIFE001"
-           Text="Found a ProjectReference from src/$(_FitLifeService) to src/%(_FitLifeCrossServiceReference.Service). Remove it: services and UIs talk to each other over HTTP or RabbitMQ events only (docs/CSHARP_SETUP_TODO.md section 1)." />
+           Text="Found a ProjectReference from src/$(_FitLifeService) to src/%(_FitLifeCrossServiceReference.Service). Remove it: services and UIs talk to each other over HTTP or RabbitMQ events only (docs/TECHNICAL_REFERENCE.md section 1)." />
   </Target>
 
   <!--

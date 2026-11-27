@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ClassSessionCancelled",
+  "description": "Hold aflyst: a class session will not take place, and every reservation and waitlist entry on it is gone. Published by Booking, consumed by Notification (docs/domain/CONTEXT-MAP.md section 5). The message carries the correlation ID in its X-Correlation-ID header, not in the body.",
+  "type": "object",
+  "properties": {
+    "classSessionId": {
+      "description": "The id of the cancelled class session. A class session is cancelled once, so consumers use it (and the member id per notice) to handle the same event only once.",
+      "type": "string",
+      "minLength": 1
+    },
+    "memberIds": {
+      "description": "The members who had a reservation or a waitlist entry on it (MemberId, from Membership). May be empty.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "startTime": {
+      "description": "When the class session would have started, ISO 8601 with an offset.",
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "classSessionId",
+    "memberIds",
+    "startTime"
+  ],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "classSessionId": "6741f0c2a9e1b3d4c5f60719",
+      "memberIds": [
+        "6741f0c2a9e1b3d4c5f6071a",
+        "6741f0c2a9e1b3d4c5f6071b"
+      ],
+      "startTime": "2026-12-01T17:00:00+00:00"
+    }
+  ]
+}

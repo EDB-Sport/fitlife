@@ -1,4 +1,4 @@
-# MembershipService image (docs/CSHARP_SETUP_TODO.md section 8). Build from the repo root:
+# MembershipService image (docs/TECHNICAL_REFERENCE.md section 8). Build from the repo root:
 #   docker build -f src/MembershipService/Dockerfile .
 # A new service copies this file and replaces MembershipService (docs/ADDING_A_SERVICE.md).
 
@@ -13,6 +13,7 @@ COPY tools/Analyzers/Team.Analyzers/Team.Analyzers.csproj tools/Analyzers/Team.A
 COPY libs/FitLife.Authentication/FitLife.Authentication.csproj libs/FitLife.Authentication/packages.lock.json libs/FitLife.Authentication/
 COPY libs/FitLife.Configuration/FitLife.Configuration.csproj libs/FitLife.Configuration/packages.lock.json libs/FitLife.Configuration/
 COPY libs/FitLife.Correlation/FitLife.Correlation.csproj libs/FitLife.Correlation/packages.lock.json libs/FitLife.Correlation/
+COPY libs/FitLife.Messaging/FitLife.Messaging.csproj libs/FitLife.Messaging/packages.lock.json libs/FitLife.Messaging/
 COPY src/MembershipService/MembershipService.csproj src/MembershipService/packages.lock.json src/MembershipService/
 RUN dotnet restore src/MembershipService/MembershipService.csproj --locked-mode
 

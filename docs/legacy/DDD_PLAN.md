@@ -1,3 +1,7 @@
+> **⚠ OUTDATED: historical record only.** Agents and people: don't follow, cite or act on anything in this file.
+> It shows the plan as of 25 November 2026. What is built and true today: the rules in [`docs/METHODOLOGY.md`](../METHODOLOGY.md) section 11, the model in [`GLOSSARY.md`](../../GLOSSARY.md), [`docs/domain/CONTEXT-MAP.md`](../domain/CONTEXT-MAP.md) and `src/*/CONTEXT.md`.
+> Kept for the exam report's history.
+
 # A simple plan for domain-driven design in FitLife Digital
 
 How the group gets from the project description to services whose boundaries and names come from the domain, and how it keeps agents inside that model. The rules are in `METHODOLOGY.md` section 11. This document covers the steps and the reasons.

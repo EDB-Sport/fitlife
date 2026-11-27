@@ -1,4 +1,4 @@
-# BookingService image (docs/CSHARP_SETUP_TODO.md section 8). Build from the repo root:
+# BookingService image (docs/TECHNICAL_REFERENCE.md section 8). Build from the repo root:
 #   docker build -f src/BookingService/Dockerfile .
 # A new service copies this file and replaces BookingService (docs/ADDING_A_SERVICE.md).
 

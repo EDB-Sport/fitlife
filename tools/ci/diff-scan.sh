@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# diff-scan (issue #5, docs/CSHARP_SETUP_TODO.md section 10): the text-level escapes the compiler can't see.
+# diff-scan (issue #5, docs/TECHNICAL_REFERENCE.md section 10): the text-level escapes the compiler can't see.
 # Looks only at what the PR changes (git diff base...head) and fails on lines it adds:
 #   - ExcludeFromCodeCoverage in code or project files
 #   - a new .editorconfig or .globalconfig anywhere except the repo root

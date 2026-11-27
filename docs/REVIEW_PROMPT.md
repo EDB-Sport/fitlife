@@ -5,7 +5,10 @@ The shared prompt for an agent review of a pull request (`METHODOLOGY.md` sectio
 It checks what CI can't. Tests, the TEAM analyzers, Stryker and the required jobs already cover the technical detail, so the review doesn't repeat them.
 
 ```
-Review PR #<n> in EDB-Sport/fitlife against docs/METHODOLOGY.md and docs/PR_RULES.md.
+Review PR #<n> in EDB-Sport/fitlife.
+
+Open a section of docs/METHODOLOGY.md or docs/PR_RULES.md only when a check below needs it
+(for example section 11.3 for a domain change). Don't read either file whole.
 
 Before anything else: run `gh pr view <n> --json latestReviews`. If another member has
 already reviewed and the author hasn't asked for a second review, stop (METHODOLOGY section 3).
@@ -34,7 +37,10 @@ Check, in this order, and report only real findings:
 6. PR body: Closes or Refs #<issue>, "What changed and why", and the Tests section.
 
 Verdict: approve, or request changes with at most three concrete reasons,
-each with file:line. Off-topic remarks go in a separate comment and never block.
-Write it so it can be pasted as a GitHub review. Keep it short.
+each with file:line. Post one review per round, with its verdict and notes together:
+never a comment-only review followed by a separate approve.
+Notes never block: at most two, and only ones you would file an issue for.
+An approval is at most three lines of text, plus the closing line.
+Write it so it can be pasted as a GitHub review.
 End the review with the line ``Reviewed at `<sha>` `` (the head sha you read).
 ```

@@ -91,7 +91,7 @@ check "runs the mock tests" has_call '^newman run tests/postman/mocks/user-regis
 check "doesn't run the collection behind the mock server" no_call 'user-registration\.mock\.postman_collection'
 check "runs 4 collections, skipping .gitkeep, and the mock tests once more against the public mock (#279)" call_count '^newman run' 5
 check "every run uses environments/ci" call_count '^newman run .* -e tests/postman/environments/ci\.postman_environment\.json( |$)' 4
-check "every run uses the cli, junit and htmlextra reporters" call_count '^newman run .* -r cli,junit,htmlextra( |$)' 4
+check "every run uses the cli, junit and htmlextra reporters" call_count '^newman run .* -r cli,junit,htmlextra( |$)' 5
 check "the HTML report goes to newman-reports/" has_call '--reporter-htmlextra-export newman-reports/e2e-booking-flow\.html'
 check "the JUnit report goes to newman-reports/" has_call '--reporter-junit-export newman-reports/e2e-booking-flow\.xml'
 

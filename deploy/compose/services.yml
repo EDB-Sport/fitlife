@@ -111,6 +111,7 @@ services:
       # Database membership, user membership-svc (infrastructure.yml, SERVICE_DATABASES)
       MongoDb__Host: mongodb
       MongoDb__Port: "27017"
+      PaymentProvider__BaseUrl: http://mock-server:8080 # the payment provider's stand-in (infrastructure.yml, #279)
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
       interval: 5s

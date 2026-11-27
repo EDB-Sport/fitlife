@@ -1,0 +1,239 @@
+{
+  "mappings": [
+    {
+      "priority": 1,
+      "request": {
+        "method": "POST",
+        "urlPath": "/users",
+        "headers": {
+          "x-mock-response-name": {
+            "equalTo": "user-created"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": "{\n  \"id\": \"3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c\",\n  \"email\": \"anna.jensen@example.com\",\n  \"firstName\": \"Anna\",\n  \"lastName\": \"Jensen\",\n  \"createdAt\": \"2026-11-23T10:00:00Z\"\n}",
+        "headers": {
+          "Content-Type": "application/json",
+          "Location": "/users/3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c"
+        }
+      }
+    },
+    {
+      "priority": 1,
+      "request": {
+        "method": "POST",
+        "urlPath": "/users",
+        "headers": {
+          "x-mock-response-name": {
+            "equalTo": "user-invalid"
+          }
+        }
+      },
+      "response": {
+        "status": 400,
+        "body": "{\n  \"type\": \"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\n  \"title\": \"One or more validation errors occurred.\",\n  \"status\": 400,\n  \"detail\": \"The request body is not valid.\",\n  \"errors\": {\n    \"email\": [\n      \"'email' is not a valid email address.\"\n    ],\n    \"password\": [\n      \"'password' must be at least 12 characters.\"\n    ]\n  }\n}",
+        "headers": {
+          "Content-Type": "application/problem+json"
+        }
+      }
+    },
+    {
+      "priority": 1,
+      "request": {
+        "method": "POST",
+        "urlPath": "/users",
+        "headers": {
+          "x-mock-response-name": {
+            "equalTo": "user-email-taken"
+          }
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": "{\n  \"type\": \"https://tools.ietf.org/html/rfc9110#section-15.5.10\",\n  \"title\": \"Email already registered\",\n  \"status\": 409,\n  \"detail\": \"A user with the email 'anna.jensen@example.com' already exists.\"\n}",
+        "headers": {
+          "Content-Type": "application/problem+json"
+        }
+      }
+    },
+    {
+      "priority": 1,
+      "request": {
+        "method": "GET",
+        "urlPath": "/users/3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c",
+        "headers": {
+          "x-mock-response-name": {
+            "equalTo": "user-found"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": "{\n  \"id\": \"3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c\",\n  \"email\": \"anna.jensen@example.com\",\n  \"firstName\": \"Anna\",\n  \"lastName\": \"Jensen\",\n  \"createdAt\": \"2026-11-23T10:00:00Z\"\n}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "priority": 1,
+      "request": {
+        "method": "GET",
+        "urlPath": "/users/00000000-0000-0000-0000-000000000000",
+        "headers": {
+          "x-mock-response-name": {
+            "equalTo": "user-not-found"
+          }
+        }
+      },
+      "response": {
+        "status": 404,
+        "body": "{\n  \"type\": \"https://tools.ietf.org/html/rfc9110#section-15.5.5\",\n  \"title\": \"User not found\",\n  \"status\": 404,\n  \"detail\": \"No user with id '00000000-0000-0000-0000-000000000000'.\"\n}",
+        "headers": {
+          "Content-Type": "application/problem+json"
+        }
+      }
+    },
+    {
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPath": "/users",
+        "headers": {
+          "x-mock-response-code": {
+            "equalTo": "201"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": "{\n  \"id\": \"3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c\",\n  \"email\": \"anna.jensen@example.com\",\n  \"firstName\": \"Anna\",\n  \"lastName\": \"Jensen\",\n  \"createdAt\": \"2026-11-23T10:00:00Z\"\n}",
+        "headers": {
+          "Content-Type": "application/json",
+          "Location": "/users/3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c"
+        }
+      }
+    },
+    {
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPath": "/users",
+        "headers": {
+          "x-mock-response-code": {
+            "equalTo": "400"
+          }
+        }
+      },
+      "response": {
+        "status": 400,
+        "body": "{\n  \"type\": \"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\n  \"title\": \"One or more validation errors occurred.\",\n  \"status\": 400,\n  \"detail\": \"The request body is not valid.\",\n  \"errors\": {\n    \"email\": [\n      \"'email' is not a valid email address.\"\n    ],\n    \"password\": [\n      \"'password' must be at least 12 characters.\"\n    ]\n  }\n}",
+        "headers": {
+          "Content-Type": "application/problem+json"
+        }
+      }
+    },
+    {
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPath": "/users",
+        "headers": {
+          "x-mock-response-code": {
+            "equalTo": "409"
+          }
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": "{\n  \"type\": \"https://tools.ietf.org/html/rfc9110#section-15.5.10\",\n  \"title\": \"Email already registered\",\n  \"status\": 409,\n  \"detail\": \"A user with the email 'anna.jensen@example.com' already exists.\"\n}",
+        "headers": {
+          "Content-Type": "application/problem+json"
+        }
+      }
+    },
+    {
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPath": "/users/3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c",
+        "headers": {
+          "x-mock-response-code": {
+            "equalTo": "200"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": "{\n  \"id\": \"3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c\",\n  \"email\": \"anna.jensen@example.com\",\n  \"firstName\": \"Anna\",\n  \"lastName\": \"Jensen\",\n  \"createdAt\": \"2026-11-23T10:00:00Z\"\n}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPath": "/users/00000000-0000-0000-0000-000000000000",
+        "headers": {
+          "x-mock-response-code": {
+            "equalTo": "404"
+          }
+        }
+      },
+      "response": {
+        "status": 404,
+        "body": "{\n  \"type\": \"https://tools.ietf.org/html/rfc9110#section-15.5.5\",\n  \"title\": \"User not found\",\n  \"status\": 404,\n  \"detail\": \"No user with id '00000000-0000-0000-0000-000000000000'.\"\n}",
+        "headers": {
+          "Content-Type": "application/problem+json"
+        }
+      }
+    },
+    {
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPath": "/users/00000000-0000-0000-0000-000000000000"
+      },
+      "response": {
+        "status": 404,
+        "body": "{\n  \"type\": \"https://tools.ietf.org/html/rfc9110#section-15.5.5\",\n  \"title\": \"User not found\",\n  \"status\": 404,\n  \"detail\": \"No user with id '00000000-0000-0000-0000-000000000000'.\"\n}",
+        "headers": {
+          "Content-Type": "application/problem+json"
+        }
+      }
+    },
+    {
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPath": "/users/3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c"
+      },
+      "response": {
+        "status": 200,
+        "body": "{\n  \"id\": \"3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c\",\n  \"email\": \"anna.jensen@example.com\",\n  \"firstName\": \"Anna\",\n  \"lastName\": \"Jensen\",\n  \"createdAt\": \"2026-11-23T10:00:00Z\"\n}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "priority": 5,
+      "request": {
+        "method": "POST",
+        "urlPath": "/users"
+      },
+      "response": {
+        "status": 201,
+        "body": "{\n  \"id\": \"3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c\",\n  \"email\": \"anna.jensen@example.com\",\n  \"firstName\": \"Anna\",\n  \"lastName\": \"Jensen\",\n  \"createdAt\": \"2026-11-23T10:00:00Z\"\n}",
+        "headers": {
+          "Content-Type": "application/json",
+          "Location": "/users/3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c"
+        }
+      }
+    }
+  ]
+}

@@ -43,7 +43,7 @@ This table is a reference, not a second spec. When an issue and the table disagr
 | `/hold` (planned) | MemberPortal.Web | yes | yes | yes | yes | [#205](https://github.com/EDB-Sport/fitlife/issues/205) |
 | `/log-ind` (planned) | MemberPortal.Web | yes | yes | yes | yes | [#206](https://github.com/EDB-Sport/fitlife/issues/206) |
 | `/log-ud` (planned) | MemberPortal.Web | not decided | not decided | not decided | not decided | [#206](https://github.com/EDB-Sport/fitlife/issues/206) |
-| `/bliv-medlem` (planned) | MemberPortal.Web | yes | yes | yes | yes | [#209](https://github.com/EDB-Sport/fitlife/issues/209) |
+| `/bliv-medlem` | MemberPortal.Web | yes | yes | yes | yes | [#209](https://github.com/EDB-Sport/fitlife/issues/209) |
 | `/mine-bookinger` (planned) | MemberPortal.Web | – | not decided | not decided | not decided | [#208](https://github.com/EDB-Sport/fitlife/issues/208) |
 | `/mit-medlemskab` (planned) | MemberPortal.Web | – | not decided | not decided | not decided | [#210](https://github.com/EDB-Sport/fitlife/issues/210), [#211](https://github.com/EDB-Sport/fitlife/issues/211) |
 | `GET /health` | every service, the portal and the gateway | yes | yes | yes | yes | – |

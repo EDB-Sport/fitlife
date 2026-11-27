@@ -27,7 +27,7 @@ done
 for service in $SERVICE_DATABASES; do
   password_variable="$(echo "$service" | tr '[:lower:]' '[:upper:]')_DB_PASSWORD"
   require "$password_variable"
-  eval "db_password=\$$password_variable"
+  db_password="$(printenv "$password_variable")"
 
   vault kv put -mount=secret "$service-svc" \
     "MongoDb:Password=$db_password" \

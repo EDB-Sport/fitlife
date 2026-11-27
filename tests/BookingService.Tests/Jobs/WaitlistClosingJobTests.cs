@@ -2,6 +2,7 @@ using BookingService.Application;
 using BookingService.Domain;
 using BookingService.Jobs;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 
@@ -124,6 +125,66 @@ public sealed class WaitlistClosingJobTests
     }
 
     [Test]
+    public async Task ExecuteAsync_WhenARunFailsWithAnyException_LogsAnErrorAndRunsAgain()
+    {
+        // Arrange: a broken connection is a MongoConnectionException, not a TimeoutException (#543)
+        var failure = new InvalidOperationException("The connection to MongoDB broke.");
+        var repository = new StoredClassSession(() => FullWithAWaitlistEntry(Now.AddHours(1))) { FirstReadFailure = failure };
+        var logger = new RecordingLogger();
+        using WaitlistClosingJob job = Job(repository, logger);
+        await job.StartAsync(CancellationToken.None).ConfigureAwait(false);
+        await repository.FirstRead.WaitAsync(TestTimeout).ConfigureAwait(false);
+
+        // Act
+        _clock.Advance(WaitlistClosingJob.Interval);
+        await repository.FirstSuccessfulSave.WaitAsync(TestTimeout).ConfigureAwait(false);
+
+        // Assert
+        await job.StopAsync(CancellationToken.None).ConfigureAwait(false);
+        Assert.Multiple(() =>
+        {
+            Assert.That(logger.Errors, Is.EqualTo(new[] { failure }));
+            Assert.That(repository.Saved?.Waitlist, Is.Empty);
+        });
+    }
+
+    [Test]
+    public async Task ExecuteAsync_WhenMongoDbTimesOut_LogsAWarningAndNoError()
+    {
+        // Arrange
+        var repository = new StoredClassSession(() => FullWithAWaitlistEntry(Now.AddHours(1))) { ReadsToTimeOut = 1 };
+        var logger = new RecordingLogger();
+        using WaitlistClosingJob job = Job(repository, logger);
+
+        // Act
+        await job.StartAsync(CancellationToken.None).ConfigureAwait(false);
+        await repository.FirstRead.WaitAsync(TestTimeout).ConfigureAwait(false);
+        await job.StopAsync(CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(logger.Warnings, Is.EqualTo(1));
+            Assert.That(logger.Errors, Is.Empty);
+        });
+    }
+
+    [Test]
+    public async Task ExecuteAsync_WhenARunIsCancelled_StopsTheJob()
+    {
+        // Arrange: stopping the service cancels the run, and that must still end the job
+        var repository = new StoredClassSession(() => FullWithAWaitlistEntry(Now.AddHours(1))) { FirstReadFailure = new OperationCanceledException() };
+        using WaitlistClosingJob job = Job(repository);
+
+        // Act
+        await job.StartAsync(CancellationToken.None).ConfigureAwait(false);
+        await repository.FirstRead.WaitAsync(TestTimeout).ConfigureAwait(false);
+
+        // Assert
+        await Assert.ThatAsync(() => (job.ExecuteTask ?? Task.CompletedTask).WaitAsync(TestTimeout), Throws.InstanceOf<OperationCanceledException>()).ConfigureAwait(false);
+    }
+
+    [Test]
     public async Task RunOnceAsync_ReadsTheClassSessionsThatStartAfterNow()
     {
         // Arrange: a later bound (now + 2 h, say) would never see a class session that is due
@@ -165,8 +226,44 @@ public sealed class WaitlistClosingJobTests
 
     private WaitlistClosingJob Job(IClassSessionRepository repository)
     {
+        return Job(repository, NullLogger<WaitlistClosingJob>.Instance);
+    }
+
+    private WaitlistClosingJob Job(IClassSessionRepository repository, ILogger<WaitlistClosingJob> logger)
+    {
         ServiceProvider services = new ServiceCollection().AddSingleton(repository).BuildServiceProvider();
-        return new WaitlistClosingJob(services.GetRequiredService<IServiceScopeFactory>(), _clock, NullLogger<WaitlistClosingJob>.Instance);
+        return new WaitlistClosingJob(services.GetRequiredService<IServiceScopeFactory>(), _clock, logger);
+    }
+
+    /// <summary>Keeps the exception of every error log line and counts the warnings.</summary>
+    private sealed class RecordingLogger : ILogger<WaitlistClosingJob>
+    {
+        public List<Exception?> Errors { get; } = [];
+
+        public int Warnings { get; private set; }
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull
+        {
+            return null;
+        }
+
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return true;
+        }
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel == LogLevel.Error)
+            {
+                Errors.Add(exception);
+            }
+            else if (logLevel == LogLevel.Warning)
+            {
+                Warnings++;
+            }
+        }
     }
 
     /// <summary>
@@ -183,6 +280,9 @@ public sealed class WaitlistClosingJobTests
 
         public int ReadsToTimeOut { get; init; }
 
+        /// <summary>When set, the first read throws it.</summary>
+        public Exception? FirstReadFailure { get; init; }
+
         /// <summary>Completes on the first read: the job has started its timer by then.</summary>
         public Task FirstRead => _firstRead.Task;
 
@@ -198,6 +298,11 @@ public sealed class WaitlistClosingJobTests
         {
             _reads++;
             _firstRead.TrySetResult();
+            if (_reads == 1 && FirstReadFailure is not null)
+            {
+                return Task.FromException<IReadOnlyList<ClassSession>>(FirstReadFailure);
+            }
+
             if (_reads <= ReadsToTimeOut)
             {
                 return Task.FromException<IReadOnlyList<ClassSession>>(new TimeoutException("MongoDB isn't up yet."));

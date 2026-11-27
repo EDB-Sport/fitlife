@@ -10,7 +10,7 @@ The template's **What to verify and how** section is optional, for feature PRs o
 
 Not checked by CI: assign yourself to the issue when you start, before you open the PR, so nobody else starts the same work.
 
-Not checked by CI: a PR that adds or changes an endpoint or a page updates its row in `docs/domain/ACCESS.md`.
+A PR that adds or changes an endpoint or a page updates its row in `docs/domain/ACCESS.md`. Checked by CI for the endpoints of BookingService, IdentityService, MembershipService and NotificationService (`AccessTableTests` in each service's integration tests, #489): route, method, roles and AllowAnonymous must match the row, and a row not marked "(planned)" needs an endpoint. Not checked by CI: pages, `/mcp`, and the rows of services without an endpoint yet.
 
 **Lock file diff filtering**: `.gitattributes` marks `**/packages.lock.json` as `linguist-generated`, so GitHub collapses it in the PR diff. Local `git diff` still shows it. `gh pr diff <pr>` ignores `.gitattributes`: add `--exclude '**/packages.lock.json'` to hide lock files. A lock file change can hide a dependency change, so the PR description must name the packages that changed (locked-mode restore in CI, see issue #47).
 

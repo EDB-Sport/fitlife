@@ -34,7 +34,7 @@ This table is a reference, not a second spec. When an issue and the table disagr
 | `PUT /members/me/pause` | MembershipService | – | yes | yes | yes | [#248](https://github.com/EDB-Sport/fitlife/issues/248), any role in [#368](https://github.com/EDB-Sport/fitlife/issues/368) |
 | `DELETE /members/me/pause` | MembershipService | – | yes | yes | yes | [#248](https://github.com/EDB-Sport/fitlife/issues/248), any role in [#368](https://github.com/EDB-Sport/fitlife/issues/368) |
 | `POST /members/me/cancellation` (planned) | MembershipService | – | not decided | not decided | not decided | [#249](https://github.com/EDB-Sport/fitlife/issues/249) |
-| `POST /members/me/payment` (planned) | MembershipService | – | not decided | not decided | not decided | [#250](https://github.com/EDB-Sport/fitlife/issues/250), [#267](https://github.com/EDB-Sport/fitlife/issues/267) |
+| `POST /members/me/payment` | MembershipService | – | yes | yes | yes | [#250](https://github.com/EDB-Sport/fitlife/issues/250), [#267](https://github.com/EDB-Sport/fitlife/issues/267) |
 | `GET /notifications?memberId={id}` | NotificationService | – | – | yes | yes | [#221](https://github.com/EDB-Sport/fitlife/issues/221) |
 | `/mcp`, the tool `list_class_sessions` (planned) | McpServer | yes | yes | yes | yes | [#214](https://github.com/EDB-Sport/fitlife/issues/214) |
 | `/mcp`, the five member tools (planned) | McpServer | – | not decided | not decided | not decided | [#215](https://github.com/EDB-Sport/fitlife/issues/215): names no role. The server only passes the member's token to Booking, whose endpoints need the role Medlem ([#260](https://github.com/EDB-Sport/fitlife/issues/260) to [#265](https://github.com/EDB-Sport/fitlife/issues/265)) |

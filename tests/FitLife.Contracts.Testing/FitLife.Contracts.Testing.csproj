@@ -1,8 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Test helper, not a test project: validates JSON against the event schemas in contracts/events/ (#92), and checks a
-    consumer's fake against the provider's OpenAPI contract in contracts/openapi/ (#522).
+    Test helper, not a test project: validates JSON against the event schemas in contracts/events/ (#92), checks a
+    consumer's fake against the provider's OpenAPI contract in contracts/openapi/ (#522), and compares
+    docs/domain/ACCESS.md with a service's endpoints (#489).
     Producer tests (the publishing service) and consumer tests (the consuming service) reference it,
     so both sides test against exactly the same file (docs/TECHNICAL_REFERENCE.md section 6).
   -->
@@ -12,7 +13,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- AccessTable reads the endpoints of an ASP.NET Core app (#489) -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="JsonSchema.Net" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="$(RepoRoot)libs/FitLife.Authentication/FitLife.Authentication.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,6 +27,8 @@
     <Content Include="$(RepoRoot)contracts/events/*.schema.json" Link="contracts/events/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <!-- The OpenAPI contracts, for the check that a consumer's fake answers only with what the provider has (#522) -->
     <Content Include="$(RepoRoot)contracts/openapi/*.json" Link="contracts/openapi/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The access table, for the per-service AccessTable tests (#489) -->
+    <Content Include="$(RepoRoot)docs/domain/ACCESS.md" Link="docs/domain/ACCESS.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -364,6 +364,7 @@
       "fitlife.contracts.testing": {
         "type": "Project",
         "dependencies": {
+          "FitLife.Authentication": "[0.3.0, )",
           "JsonSchema.Net": "[9.6.0, )"
         }
       },

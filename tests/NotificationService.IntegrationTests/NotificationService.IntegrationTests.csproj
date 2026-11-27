@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\NotificationService\NotificationService.csproj" />
+    <ProjectReference Include="..\FitLife.Contracts.Testing\FitLife.Contracts.Testing.csproj" />
   </ItemGroup>
 
 </Project>

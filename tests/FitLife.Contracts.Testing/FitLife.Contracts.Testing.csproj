@@ -4,7 +4,7 @@
     Test helper, not a test project: validates JSON against the event schemas in contracts/events/ (#92), and checks a
     consumer's fake against the provider's OpenAPI contract in contracts/openapi/ (#522).
     Producer tests (the publishing service) and consumer tests (the consuming service) reference it,
-    so both sides test against exactly the same file (docs/CSHARP_SETUP_TODO.md section 6).
+    so both sides test against exactly the same file (docs/TECHNICAL_REFERENCE.md section 6).
   -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>

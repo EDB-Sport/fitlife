@@ -108,7 +108,7 @@ public sealed class ClassSessionRepositoryTests
             IClassSessionRepository repository = cancelling.ServiceProvider.GetRequiredService<IClassSessionRepository>();
             ClassSession stored = await repository.GetByIdAsync(classSession.Id, CancellationToken.None).ConfigureAwait(false)
                 ?? throw new InvalidOperationException("The class session wasn't stored.");
-            stored.Cancel();
+            stored.Cancel(clock);
             await repository.SaveAsync(stored, CancellationToken.None).ConfigureAwait(false);
         }
 

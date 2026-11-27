@@ -6,7 +6,7 @@
 
 ## Context
 
-The PoC must deliver "en eller flere centrale komponenter af FitLife Digital" as microservices [PB p. 10], and the IT-arkitektur report must explain the design process "fra målbillede til microservices (f.eks. jf. DDD)". "Why is the system cut this way?" is also a likely exam question (`DDD_PLAN.md` section 2).
+The PoC must deliver "en eller flere centrale komponenter af FitLife Digital" as microservices [PB p. 10], and the IT-arkitektur report must explain the design process "fra målbillede til microservices (f.eks. jf. DDD)". "Why is the system cut this way?" is also a likely exam question (METHODOLOGY section 11).
 
 Inputs: the case [PB p. 3–6], the group's simulated interviews [I1–I4], the target architecture from part 1, the TO-BE context document (version 2026-11-23) and the course method in *Læringsguide M4.01*. Source abbreviations are explained at the top of `docs/domain/CONTEXT-MAP.md`.
 
@@ -17,7 +17,7 @@ Forces:
 - The case's idea for FitLife Digital is to integrate "med eksisterende medlems- og økonomisystemer" [PB p. 5]. It is an idea from the innovation manager, not one of the tasks under "I skal" [PB p. 6], so we may choose otherwise if we argue it.
 - The case itself describes the 2012 system as part of the problem: "Der eksisterer ingen integration mellem systemerne" [PB p. 4], and management's SWOT lists outdated IT systems without integration and technical debt and security risks [PB p. 5].
 - The PoC must handle "brugernes identitet og adgang på en sikker måde" [PB p. 10] and test mocked services with Postman MockServer [PB p. 9].
-- Our own plan says to start with the core subdomain (`DDD_PLAN.md` step 4).
+- Our own plan says to start with the core subdomain (the DDD plan's step 4, kept as history in `docs/legacy/`).
 
 ## Decision
 
@@ -45,7 +45,7 @@ Forces:
 
 ## Consequences
 
-- Each context becomes one service in `src/<Service>/` with its own database and its own `CONTEXT.md` (DDD_PLAN step 3).
+- Each context becomes one service in `src/<Service>/` with its own database and its own `CONTEXT.md` (METHODOLOGY section 11.2 rule 1).
 - The cross-boundary events in context map section 5 each need a JSON Schema in `contracts/events/` before the services that use them are built.
 - The Postman MockServer requirement [PB p. 9] is met by mocking what is external. The mock in `tests/postman/mocks/` stands in for account registration until Identity exists; the payment provider gets its mock together with Membership.
 - In operation, the 2012 system keeps handling payment and key fobs [PB p. 4] until Membership and Access take over together, so a new member can always open the door. The order belongs to the transition in the target architecture (part 6); the PoC shows no transition.

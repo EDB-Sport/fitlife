@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # API, integration, end-to-end and mock-server tests with Newman (issue #22, docs/METHODOLOGY.md section 7,
-# docs/CSHARP_SETUP_TODO.md section 6 and section 10 job 10).
+# docs/TECHNICAL_REFERENCE.md section 6 and section 10, api-tests.yml).
 # Starts the compose stack from deploy/compose/, runs every collection with environments/ci and the
 # cli, junit and htmlextra reporters, and stops the stack again. One failing collection doesn't stop
 # the others, but it fails the run. Reports go to newman-reports/.

@@ -155,7 +155,7 @@ A new secret: add it to `.env.example`, to the `vault` service's environment in 
 
 ## MongoDB: one database per service
 
-`mongodb/init/01-service-users.js` runs the first time MongoDB starts with an empty volume. For each name in `SERVICE_DATABASES` it creates the database `<name>` and the user `<name>-svc` with `readWrite` on that database only, so a service can't read another service's data (`docs/CSHARP_SETUP_TODO.md` section 1).
+`mongodb/init/01-service-users.js` runs the first time MongoDB starts with an empty volume. For each name in `SERVICE_DATABASES` it creates the database `<name>` and the user `<name>-svc` with `readWrite` on that database only, so a service can't read another service's data (`docs/TECHNICAL_REFERENCE.md` section 1).
 
 A service's connection string inside the stack:
 
@@ -186,7 +186,7 @@ mongodb://booking-svc:<BOOKING_DB_PASSWORD>@mongodb:27017/booking?authSource=boo
 
 ## Logging and monitoring
 
-Services log with NLog to Loki; Grafana shows the logs and raises alerts (`docs/CSHARP_SETUP_TODO.md` section 7). Inside the stack a service pushes to `http://loki:3100`; a service started with `dotnet run` pushes to `http://localhost:3100` (`LOKI_HOST_PORT`).
+Services log with NLog to Loki; Grafana shows the logs and raises alerts (`docs/TECHNICAL_REFERENCE.md` section 7). Inside the stack a service pushes to `http://loki:3100`; a service started with `dotnet run` pushes to `http://localhost:3100` (`LOKI_HOST_PORT`).
 
 What the dashboard and alert rules expect from a service's log lines (the NLog config comes with the first service, #18):
 

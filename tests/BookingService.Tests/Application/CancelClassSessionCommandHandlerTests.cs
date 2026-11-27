@@ -55,7 +55,7 @@ public sealed class CancelClassSessionCommandHandlerTests
     {
         // Arrange
         ClassSession classSession = Stored();
-        classSession.Cancel();
+        classSession.Cancel(_clock);
         int eventsBefore = classSession.DomainEvents.Count;
 
         // Act
@@ -66,6 +66,26 @@ public sealed class CancelClassSessionCommandHandlerTests
         {
             Assert.That(outcome, Is.EqualTo(CancelClassSessionOutcome.ClassSessionAlreadyCancelled));
             Assert.That(classSession.DomainEvents, Has.Count.EqualTo(eventsBefore));
+        });
+        _classSessions.Verify(repository => repository.SaveAsync(It.IsAny<ClassSession>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Test]
+    public async Task Handle_AClassSessionThatHasStarted_IsRejectedAndNotSaved()
+    {
+        // Arrange
+        ClassSession classSession = Stored();
+        classSession.Reserve(Guid.NewGuid(), _clock);
+        _clock.SetUtcNow(classSession.StartTime);
+
+        // Act
+        CancelClassSessionOutcome outcome = await Handler().Handle(new CancelClassSessionCommand(classSession.Id), CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(outcome, Is.EqualTo(CancelClassSessionOutcome.ClassSessionStarted));
+            Assert.That((classSession.IsCancelled, classSession.Reservations.Count), Is.EqualTo((false, 1)));
         });
         _classSessions.Verify(repository => repository.SaveAsync(It.IsAny<ClassSession>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -94,6 +114,6 @@ public sealed class CancelClassSessionCommandHandlerTests
 
     private CancelClassSessionCommandHandler Handler()
     {
-        return new CancelClassSessionCommandHandler(_classSessions.Object);
+        return new CancelClassSessionCommandHandler(_classSessions.Object, _clock);
     }
 }

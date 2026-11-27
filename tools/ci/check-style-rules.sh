@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Executable acceptance check for the code style rules (issue #12, docs/CSHARP_SETUP_TODO.md section 5).
+# Executable acceptance check for the code style rules (issue #12, docs/TECHNICAL_REFERENCE.md section 5).
 # Builds small throwaway projects inside src/, so the root Directory.Build.* files, .editorconfig and
 # .globalconfig apply, and checks that each style rule fails the build, and that clean code still builds.
 # Also checks the repo-level criteria: dotnet format is clean, README and CODEOWNERS are updated.

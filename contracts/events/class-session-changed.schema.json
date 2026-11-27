@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ClassSessionChanged",
+  "description": "Hold ændret: a class session got a new start time. Published by Booking, consumed by Notification (docs/domain/CONTEXT-MAP.md section 5). The message carries the correlation ID in its X-Correlation-ID header, not in the body.",
+  "type": "object",
+  "properties": {
+    "classSessionId": {
+      "description": "The id of the class session. Consumers use it with startTime to handle the same event only once.",
+      "type": "string",
+      "minLength": 1
+    },
+    "memberIds": {
+      "description": "The members who had a reservation at the change, not the waitlisted (MemberId, from Membership). May be empty.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "previousStartTime": {
+      "description": "When the class session was going to start, ISO 8601 with an offset.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "startTime": {
+      "description": "When the class session starts now, ISO 8601 with an offset.",
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "classSessionId",
+    "memberIds",
+    "previousStartTime",
+    "startTime"
+  ],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "classSessionId": "6741f0c2a9e1b3d4c5f60719",
+      "memberIds": [
+        "6741f0c2a9e1b3d4c5f6071a"
+      ],
+      "previousStartTime": "2026-12-01T17:00:00+00:00",
+      "startTime": "2026-12-01T18:00:00+00:00"
+    }
+  ]
+}

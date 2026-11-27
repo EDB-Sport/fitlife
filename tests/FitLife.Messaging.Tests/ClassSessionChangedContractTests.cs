@@ -7,6 +7,8 @@ namespace FitLife.Messaging.Tests;
 /// <summary>The C# ClassSessionChanged and contracts/events/class-session-changed.schema.json describe the same message (#231).</summary>
 public sealed class ClassSessionChangedContractTests
 {
+    private static readonly string[] ExampleMemberIds = ["6741f0c2a9e1b3d4c5f6071a"];
+
     private static readonly ClassSessionChanged Event = new ClassSessionChanged(
         "6741f0c2a9e1b3d4c5f60719",
         ["6741f0c2a9e1b3d4c5f6071a"],
@@ -33,11 +35,13 @@ public sealed class ClassSessionChangedContractTests
         ClassSessionChanged read = EventJson.Deserialize<ClassSessionChanged>(body);
 
         // Assert
-        Assert.That((read.ClassSessionId, read.MemberIds, read.PreviousStartTime, read.StartTime), Is.EqualTo((
-            "6741f0c2a9e1b3d4c5f60719",
-            new[] { "6741f0c2a9e1b3d4c5f6071a" },
-            new DateTimeOffset(2026, 12, 1, 17, 0, 0, TimeSpan.Zero),
-            new DateTimeOffset(2026, 12, 1, 18, 0, 0, TimeSpan.Zero))));
+        Assert.Multiple(() =>
+        {
+            Assert.That(read.ClassSessionId, Is.EqualTo("6741f0c2a9e1b3d4c5f60719"));
+            Assert.That(read.MemberIds, Is.EqualTo(ExampleMemberIds));
+            Assert.That(read.PreviousStartTime, Is.EqualTo(new DateTimeOffset(2026, 12, 1, 17, 0, 0, TimeSpan.Zero)));
+            Assert.That(read.StartTime, Is.EqualTo(new DateTimeOffset(2026, 12, 1, 18, 0, 0, TimeSpan.Zero)));
+        });
     }
 
     [Test]

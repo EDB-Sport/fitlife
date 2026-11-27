@@ -40,6 +40,23 @@ public static class ClientRegistration
         return services;
     }
 
+    /// <summary>
+    /// Adds <see cref="BookingClient"/> as the <see cref="IBookingClient"/>: a typed client with the gateway's address from
+    /// <see cref="IdentityClient.BaseUrlConfigurationKey"/> and the correlation ID handler. The class schedule needs no
+    /// log-in (#205), so it has no <see cref="BearerTokenHandler"/>.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection.</returns>
+    public static IServiceCollection AddBookingClient(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddTransient<CorrelationIdHandler>();
+        services.AddHttpClient<IBookingClient, BookingClient>((provider, http) => http.BaseAddress = GatewayAddress(provider))
+            .AddHttpMessageHandler<CorrelationIdHandler>();
+
+        return services;
+    }
+
     // Read when a client is made, so the portal starts without it (TEAM010: no address literal)
     private static Uri GatewayAddress(IServiceProvider provider)
     {

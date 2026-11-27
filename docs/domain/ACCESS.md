@@ -40,7 +40,7 @@ This table is a reference, not a second spec. When an issue and the table disagr
 | `/mcp`, the five member tools (planned) | McpServer | – | not decided | not decided | not decided | [#215](https://github.com/EDB-Sport/fitlife/issues/215): names no role. The server only passes the member's token to Booking, whose endpoints need the role Medlem ([#260](https://github.com/EDB-Sport/fitlife/issues/260) to [#265](https://github.com/EDB-Sport/fitlife/issues/265)) |
 | `/` (Home) | MemberPortal.Web | yes | yes | yes | yes | [#8](https://github.com/EDB-Sport/fitlife/issues/8) |
 | `/Error` | MemberPortal.Web | yes | yes | yes | yes | [#8](https://github.com/EDB-Sport/fitlife/issues/8) |
-| `/hold` (planned) | MemberPortal.Web | yes | yes | yes | yes | [#205](https://github.com/EDB-Sport/fitlife/issues/205) |
+| `/hold` | MemberPortal.Web | yes | yes | yes | yes | [#205](https://github.com/EDB-Sport/fitlife/issues/205) |
 | `/log-ind` (planned) | MemberPortal.Web | yes | yes | yes | yes | [#206](https://github.com/EDB-Sport/fitlife/issues/206) |
 | `/log-ud` (planned) | MemberPortal.Web | not decided | not decided | not decided | not decided | [#206](https://github.com/EDB-Sport/fitlife/issues/206) |
 | `/bliv-medlem` | MemberPortal.Web | yes | yes | yes | yes | [#209](https://github.com/EDB-Sport/fitlife/issues/209) |

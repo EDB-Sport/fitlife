@@ -27,6 +27,9 @@ try
     // Becoming a member joins in Membership with the token (#209)
     builder.Services.AddMembershipClient();
 
+    // The class schedule at /hold reads Booking without a log-in (#205)
+    builder.Services.AddBookingClient();
+
     WebApplication app = builder.Build();
 
     // First, so every log line of the request carries its X-Correlation-ID

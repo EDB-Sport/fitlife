@@ -135,8 +135,8 @@ var rabbitmqManagementPort = 15672 // inside the group only
 var vaultPort = 8200 // inside the group only; dev mode also takes 8201 for its cluster listener
 
 // What a service gets besides what every service gets (ASPNETCORE_HTTP_PORTS, Vault, MongoDB): the rest of its block in
-// deploy/compose/services.yml, with the group's 127.0.0.1 in place of the container name. Loki isn't in the group yet, and
-// Booking's demo data waits for #386, so neither Loki__Url nor Seed__Enabled is set.
+// deploy/compose/services.yml, with the group's 127.0.0.1 in place of the container name. Loki isn't in the group yet
+// (#277), so Loki__Url is not set.
 var serviceSettings = {
   booking: [
     {
@@ -147,8 +147,23 @@ var serviceSettings = {
       name: 'WaitlistClosing__Enabled' // closes each waitlist 2 hours before start (#314)
       value: 'true'
     }
+    {
+      // The demo class schedule (#255, #386): every start tops it up to 4 weeks from then; /health waits for it
+      name: 'Seed__Enabled'
+      value: 'true'
+    }
   ]
-  membership: []
+  membership: [
+    {
+      // Publishes MembershipPaused and PaymentFailed (#251); a failed publish is only logged
+      name: 'RabbitMq__HostName'
+      value: '127.0.0.1'
+    }
+    {
+      name: 'RabbitMq__Port'
+      value: string(rabbitmqPort)
+    }
+  ]
   identity: [
     {
       name: 'Seed__DemoAccounts' // one demo account per role (#237); /health waits for them

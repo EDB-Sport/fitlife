@@ -9,6 +9,18 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
+    },
+    "stack": {
+      "commandName": "Project",
+      "launchBrowser": false,
+      "applicationUrl": "http://localhost:5003",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "Loki__Url": "http://localhost:3100",
+        "Vault__Address": "http://localhost:8200",
+        "MongoDb__Host": "localhost",
+        "MongoDb__Port": "27018"
+      }
     }
   }
 }

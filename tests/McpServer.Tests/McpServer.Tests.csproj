@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\McpServer\McpServer.csproj" />
+    <ProjectReference Include="..\FitLife.Contracts.Testing\FitLife.Contracts.Testing.csproj" />
   </ItemGroup>
 
 </Project>

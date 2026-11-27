@@ -6,7 +6,11 @@
 <div class="container py-4" style="max-width: 28rem;">
     <h1 class="mb-4">Bliv medlem</h1>
 
-    @if (ShowLogInLink)
+    @if (PaymentIsMissing)
+    {
+        <div class="alert alert-warning" role="status">@ErrorSentences.JoinedButPaymentMissing</div>
+    }
+    else if (ShowLogInLink)
     {
         <div class="alert alert-danger" role="alert"><a href="@PortalAuthentication.LogInPath" class="alert-link">@ErrorSentence</a></div>
     }
@@ -15,25 +19,28 @@
         <div class="alert alert-danger" role="alert">@ErrorSentence</div>
     }
 
-    <EditForm Model="Fields" FormName="bliv-medlem" OnValidSubmit="BecomeMemberAsync" method="post">
-        <DataAnnotationsValidator />
-        <div class="mb-3">
-            <label for="name" class="form-label">Navn</label>
-            <InputText id="name" class="form-control" autocomplete="name" @bind-Value="Fields.Name" />
-            <ValidationMessage For="() => Fields.Name" />
-        </div>
-        @if (!IsLoggedIn)
-        {
+    @if (!PaymentIsMissing)
+    {
+        <EditForm Model="Fields" FormName="bliv-medlem" OnValidSubmit="BecomeMemberAsync" method="post">
+            <DataAnnotationsValidator />
             <div class="mb-3">
-                <label for="email" class="form-label">E-mail</label>
-                <InputText id="email" type="email" class="form-control" autocomplete="username" @bind-Value="Fields.Email" />
+                <label for="name" class="form-label">Navn</label>
+                <InputText id="name" class="form-control" autocomplete="name" @bind-Value="Fields.Name" />
+                <ValidationMessage For="() => Fields.Name" />
             </div>
-            <div class="mb-3">
-                <label for="password" class="form-label">Adgangskode</label>
-                @* The password is never written back into the page (#541): the input always renders empty, also after an invalid post *@
-                <InputText id="password" type="password" class="form-control" autocomplete="new-password" Value="@string.Empty" ValueChanged="SetPassword" ValueExpression="() => Fields.Password" />
-            </div>
-        }
-        <button type="submit" class="btn btn-primary">Bliv medlem</button>
-    </EditForm>
+            @if (!IsLoggedIn)
+            {
+                <div class="mb-3">
+                    <label for="email" class="form-label">E-mail</label>
+                    <InputText id="email" type="email" class="form-control" autocomplete="username" @bind-Value="Fields.Email" />
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Adgangskode</label>
+                    @* The password is never written back into the page (#541): the input always renders empty, also after an invalid post *@
+                    <InputText id="password" type="password" class="form-control" autocomplete="new-password" Value="@string.Empty" ValueChanged="SetPassword" ValueExpression="() => Fields.Password" />
+                </div>
+            }
+            <button type="submit" class="btn btn-primary">Bliv medlem</button>
+        </EditForm>
+    }
 </div>

@@ -29,6 +29,7 @@ public sealed class ClassScheduleController : ControllerBase
     /// <param name="centerId">The centre; leave it out for every centre.</param>
     /// <param name="cancellationToken">Stops the request.</param>
     [HttpGet]
+    [AllowAnonymous]
     [ProducesResponseType<IReadOnlyList<ClassSessionResponse>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<ClassSessionResponse>>> GetClassSessions([FromQuery] Guid? centerId, CancellationToken cancellationToken)
     {

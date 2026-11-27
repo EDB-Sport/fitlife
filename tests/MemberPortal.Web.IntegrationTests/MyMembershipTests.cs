@@ -103,6 +103,16 @@ public sealed class MyMembershipTests : IDisposable
             return Task.FromResult(new PaymentAnswer(Membership("Active"), RejectionCode: null));
         }
 
+        public Task<PauseAnswer> PauseAsync(PauseRequest request, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException("Paying pauses nothing.");
+        }
+
+        public Task<PauseAnswer> EndPauseAsync(CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException("Paying ends no pause.");
+        }
+
         private static MyMembershipResponse Membership(string status)
         {
             return new MyMembershipResponse(Guid.Empty, "Standard", status, IsActive: false, StartDate);

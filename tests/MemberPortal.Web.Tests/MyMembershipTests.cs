@@ -180,6 +180,195 @@ public sealed class MyMembershipTests : BunitContext
         Assert.That(Text(cut, "#membership-status"), Is.EqualTo("Betaling mangler"));
     }
 
+    [Test]
+    public void MyMembership_ForAnActiveMembership_ShowsThePauseForm()
+    {
+        // Arrange
+        _membership.MyMembership = Membership("Active");
+
+        // Act
+        IRenderedComponent<MyMembership> cut = Render<MyMembership>();
+
+        // Assert
+        Assert.That(Text(cut, "h2.pause-heading"), Is.EqualTo("Pause"));
+        Assert.That(Text(cut, "label[for=pause-from]"), Is.EqualTo("Pause fra"));
+        Assert.That(Text(cut, "label[for=pause-to]"), Is.EqualTo("Pause til"));
+        Assert.That(cut.Find("#pause-from").GetAttribute("type"), Is.EqualTo("date"));
+        Assert.That(cut.Find("#pause-to").GetAttribute("type"), Is.EqualTo("date"));
+        Assert.That(Text(cut, "form.pause button[type=submit]"), Is.EqualTo("Sæt på pause"));
+    }
+
+    [TestCase("Paused")]
+    [TestCase("PaymentMissing")]
+    [TestCase("Cancelled")]
+    [TestCase("Ended")]
+    public void MyMembership_WhenNotActive_ShowsNoPauseForm(string status)
+    {
+        // Arrange
+        _membership.MyMembership = Membership(status);
+
+        // Act
+        IRenderedComponent<MyMembership> cut = Render<MyMembership>();
+
+        // Assert
+        Assert.That(cut.FindAll("form.pause"), Is.Empty);
+        Assert.That(cut.FindAll("#pause-from"), Is.Empty);
+    }
+
+    [Test]
+    public void MyMembership_WhenThePauseIsSet_ShowsTheMembershipFromTheAnswer()
+    {
+        // Arrange
+        _membership.MyMembership = Membership("Active");
+        _membership.PauseAnswer = new PauseAnswer(PauseMembership("Paused", new DateOnly(2026, 12, 1), new DateOnly(2026, 12, 31)), RejectionCode: null);
+        IRenderedComponent<MyMembership> cut = Render<MyMembership>();
+
+        // Act
+        SetPause(cut, "2026-12-01", "2026-12-31");
+
+        // Assert
+        Assert.That(_membership.PauseRequest, Is.EqualTo(new PauseRequest(new DateOnly(2026, 12, 1), new DateOnly(2026, 12, 31))));
+        Assert.That(Text(cut, "[role=status]"), Is.EqualTo("Dit medlemskab er sat på pause."));
+        Assert.That(Text(cut, "#membership-status"), Is.EqualTo("Pause"));
+    }
+
+    [Test]
+    public void MyMembership_WithAPausePeriod_ShowsThePeriodAndAfslutPause()
+    {
+        // Arrange: a pause that starts later, so the status is still Active
+        _membership.MyMembership = Membership("Active");
+        _membership.PauseAnswer = new PauseAnswer(PauseMembership("Active", new DateOnly(2027, 1, 4), new DateOnly(2027, 1, 17)), RejectionCode: null);
+        IRenderedComponent<MyMembership> cut = Render<MyMembership>();
+
+        // Act
+        SetPause(cut, "2027-01-04", "2027-01-17");
+
+        // Assert
+        Assert.That(Text(cut, ".pause-period"), Is.EqualTo("Pause fra 04-01-2027 til 17-01-2027"));
+        Assert.That(Text(cut, "form.end-pause button[type=submit]"), Is.EqualTo("Afslut pause"));
+    }
+
+    [Test]
+    public void MyMembership_WhenPaused_ShowsAfslutPause()
+    {
+        // Arrange: GET /members/me has no pause period yet (#637), but the status says Pause
+        _membership.MyMembership = Membership("Paused");
+
+        // Act
+        IRenderedComponent<MyMembership> cut = Render<MyMembership>();
+
+        // Assert
+        Assert.That(Text(cut, "form.end-pause button[type=submit]"), Is.EqualTo("Afslut pause"));
+        Assert.That(cut.FindAll(".pause-period"), Is.Empty);
+    }
+
+    [Test]
+    public void MyMembership_WithoutAPause_ShowsNoAfslutPause()
+    {
+        // Arrange
+        _membership.MyMembership = Membership("Active");
+
+        // Act
+        IRenderedComponent<MyMembership> cut = Render<MyMembership>();
+
+        // Assert
+        Assert.That(cut.FindAll("form.end-pause"), Is.Empty);
+    }
+
+    [Test]
+    public void MyMembership_WhenThePauseIsEnded_ShowsTheConfirmation()
+    {
+        // Arrange
+        _membership.MyMembership = Membership("Paused");
+        _membership.EndPauseAnswer = new PauseAnswer(PauseMembership("Active", pausedFrom: null, pausedTo: null), RejectionCode: null);
+        IRenderedComponent<MyMembership> cut = Render<MyMembership>();
+
+        // Act
+        cut.Find("form.end-pause").Submit();
+
+        // Assert
+        Assert.That(_membership.EndPauseCalls, Is.EqualTo(1));
+        Assert.That(Text(cut, "[role=status]"), Is.EqualTo("Din pause er afsluttet."));
+        Assert.That(Text(cut, "#membership-status"), Is.EqualTo("Aktiv"));
+        Assert.That(cut.FindAll("form.end-pause"), Is.Empty);
+    }
+
+    [TestCase("PauseStartsInThePast", "Pausen kan ikke starte før i dag.")]
+    [TestCase("PauseEndsBeforeItStarts", "Pausen skal slutte efter den dag, den starter.")]
+    [TestCase("MembershipNotActive", "Dit medlemskab er ikke aktivt.")]
+    public void MyMembership_WhenThePauseIsRejected_ShowsTheSentenceForTheCode(string code, string sentence)
+    {
+        // Arrange
+        _membership.MyMembership = Membership("Active");
+        _membership.PauseAnswer = new PauseAnswer(Membership: null, code);
+        IRenderedComponent<MyMembership> cut = Render<MyMembership>();
+
+        // Act
+        SetPause(cut, "2026-12-01", "2026-12-31");
+
+        // Assert: the sentence, and the membership as it was
+        Assert.That(Text(cut, "[role=alert]"), Is.EqualTo(sentence));
+        Assert.That(Text(cut, "#membership-status"), Is.EqualTo("Aktiv"));
+    }
+
+    [Test]
+    public void MyMembership_WhenThereIsNoPauseToEnd_ShowsTheSentence()
+    {
+        // Arrange
+        _membership.MyMembership = Membership("Paused");
+        _membership.EndPauseAnswer = new PauseAnswer(Membership: null, "NoPauseToEnd");
+        IRenderedComponent<MyMembership> cut = Render<MyMembership>();
+
+        // Act
+        cut.Find("form.end-pause").Submit();
+
+        // Assert
+        Assert.That(Text(cut, "[role=alert]"), Is.EqualTo("Du har ingen pause at afslutte."));
+    }
+
+    [Test]
+    public void MyMembership_WhenTheCodeIsUnknown_ShowsTheGenericSentence()
+    {
+        // Arrange
+        _membership.MyMembership = Membership("Active");
+        _membership.PauseAnswer = new PauseAnswer(Membership: null, "SomethingNew");
+        IRenderedComponent<MyMembership> cut = Render<MyMembership>();
+
+        // Act
+        SetPause(cut, "2026-12-01", "2026-12-31");
+
+        // Assert
+        Assert.That(Text(cut, "[role=alert]"), Is.EqualTo("Det lykkedes ikke. Prøv igen om lidt."));
+    }
+
+    [Test]
+    public void MyMembership_WithoutBothDates_DoesNotAskMembership()
+    {
+        // Arrange
+        _membership.MyMembership = Membership("Active");
+        IRenderedComponent<MyMembership> cut = Render<MyMembership>();
+        cut.Find("#pause-from").Change("2026-12-01");
+
+        // Act
+        cut.Find("form.pause").Submit();
+
+        // Assert
+        Assert.That(_membership.PauseRequest, Is.Null);
+        Assert.That(cut.FindAll("[role=alert]"), Is.Empty);
+    }
+
+    private static void SetPause(IRenderedComponent<MyMembership> cut, string from, string to)
+    {
+        cut.Find("#pause-from").Change(from);
+        cut.Find("#pause-to").Change(to);
+        cut.Find("form.pause").Submit();
+    }
+
+    private static MembershipPauseResponse PauseMembership(string status, DateOnly? pausedFrom, DateOnly? pausedTo)
+    {
+        return new MembershipPauseResponse(Guid.NewGuid(), "Standard", status, IsActive: true, new DateOnly(2026, 11, 3), pausedFrom, pausedTo);
+    }
+
     private static MyMembershipResponse Membership(string status)
     {
         return new MyMembershipResponse(Guid.NewGuid(), "Standard", status, IsActive: true, new DateOnly(2026, 11, 3));

@@ -89,7 +89,7 @@ check "runs integration/" has_call '^newman run tests/postman/integration/bookin
 check "runs e2e/" has_call '^newman run tests/postman/e2e/booking-flow\.postman_collection\.json '
 check "runs the mock tests" has_call '^newman run tests/postman/mocks/user-registration\.mock-tests\.postman_collection\.json '
 check "doesn't run the collection behind the mock server" no_call 'user-registration\.mock\.postman_collection'
-check "runs 4 collections, skipping .gitkeep" call_count '^newman run' 4
+check "runs 4 collections, skipping .gitkeep, and the mock tests once more against the public mock (#279)" call_count '^newman run' 5
 check "every run uses environments/ci" call_count '^newman run .* -e tests/postman/environments/ci\.postman_environment\.json( |$)' 4
 check "every run uses the cli, junit and htmlextra reporters" call_count '^newman run .* -r cli,junit,htmlextra( |$)' 4
 check "the HTML report goes to newman-reports/" has_call '--reporter-htmlextra-export newman-reports/e2e-booking-flow\.html'
@@ -122,6 +122,30 @@ repo=$(fixture)
 add "$repo" services booking
 API_TESTS_BUILD=0 run "$repo"
 check "API_TESTS_BUILD=0 doesn't build" has_call '^docker compose up -d --wait \(in compose\)$'
+
+# 7. The mock tests run against the local mock in compose (environments/ci) and once more against the public Postman Mock
+#    Server (environments/local), whose report is the evidence the project needs. A failure there only warns (#279).
+repo=$(fixture)
+run "$repo"
+check "the mock tests run against the public Postman Mock Server with environments/local" \
+  has_call '^newman run tests/postman/mocks/user-registration\.mock-tests\.postman_collection\.json -e tests/postman/environments/local\.postman_environment\.json '
+check "the public run has its own report" has_call '--reporter-htmlextra-export newman-reports/mocks-public-user-registration\.mock-tests\.html'
+repo=$(fixture)
+echo '{}' > "$repo/tests/postman/mocks/failing.mock-tests.postman_collection.json"
+run "$repo"
+check "a failing mock-tests collection still fails the job against the local mock" [ "$status" -ne 0 ]
+repo=$(fixture)
+cp "$work/bin/newman" "$work/newman.default"
+cat > "$work/bin/newman" <<'EOF'
+#!/usr/bin/env bash
+echo "newman $*" >> "$CALLS"
+[[ "$*" == *local.postman_environment* ]] && exit 1
+exit 0
+EOF
+run "$repo"
+cp "$work/newman.default" "$work/bin/newman"
+check "a failure against the public Postman Mock Server doesn't fail the job" [ "$status" -eq 0 ]
+check "a failure against the public Postman Mock Server is a warning" grep -qF "::warning" <<<"$out"
 
 # 6. The repo's own collections assert status codes and bodies, never response times: a timing
 #    assertion against a mock server on the internet depends on the network, not on the code (#135)

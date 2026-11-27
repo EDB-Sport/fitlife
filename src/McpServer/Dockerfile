@@ -10,12 +10,13 @@ WORKDIR /app
 # The build props and the analyzer project come first because every project imports them.
 COPY global.json Directory.Build.props Directory.Build.targets Directory.Packages.props ./
 COPY tools/Analyzers/Team.Analyzers/Team.Analyzers.csproj tools/Analyzers/Team.Analyzers/packages.lock.json tools/Analyzers/Team.Analyzers/
+COPY libs/FitLife.Authentication/FitLife.Authentication.csproj libs/FitLife.Authentication/packages.lock.json libs/FitLife.Authentication/
 COPY libs/FitLife.Correlation/FitLife.Correlation.csproj libs/FitLife.Correlation/packages.lock.json libs/FitLife.Correlation/
 COPY src/McpServer/McpServer.csproj src/McpServer/packages.lock.json src/McpServer/
 RUN dotnet restore src/McpServer/McpServer.csproj --locked-mode
 
 # The reviewed rule files, so the image is built with the same rules, package versions and analyzers as CI,
-# then the shared code (correlation ID, nlog.config) and the service
+# then the shared code (token reader, correlation ID, nlog.config) and the service
 COPY .editorconfig .globalconfig BannedSymbols.txt SonarLint.xml GLOSSARY.md ./
 COPY tools/Analyzers/ tools/Analyzers/
 COPY libs/ libs/

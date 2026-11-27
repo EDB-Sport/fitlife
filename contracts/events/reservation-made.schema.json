@@ -25,7 +25,12 @@
       "format": "date-time"
     }
   },
-  "required": ["reservationId", "classSessionId", "memberId", "startTime"],
+  "required": [
+    "reservationId",
+    "classSessionId",
+    "memberId",
+    "startTime"
+  ],
   "additionalProperties": false,
   "examples": [
     {

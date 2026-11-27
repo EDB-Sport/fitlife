@@ -1,11 +1,13 @@
 using System.Globalization;
 using System.Reflection;
+using FitLife.Authentication;
 using FitLife.Configuration;
 using FitLife.Correlation;
 using FitLife.Messaging;
 using FitLife.Messaging.Events;
 using NLog;
 using NLog.Web;
+using NotificationService.Api;
 using NotificationService.Repositories;
 using NotificationService.Subscribers;
 using Scalar.AspNetCore;
@@ -14,7 +16,8 @@ try
 {
     WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-    // Course rule #9: the secret/notification-svc secret from Vault (Vault:Address, Vault:Token), read through IConfiguration
+    // Course rule #9: the secret/notification-svc secret from Vault (Vault:Address, Vault:Token), read through IConfiguration,
+    // with Jwt:SigningKey
     await builder.Configuration.AddVaultAsync().ConfigureAwait(false);
 
     // Course rule #8: NLog → Loki, with the shared libs/nlog.config
@@ -23,6 +26,11 @@ try
 
     builder.Services.AddOpenApi();
     builder.Services.AddHealthChecks();
+
+    // The token from Identity, checked the same way in every service (#183), and closed by default (#368)
+    builder.Services.AddFitLifeJwtAuthentication();
+    builder.Services.AddFitLifeAuthorization();
+    builder.Services.AddSingleton(TimeProvider.System);
 
     // ReservationMade from Booking (#191): one notification per reservation, stored so a redelivery is skipped
     builder.Services.AddNotificationRepository(builder.Configuration);
@@ -38,11 +46,20 @@ try
     // Course rule #7: the OpenAPI document and Scalar only in Development
     if (app.Environment.IsDevelopment())
     {
-        app.MapOpenApi();
-        app.MapScalarApiReference();
+        app.MapOpenApi().AllowAnonymous();
+        app.MapScalarApiReference().AllowAnonymous();
     }
 
-    app.MapHealthChecks("/health");
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    app.MapHealthChecks("/health").AllowAnonymous();
+
+    // The delivery log for staff (#221)
+    app.MapNotificationEndpoints();
+
+    // A path with no endpoint answers 404, not 401 (#440)
+    app.MapFitLifeNotFoundFallback();
 
     // The startup line: which service and which release is running (the version is also a Loki label)
     if (app.Logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information))

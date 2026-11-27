@@ -21,6 +21,10 @@ on:
         description: Version of the member portal image (X.Y.Z). Empty means the newest memberportal/v* release, or no portal while it has none
         required: false
         type: string
+      notification_tag:
+        description: Version of the NotificationService image (X.Y.Z). Empty means the newest notificationservice/v* release, or none while it has none
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -31,6 +35,7 @@ env:
   # Docker Hub repositories in deploy/azure/main.bicepparam.
   SERVICE_TAG_PREFIX: bookingservice
   UI_TAG_PREFIX: memberportal
+  NOTIFICATION_TAG_PREFIX: notificationservice
 
 jobs:
   deploy:
@@ -61,10 +66,12 @@ jobs:
         env:
           INPUT_SERVICE_TAG: ${{ inputs.service_tag }}
           INPUT_UI_TAG: ${{ inputs.ui_tag }}
+          INPUT_NOTIFICATION_TAG: ${{ inputs.notification_tag }}
         run: |
           set -euo pipefail
           # The newest <prefix>/vX.Y.Z tag on the released commit's history, without the prefix.
-          # Empty if there is none: the service then fails the check below, the member portal is left out (#198).
+          # Empty if there is none: the service then fails the check below, the member portal (#198) and
+          # NotificationService (#261) are left out.
           released_version() {
             { git describe --tags --abbrev=0 --match "$1/v*" HEAD 2>/dev/null || true; } | sed "s|^$1/v||"
           }
@@ -72,9 +79,11 @@ jobs:
             service_tag="$INPUT_SERVICE_TAG"
             # Empty means the released member portal, so redeploying a service by hand keeps a live portal.
             ui_tag="${INPUT_UI_TAG:-$(released_version "$UI_TAG_PREFIX")}"
+            notification_tag="${INPUT_NOTIFICATION_TAG:-$(released_version "$NOTIFICATION_TAG_PREFIX")}"
           else
             service_tag="$(released_version "$SERVICE_TAG_PREFIX")"
             ui_tag="$(released_version "$UI_TAG_PREFIX")"
+            notification_tag="$(released_version "$NOTIFICATION_TAG_PREFIX")"
           fi
           # Released versions only: this also rules out latest, develop and typos.
           is_version() { [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; }
@@ -86,15 +95,25 @@ jobs:
             echo "::error::'$ui_tag' is not a released version of $UI_TAG_PREFIX (X.Y.Z)"
             exit 1
           fi
+          if [ -n "$notification_tag" ] && ! is_version "$notification_tag"; then
+            echo "::error::'$notification_tag' is not a released version of $NOTIFICATION_TAG_PREFIX (X.Y.Z)"
+            exit 1
+          fi
           # main.bicepparam reads the versions from the environment. Without UI_IMAGE_TAG it leaves the
-          # member portal out, so the variable is set only when there is a version: a step's env: would set
-          # it to an empty string instead.
+          # member portal out, and without NOTIFICATION_IMAGE_TAG NotificationService, so each variable is set
+          # only when there is a version: a step's env: would set it to an empty string instead.
           echo "SERVICE_IMAGE_TAG=$service_tag" >> "$GITHUB_ENV"
           if [ -n "$ui_tag" ]; then
             echo "Deploying $SERVICE_TAG_PREFIX $service_tag and $UI_TAG_PREFIX $ui_tag"
             echo "UI_IMAGE_TAG=$ui_tag" >> "$GITHUB_ENV"
           else
             echo "Deploying $SERVICE_TAG_PREFIX $service_tag without $UI_TAG_PREFIX, which has no release yet"
+          fi
+          if [ -n "$notification_tag" ]; then
+            echo "With $NOTIFICATION_TAG_PREFIX $notification_tag"
+            echo "NOTIFICATION_IMAGE_TAG=$notification_tag" >> "$GITHUB_ENV"
+          else
+            echo "Without $NOTIFICATION_TAG_PREFIX, which has no release yet"
           fi
           echo "service_tag=$service_tag" >> "$GITHUB_OUTPUT"
           echo "ui_tag=$ui_tag" >> "$GITHUB_OUTPUT"

@@ -109,7 +109,7 @@ jobs:
       - name: No breaking change since each service's last release (oasdiff)
         run: tools/ci/summarize.sh contract "A contract breaks its service's last release. Keep the old shape, or release a new major version." -- tools/ci/oasdiff-breaking.sh
 
-  # Runs the tests of the CI scripts themselves, so a change to a script fails its own tests.
+  # Runs the tests of the CI scripts and the dev tools (tools/dev, #488), so a change to a script fails its own tests.
   ci-scripts:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -121,7 +121,7 @@ jobs:
       - name: Run every tools/ci/*.test.sh
         run: |
           status=0
-          for test in tools/ci/*.test.sh; do
+          for test in tools/ci/*.test.sh tools/dev/*.test.sh; do
             echo "::group::$test"
             if ! "$test"; then
               status=1

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Tests for tools/dev/review-ready.sh (issue #462). A fake gh (passed as GH) answers from JSON
 # fixtures in a temp directory and logs its calls, so no case touches GitHub.
-# Usage: tools/dev/review-ready.test.sh   (from anywhere in the repo; exit 0 = all cases pass)
+# Usage: tools/dev/review-ready.test.sh   (from anywhere in the repo; VERBOSE=1 for the PASS lines; exit 0 = all cases pass)
+. "$(dirname "${BASH_SOURCE[0]}")/../ci/test-report.sh"
 set -uo pipefail
 
 root=$(git -C "$(dirname "$0")" rev-parse --show-toplevel) || exit 2
@@ -194,9 +195,4 @@ else
   failures=$((failures + 1))
 fi
 
-if [ "$failures" -gt 0 ]; then
-  echo
-  echo "$failures case(s) failed."
-  exit 1
-fi
-echo "All review-ready cases pass."
+exit $((failures > 0))

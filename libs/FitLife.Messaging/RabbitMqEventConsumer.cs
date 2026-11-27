@@ -50,6 +50,9 @@ public sealed partial class RabbitMqEventConsumer<TEvent> : BackgroundService, I
     /// <summary>Gets a task that completes once the queue is bound and messages are being handed to the subscriber.</summary>
     public Task Consuming => _consuming.Task;
 
+    /// <summary>Gets a value indicating whether the channel it consumes on is open. False while the connection to RabbitMQ is lost (#302).</summary>
+    internal bool IsChannelOpen => _channel is { IsOpen: true };
+
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -64,7 +67,8 @@ public sealed partial class RabbitMqEventConsumer<TEvent> : BackgroundService, I
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                // Once connected, RabbitMQ.Client recovers the connection, queue and consumer by itself
+                // Once connected, RabbitMQ.Client's automatic recovery (on by default) reconnects a lost connection,
+                // opens the channel again, declares the queue and consumes it (ConsumerReconnectTests, #302)
                 LogNotReachable(exception, Queue, RetryDelay);
                 await Task.Delay(RetryDelay, _time, stoppingToken).ConfigureAwait(false);
             }

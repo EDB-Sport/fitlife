@@ -86,7 +86,7 @@ The test layout, the pyramid, how to run each level and how tdd-check works are 
 - **NUnit** with constraint assertions, `Method_Scenario_ExpectedResult` names, Arrange–Act–Assert ([ADR 005](adr/005-nunit.md)). Hand-written fakes for simple cases, **Moq** for interactions and failures.
 - **Unit tests stay unit tests:** `tests/Directory.Build.targets` fails the build (`FITLIFE002`) when a `*.Tests` project references Testcontainers, `Microsoft.AspNetCore.Mvc.Testing` or `MongoDB.Driver`.
 - **`FakeTimeProvider`** (`Microsoft.Extensions.TimeProvider.Testing`) in place of the banned clock.
-- **`WebApplicationFactory`** for in-process API tests. `ApiDocumentationTests` in Booking, Identity and Membership check that `/scalar/v1` and `/openapi/v1.json` answer 404 in `Production` (course rule #7).
+- **`WebApplicationFactory`** for in-process API tests. `ApiDocumentationTests` in Booking, Identity, Membership and Notification check that `/scalar/v1` and `/openapi/v1.json` answer 404 in `Production` (course rule #7).
 - **Testcontainers** (`Testcontainers.MongoDb`, `Testcontainers.RabbitMq`) for integration tests against the real MongoDB and RabbitMQ.
 - **Event schema tests** with JsonSchema.Net against `contracts/events/*.schema.json` (`tests/FitLife.Contracts.Tests`). Only `reservation-made` has a schema so far.
 - **Postman collections run by Newman:** `services/` (identity, notification), `mocks/` (user registration, payment provider), `smoke/thin-slice` (run by `deploy.yml`), with `local`, `ci` and `azure` environments.
@@ -153,6 +153,7 @@ Workflows in `.github/workflows/`. The `ci.yml` jobs print their first error as 
 | `api-tests.yml` | `api-tests` | `tools/ci/api-tests.sh`: Newman against the compose stack, HTML reports as artifacts |
 | `image-scan.yml` | `image-scan-plan`, `image-scan` | Trivy on the images the PR changes |
 | `release.yml`, `deploy.yml` | | Sections 9 and 9a |
+| `azure-power.yml` | `power` | Starts or stops the production container group by hand, after one approval on `production` (#278) |
 | `delivery-metrics.yml` | `delivery-metrics` | Weekly delivery metrics in the job summary (`tools/ci/delivery-metrics.sh`) |
 
 **`tools/ci/diff-scan.sh`** looks only at lines the PR adds and fails on `ExcludeFromCodeCoverage`, a `.editorconfig` or `.globalconfig` outside the repo root, and `continue-on-error: true` or `if: false` in a workflow. It labels the PR `tests-modified` when existing lines under `tests/` change, and `contract-change` when `contracts/` changes.

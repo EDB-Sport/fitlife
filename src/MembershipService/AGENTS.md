@@ -17,7 +17,7 @@ The Membership context (supporting subdomain): members, memberships and membersh
 
 - OpenAPI: [`contracts/openapi/membershipservice.json`](../../contracts/openapi/membershipservice.json). `dotnet build -c Release` regenerates it; commit it (`tools/ci/check-contracts.sh`).
 - Who may call what: the `MembershipService` rows in [`docs/domain/ACCESS.md`](../../docs/domain/ACCESS.md).
-- Events: none published or consumed yet. Planned in [`CONTEXT-MAP`](../../docs/domain/CONTEXT-MAP.md) section 5: publishes `MembershipPaused`, `MembershipCancelled` and `PaymentFailed`.
+- Events: publishes `MembershipPaused` (`PauseMembershipHandler`) and `PaymentFailed` (`JoinMembershipHandler`), after the save, through `Application/MembershipEventPublisher`. `MembershipCancelled` is planned ([`CONTEXT-MAP`](../../docs/domain/CONTEXT-MAP.md) section 5, #249). Consumes none.
 - Postman: [`tests/postman/services/`](../../tests/postman/services/).
 
 ## Change here also touches

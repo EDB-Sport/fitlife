@@ -17,7 +17,7 @@ The Booking context (core subdomain): centres, class types, class sessions, rese
 
 - OpenAPI: [`contracts/openapi/bookingservice.json`](../../contracts/openapi/bookingservice.json). `dotnet build -c Release` regenerates it; commit it (`tools/ci/check-contracts.sh`).
 - Who may call what: the `BookingService` rows in [`docs/domain/ACCESS.md`](../../docs/domain/ACCESS.md).
-- Events: raises `ReservationMade`, `ReservationCancelled`, `WaitlistEntryExpired`, `ClassSessionCancelled` and `ClassSessionChanged` in `ClassSession.DomainEvents` ([`CONTEXT.md`](CONTEXT.md)); none is published yet. Four cross to Notification (`CONTEXT-MAP` section 5); only `ReservationMade` has a schema in `contracts/events/` so far ([`reservation-made.schema.json`](../../contracts/events/reservation-made.schema.json)). `WaitlistEntryExpired` stays inside Booking. Consumes none yet; section 5 plans `MembershipPaused` and `MembershipCancelled`, on which Booking cancels reservations.
+- Events: publishes `ReservationMade` through `Application/BookingEventPublisher`, after the save ([`reservation-made.schema.json`](../../contracts/events/reservation-made.schema.json)). It raises `ReservationCancelled`, `WaitlistEntryExpired`, `ClassSessionCancelled` and `ClassSessionChanged` in `ClassSession.DomainEvents` ([`CONTEXT.md`](CONTEXT.md)); those four are not published yet, and `WaitlistEntryExpired` stays inside Booking. Consumes none yet; `CONTEXT-MAP` section 5 plans `MembershipPaused` and `MembershipCancelled`, on which Booking cancels reservations.
 - Postman: [`tests/postman/services/`](../../tests/postman/services/).
 
 ## Change here also touches

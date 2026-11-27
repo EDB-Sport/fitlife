@@ -10,15 +10,15 @@ The Notification context (supporting subdomain): notifications to members about 
 
 - Unit tests: `dotnet test tests/NotificationService.Tests -c Release`.
 - Integration tests: `dotnet test tests/NotificationService.IntegrationTests -c Release` (needs Docker, for Testcontainers and RabbitMQ).
-- Run in the stack, from `deploy/compose/`: `docker compose up -d --wait notification-svc`. It has no gateway route; nothing calls it over HTTP, and `/health` is the only endpoint.
+- Run in the stack, from `deploy/compose/`: `docker compose up -d --wait notification-svc`; the gateway serves it at http://localhost:8080/api/notification/.
 - Compose name: `notification-svc` (also Loki's `app` label and Vault's `secret/notification-svc`).
 
 ## Contracts and access
 
-- OpenAPI: [`contracts/openapi/notificationservice.json`](../../contracts/openapi/notificationservice.json) (its `paths` is empty: `/health` is not in the document). `dotnet build -c Release` regenerates it; commit it (`tools/ci/check-contracts.sh`).
-- Who may call what: the `NotificationService` row in [`docs/domain/ACCESS.md`](../../docs/domain/ACCESS.md) (planned endpoint).
-- Events: consumes `ReservationMade` on queue `notification.reservation-made` (schema [`contracts/events/reservation-made.schema.json`](../../contracts/events/reservation-made.schema.json)); publishes none. The other six in `CONTEXT-MAP` section 5 (`ReservationCancelled`, `ClassSessionCancelled`, `ClassSessionChanged`, `MembershipPaused`, `MembershipCancelled`, `PaymentFailed`) are planned from the same two publishers, none wired.
-- Postman: [`tests/postman/services/`](../../tests/postman/services/).
+- OpenAPI: [`contracts/openapi/notificationservice.json`](../../contracts/openapi/notificationservice.json) (it documents `GET /notifications`; `/health` is not in the document). `dotnet build -c Release` regenerates it; commit it (`tools/ci/check-contracts.sh`).
+- Who may call what: the `NotificationService` row in [`docs/domain/ACCESS.md`](../../docs/domain/ACCESS.md) (`GET /notifications?memberId={id}`).
+- Events: consumes `ReservationMade`, `ReservationCancelled`, `ClassSessionCancelled` and `ClassSessionChanged`, subscribed in `Program.cs`; schemas in [`contracts/events/`](../../contracts/events/README.md). Publishes none.
+- Postman: [`tests/postman/services/notification.postman_collection.json`](../../tests/postman/services/notification.postman_collection.json).
 
 ## Change here also touches
 

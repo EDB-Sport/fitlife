@@ -19,7 +19,7 @@ public static class RepositoryServiceCollectionExtensions
             return new MongoClient(new MongoClientSettings
             {
                 Server = new MongoServerAddress(options.Host, options.Port),
-                Credential = MongoCredential.CreateCredential(options.AuthDatabase ?? options.Database, options.Username, options.Password),
+                Credential = MongoCredential.CreateCredential(options.AuthSource ?? options.Database, options.Username, options.Password),
             });
         });
         services.AddSingleton(provider => provider.GetRequiredService<IMongoClient>()

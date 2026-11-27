@@ -34,12 +34,32 @@ public sealed class ToolCallLogTests
         await client.CallToolAsync("list_class_sessions").ConfigureAwait(false);
 
         // Assert
-        LogLine line = logs.Lines.Single(logged => logged.Values.ContainsKey("ToolName"));
+        LogLine line = logs.Lines.Single(logged => logged.Values.ContainsKey("AccountId"));
         Assert.That(line.Level, Is.EqualTo(LogLevel.Information));
         Assert.That(line.Values["AccountId"], Is.EqualTo(AccountId));
         Assert.That(line.Values["ToolName"], Is.EqualTo("list_class_sessions"));
         Assert.That(line.CorrelationId, Is.EqualTo("mcp-call-log-test"));
         Assert.That(line.Message, Does.Not.Contain(token));
+    }
+
+    [Test]
+    public async Task ToolCall_WithoutAToken_LogsNoAccount()
+    {
+        // Arrange
+        using var logs = new CapturingLoggerProvider();
+        using var app = new McpFactory(new EmptyBookingClient());
+        using WebApplicationFactory<Program> factory = app.WithWebHostBuilder(host => host
+            .ConfigureServices(services => services.AddSingleton<ILoggerProvider>(logs)));
+        using HttpClient http = factory.CreateClient();
+        await using HttpClientTransport transport = McpFactory.TransportFor(http);
+        await using McpClient client = await McpClient.CreateAsync(transport).ConfigureAwait(false);
+
+        // Act
+        await client.CallToolAsync("list_class_sessions").ConfigureAwait(false);
+
+        // Assert
+        LogLine line = logs.Lines.Single(logged => logged.Values.ContainsKey("AccountId"));
+        Assert.That(line.Values["AccountId"], Is.EqualTo("none"));
     }
 
     private sealed record LogLine(LogLevel Level, string Message, IReadOnlyDictionary<string, object?> Values, string? CorrelationId);
@@ -92,23 +112,18 @@ public sealed class ToolCallLogTests
                 }
             }
 
-            string? correlationId = null;
-            _scopes?.ForEachScope(
-                (scope, _) =>
-                {
-                    if (scope is IEnumerable<KeyValuePair<string, object?>> scoped)
-                    {
-                        foreach (KeyValuePair<string, object?> value in scoped)
-                        {
-                            if (string.Equals(value.Key, "CorrelationId", StringComparison.Ordinal) && value.Value is string id)
-                            {
-                                correlationId = id;
-                            }
-                        }
-                    }
-                },
-                state);
+            List<string> correlationIds = [];
+            _scopes?.ForEachScope(AddCorrelationId, correlationIds);
+            string? correlationId = correlationIds.LastOrDefault();
             _lines.Enqueue(new LogLine(logLevel, formatter(state, exception), values, correlationId));
+        }
+
+        private static void AddCorrelationId(object? scope, List<string> ids)
+        {
+            if (scope is IEnumerable<KeyValuePair<string, object?>> scoped)
+            {
+                ids.AddRange(scoped.Where(value => string.Equals(value.Key, "CorrelationId", StringComparison.Ordinal)).Select(value => value.Value).OfType<string>());
+            }
         }
 
         public void Dispose()

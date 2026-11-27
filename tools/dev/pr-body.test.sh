@@ -38,11 +38,13 @@ has() { grep -qxF -- "$1" <<<"$out"; }
 
 run "$tmp/no-domain.txt" 523
 [ "$code" -eq 0 ] && [ "$(head -1 <<<"$out")" = "Closes #523" ]
-expect "the body starts with 'Closes #<issue>'" $?
+ok=$?
+expect "the body starts with 'Closes #<issue>'" "$ok"
 
 missing=$(grep -E '^## ' "$template" | grep -v '^## Domain' | while IFS= read -r heading; do has "$heading" || echo "$heading"; done)
 [ -z "$missing" ]
-expect "the body has every heading of the template (Domain aside)" $?
+ok=$?
+expect "the body has every heading of the template (Domain aside)" "$ok"
 
 PR_BODY="$out" HEAD_REF=feature/523-pr-body tools/ci/check-pr-body.sh >/dev/null
 expect "the body passes tools/ci/check-pr-body.sh" $?

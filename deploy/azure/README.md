@@ -1,6 +1,6 @@
 # Production on Azure: Bicep + Azure Container Instances
 
-Production runs as one container group on Azure Container Instances (ACI), described in Bicep (`docs/CSHARP_SETUP_TODO.md` section 9a). It holds the thin slice from #10 plus MongoDB, RabbitMQ and Vault (#23) and NotificationService (#261). Loki and Grafana join with #6, and the other services and UIs as they are released.
+Production runs as one container group on Azure Container Instances (ACI), described in Bicep (`docs/TECHNICAL_REFERENCE.md` section 9a). It holds the thin slice from #10 plus MongoDB, RabbitMQ and Vault (#23) and NotificationService (#261). Loki and Grafana join with #6, and the other services and UIs as they are released.
 
 ```
 internet --HTTPS 443--> caddy --:80--> nginx --/api/<context>/--> service        :5001-5003 --> mongodb  :27017
@@ -99,4 +99,8 @@ Check without Azure: `az bicep build --file deploy/azure/main.bicep`, `az bicep 
 
 ## Cost
 
-ACI bills per vCPU-second and GB-second while the group runs. With every container in it, the group requests 2.25 vCPU and 3.9 GB in total today, 1.75 vCPU and 2.9 GB without the member portal and NotificationService (see "CPU and memory"). Stop the group when nobody needs it (`az container stop --resource-group rg-fitlife-prod --name fitlife`), keep it running from hand-in (18 Dec) through the exam, and delete the resource group after the exam (`az group delete --name rg-fitlife-prod`).
+ACI bills per vCPU-second and GB-second while the group runs. With every container in it, the group requests 2.25 vCPU and 3.9 GB in total today, 1.75 vCPU and 2.9 GB without the member portal and NotificationService (see "CPU and memory").
+
+Start and stop the group from GitHub: Actions → azure-power → Run workflow, with `action` `start` or `stop`. Run it from `main` (the `production` environment allows only that branch), and one group member approves every run on that environment, so the run log records when the PoC was up. A start waits until `/health` answers over HTTPS, the same wait as a deploy. With Azure CLI rights you can also stop it from a terminal: `az container stop --resource-group rg-fitlife-prod --name fitlife`.
+
+Keep it running from hand-in (18 Dec) through the exam, and delete the resource group after the exam (`az group delete --name rg-fitlife-prod`).

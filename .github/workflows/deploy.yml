@@ -1,4 +1,4 @@
-# Deploys production to Azure Container Instances with Bicep (docs/CSHARP_SETUP_TODO.md section 9a, issue #10).
+# Deploys production to Azure Container Instances with Bicep (docs/TECHNICAL_REFERENCE.md section 9a, issue #10).
 #
 # release.yml calls it (workflow_call) as its last job, after the tags job, with the image versions that
 # release tagged. It runs in release.yml's push context on main: a workflow_run trigger would run it on the
@@ -172,19 +172,11 @@ jobs:
           echo "service_base_path=$(jq -r .serviceBasePath.value <<< "$outputs")" >> "$GITHUB_OUTPUT"
 
       # Caddy asks Let's Encrypt for a certificate on the first start, which takes a moment.
+      # The wait is shared with azure-power.yml: tools/ci/wait-for-health.sh (#278).
       - name: Wait for HTTPS
         env:
           PUBLIC_URL: ${{ steps.deploy.outputs.public_url }}
-        run: |
-          for attempt in $(seq 1 30); do
-            if curl --fail --silent --show-error --max-time 10 "$PUBLIC_URL/health"; then
-              exit 0
-            fi
-            echo "Attempt $attempt: not ready yet"
-            sleep 10
-          done
-          echo "::error::$PUBLIC_URL/health did not answer over HTTPS within 5 minutes"
-          exit 1
+        run: tools/ci/wait-for-health.sh "$PUBLIC_URL"
 
       # A failure fails the deploy. The fix is to run this workflow by hand with the previous versions.
       # The per-service collections and e2e/booking-flow join this step as they are written (section 9a).

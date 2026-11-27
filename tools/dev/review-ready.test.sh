@@ -18,6 +18,8 @@ set -uo pipefail
 dir=$FAKE_GH_DIR
 echo "$*" >> "$dir/calls"
 if [ "${FAKE_GH_FAIL:-}" = "$1 $2" ]; then echo "fake gh: failing on $1 $2" >&2; exit 1; fi
+# As the real gh does with a URL holding a CR.
+if [ "$1" = api ] && [[ $2 == *$'\r'* ]]; then echo 'parse "…": net/url: invalid control character in URL' >&2; exit 1; fi
 jq_filter=""
 prev=""
 for arg in "$@"; do
@@ -32,7 +34,8 @@ case "$*" in
   "api repos/EDB-Sport/fitlife/contents/"*) p=${2%%\?*}; src="workflow-$(basename "$p")" ;;
   *) echo "fake gh: unexpected call: $*" >&2; exit 9 ;;
 esac
-if [ -n "$jq_filter" ]; then jq -r "$jq_filter" "$dir/$src"; else cat "$dir/$src"; fi
+# The real gh prints LF; jq on Windows prints CRLF.
+if [ -n "$jq_filter" ]; then jq -r "$jq_filter" "$dir/$src" | tr -d '\r'; else cat "$dir/$src"; fi
 FAKE
 chmod +x "$fake"
 
@@ -181,6 +184,26 @@ if [ "$(grep -c '^not ready: ' <<<"$out")" -eq 2 ]; then
   echo "PASS  one line per reason (failing check and conflict)"
 else
   echo "FAIL  one line per reason: expected 2 'not ready:' lines"
+  sed 's/^/      /' <<<"$out"
+  failures=$((failures + 1))
+fi
+
+# jq on Windows prints CRLF (#527): a jq on PATH that does so, whatever the platform.
+real_jq=$(command -v jq)
+mkdir "$work/crlf"
+cat > "$work/crlf/jq" <<FAKE
+#!/usr/bin/env bash
+set -o pipefail
+"$real_jq" "\$@" | tr -d '\r' | awk '{ printf "%s\r\n", \$0 }'
+FAKE
+chmod +x "$work/crlf/jq"
+new_case; edit compare.json '.ahead_by=3 | .files=[{"filename":".github/workflows/ci.yml"},{"filename":".github/workflows/image-scan.yml"}]'
+out=$(PATH="$work/crlf:$PATH" GH="$fake" FAKE_GH_DIR="$fx" "$check" 1 2>&1); code=$?
+if [ "$code" -eq 1 ] && [ "$(grep -c '^not ready: ' <<<"$out")" -eq 1 ] &&
+  grep -qF 'not ready: CI on the head is stale: develop changed .github/workflows/ci.yml since' <<<"$out"; then
+  echo "PASS  jq prints CRLF (Windows): changed workflows are read and the stale one named"
+else
+  echo "FAIL  jq prints CRLF: expected exit 1 with only the stale-CI reason, got $code"
   sed 's/^/      /' <<<"$out"
   failures=$((failures + 1))
 fi

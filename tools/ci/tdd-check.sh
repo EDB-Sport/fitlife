@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# tdd-check: checks mechanically that a PR's tests depend on its change (docs/CSHARP_SETUP_TODO.md section 6).
+# tdd-check: checks mechanically that a PR's tests depend on its change (docs/TECHNICAL_REFERENCE.md section 6).
 #
 # A feature PR (the default):
 #   1. Production code changed  -> test code changed too.
@@ -39,6 +39,7 @@
 #        On a label event also EVENT_ACTION, EVENT_LABEL, PR_HEAD_SHA, GITHUB_REPOSITORY and GH_TOKEN (issue #136).
 #        (run from the repo root; compares BASE_SHA...HEAD)
 set -uo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/code-lines.sh"
 
 : "${BASE_SHA:?Set BASE_SHA to the base branch commit}"
 HEAD_SHA="${HEAD_SHA:-HEAD}"
@@ -95,26 +96,6 @@ fi
 
 # Files added or modified by the PR under directories, filtered by a regex: changed_files <regex> <dir>... Renames count as delete + add.
 changed_files() { git diff --name-only --no-renames --diff-filter=AM "$BASE_SHA...$HEAD_SHA" -- "${@:2}" | grep -E "$1" || true; }
-
-# The lines of a C# file that hold code: every line except blank ones and ones made only of comments.
-# Tracks /* */ across lines and skips strings and char literals, so "http://x" is code and "/* x */ y;" is too.
-code_lines() {
-  awk '
-    { code = 0; n = length($0); q = ""
-      for (i = 1; i <= n; i++) {
-        c = substr($0, i, 1); d = substr($0, i + 1, 1)
-        if (blk) { if (c == "*" && d == "/") { blk = 0; i++ } }
-        else if (q != "") { if (c == "\\") i++; else if (c == q) q = "" }
-        else if (c == "/" && d == "/") break
-        else if (c == "/" && d == "*") { blk = 1; i++ }
-        else if (c == "\"" || c == "\047") { q = c; code = 1 }
-        else if (c !~ /[ \t\r]/) code = 1
-      }
-      if (code) print }'
-}
-
-# Does the file at a commit contain a raw string (""") or a verbatim string (@", $@" or @$")? has_multiline_string <commit> <file>
-has_multiline_string() { git show "$1:$2" 2>/dev/null | grep -qF -e '"""' -e '@"' -e '@$"'; }
 
 # Production files whose code lines changed (#361). A file whose only change is blank or comment lines is not.
 # The base and the head version are compared as code lines, so the comment state is known (a -U0 hunk can't

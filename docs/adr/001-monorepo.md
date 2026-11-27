@@ -6,13 +6,13 @@
 
 ## Context
 
-The IT-arkitektur course puts each microservice in its own repo, with its own pipeline and its own release. This project has several services and Blazor UIs, built by a group in which most code is written by agents (`METHODOLOGY.md`). Every service has to follow the same rules: compiler strictness, analyzers, central package versions, the TDD check and CODEOWNERS on the rule files (`docs/CSHARP_SETUP_TODO.md` sections 1–4). The project description also asks for service contracts and CI/CD into operations, so a change to a contract and its consumers has to be reviewable.
+The IT-arkitektur course puts each microservice in its own repo, with its own pipeline and its own release. This project has several services and Blazor UIs, built by a group in which most code is written by agents (`METHODOLOGY.md`). Every service has to follow the same rules: compiler strictness, analyzers, central package versions, the TDD check and CODEOWNERS on the rule files (`docs/TECHNICAL_REFERENCE.md` sections 1–4). The project description also asks for service contracts and CI/CD into operations, so a change to a contract and its consumers has to be reviewable.
 
 ## Decision
 
 All services, UIs, tests, contracts and deployment files live in one repo, `EDB-Sport/fitlife`, with one root solution (`FitLife.slnx`) and one CI pipeline. The services stay independent at build and release time:
-- a build target fails when a project in `src/<A>/` references a project in `src/<B>/` (`docs/CSHARP_SETUP_TODO.md` section 1); services talk only through their APIs and events
-- each service has its own version in its `.csproj`, its own git tag (`<service>/vX.Y.Z`) and its own image (`METHODOLOGY.md` section 2.1, `docs/CSHARP_SETUP_TODO.md` section 9)
+- a build target fails when a project in `src/<A>/` references a project in `src/<B>/` (`docs/TECHNICAL_REFERENCE.md` section 1); services talk only through their APIs and events
+- each service has its own version in its `.csproj`, its own git tag (`<service>/vX.Y.Z`) and its own image (`METHODOLOGY.md` section 2.1, `docs/TECHNICAL_REFERENCE.md` section 9)
 - each service has its own database (`METHODOLOGY.md` section 11.2)
 
 ## Alternatives considered
@@ -23,5 +23,5 @@ All services, UIs, tests, contracts and deployment files live in one repo, `EDB-
 ## Consequences
 
 - Easier: one set of rule files that can't drift, one CODEOWNERS file and one CI pipeline. A change that spans several services is one reviewable PR, and one `dotnet build` / `dotnet test` covers the whole system.
-- Harder: releases per service inside one Git Flow. A release branch carries every changed service, and the release gate has to work out per service which version must rise (`docs/CSHARP_SETUP_TODO.md` section 9). Docker builds use the repo root as context, so each Dockerfile copies the root rule files (section 8).
+- Harder: releases per service inside one Git Flow. A release branch carries every changed service, and the release gate has to work out per service which version must rise (`docs/TECHNICAL_REFERENCE.md` section 9). Docker builds use the repo root as context, so each Dockerfile copies the root rule files (section 8).
 - Must do: keep the "no references between services" build target and the per-service versions, tags and databases. Without them, one repo turns into a distributed monolith.

@@ -8,7 +8,7 @@
 
 The two courses use different .NET test frameworks. IT-arkitektur creates test projects with `dotnet new nunit` and requires TDD with NUnit and mocks/stubs (course rule #1). Agil udvikling teaches MSTest, but accepts NUnit and says that staying consistent matters more than which framework is chosen. Agil udvikling also teaches Moq, and its exam report asks how Moq was used.
 
-The project needs one framework across every service, the Blazor UIs (bUnit) and the project's own Roslyn analyzers (`docs/CSHARP_SETUP_TODO.md` sections 4, 6 and 6a). Most of the code is written by agents, so there should be one style of test for them to copy, and the tdd-check workflow must recognise tests and skipped tests by their attributes.
+The project needs one framework across every service, the Blazor UIs (bUnit) and the project's own Roslyn analyzers (`docs/TECHNICAL_REFERENCE.md` sections 4, 6 and 6a). Most of the code is written by agents, so there should be one style of test for them to copy, and the tdd-check workflow must recognise tests and skipped tests by their attributes.
 
 ## Decision
 

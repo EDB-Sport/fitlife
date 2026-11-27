@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The release gate on PRs into main (issue #94, docs/CSHARP_SETUP_TODO.md section 9, METHODOLOGY section 2.1).
+# The release gate on PRs into main (issue #94, docs/TECHNICAL_REFERENCE.md section 9, METHODOLOGY section 2.1).
 # For each service src/<Service>/<Service>.csproj, compared with its newest <prefix>/vX.Y.Z tag (tools/ci/services.sh):
 #   - changed since the tag  -> the <Version> in the .csproj is higher than the tag. A change counts when it is in
 #                               src/<Service>/, in a libs/ project the service references (directly or through

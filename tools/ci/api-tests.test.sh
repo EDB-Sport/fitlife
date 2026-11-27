@@ -81,7 +81,7 @@ check "passes when every collection passes" [ "$status" -eq 0 ]
 check "starts the stack with up -d --wait in deploy/compose" has_call '^docker compose up -d --wait \(in compose\)$'
 check "stops the stack with down -v" has_call '^docker compose down -v \(in compose\)$'
 check "stops the stack last" bash -c '[[ "$(tail -1 <<<"$1")" == "docker compose down -v"* ]]' _ "$calls"
-check "uses .env.example as .env" cmp -s "$repo/deploy/compose/.env.example" "$repo/deploy/compose/.env"
+check "uses .env.example as .env, changing only the CI log-in burst (#556)" bash -c 'diff <(grep -v "^LOGIN_RATE_BURST=\|^$" "$1") <(grep -v "^LOGIN_RATE_BURST=\|^$" "$2") >/dev/null' _ "$repo/deploy/compose/.env.example" "$repo/deploy/compose/.env"
 
 # 2. The collections, with the ci environment and the three reporters
 check "runs services/" has_call '^newman run tests/postman/services/booking\.postman_collection\.json '
@@ -123,7 +123,19 @@ add "$repo" services booking
 API_TESTS_BUILD=0 run "$repo"
 check "API_TESTS_BUILD=0 doesn't build" has_call '^docker compose up -d --wait \(in compose\)$'
 
-# 6. The repo's own collections assert status codes and bodies, never response times: a timing
+# 6. Every collection logs in, and the gateway's log-in burst (.env.example: 10) must cover all of them
+#    in one run, or the collection after the limit gets 429 (#556). 11 log-ins here, one more than .env.example allows.
+repo=$(fixture)
+printf 'LOGIN_RATE_BURST=10\n' >> "$repo/deploy/compose/.env.example"
+logins=$(for _ in $(seq 11); do printf '{"request":{"method":"POST","url":{"raw":"{{baseUrl}}/api/identity/tokens"}}},'; done)
+echo "{\"item\":[${logins%,}]}" > "$repo/tests/postman/services/logins.postman_collection.json"
+run "$repo"
+burst=$(sed -n 's/^LOGIN_RATE_BURST=//p' "$repo/deploy/compose/.env")
+logins_in_run=$(grep -ho 'identity/tokens' "$repo"/tests/postman/*/*.postman_collection.json | wc -l)
+check "the CI stack's log-in burst covers every log-in of one run" bash -c '[ -n "$1" ] && [ "$1" -ge "$2" ]' _ "$burst" "$logins_in_run"
+check "the run with 11 log-ins still passes" [ "$status" -eq 0 ]
+
+# 7. The repo's own collections assert status codes and bodies, never response times: a timing
 #    assertion against a mock server on the internet depends on the network, not on the code (#135)
 timed=$(grep -rlE 'responseTime' "$here/../../tests/postman" --include='*.postman_collection.json' || true)
 check "no collection asserts a response time" [ -z "$timed" ]

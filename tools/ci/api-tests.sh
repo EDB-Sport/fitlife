@@ -27,7 +27,14 @@ collections=(
 stop_stack() { (cd "$compose_dir" && docker compose down -v); }
 
 # The made-up passwords in .env.example are what CI uses (deploy/compose/README.md). A local .env is kept.
-[ -f "$compose_dir/.env" ] || cp "$compose_dir/.env.example" "$compose_dir/.env"
+# Every collection logs in, and one run makes more log-ins than .env.example's burst (10) allows: the collection
+# after the limit would get 429 (#556). So the .env CI creates gets a higher burst; production keeps .env.example's.
+ci_login_burst=30
+if [ ! -f "$compose_dir/.env" ]; then
+  cp "$compose_dir/.env.example" "$compose_dir/.env"
+  sed -i '/^LOGIN_RATE_BURST=/d' "$compose_dir/.env"
+  printf '\nLOGIN_RATE_BURST=%s\n' "$ci_login_burst" >> "$compose_dir/.env"
+fi
 
 up=(docker compose up -d --wait)
 [ "${API_TESTS_BUILD:-0}" = 1 ] && up+=(--build)

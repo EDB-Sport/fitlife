@@ -1,10 +1,11 @@
+using System.Globalization;
 using MembershipService.Domain;
 
 namespace MembershipService.Tests;
 
 /// <summary>
 /// A new membership is active from the day the member joins and the first fee is paid (TO-BE-kontekst §8, UC5).
-/// A member pauses it for a period and can end the pause early (UC6, #248).
+/// A member pauses it for a period and can end the pause early (UC6, #248). A member cancels it with one month's notice (UC8, #249).
 /// </summary>
 public sealed class MembershipTests
 {
@@ -289,6 +290,116 @@ public sealed class MembershipTests
 
         // Assert
         Assert.That(status, Is.EqualTo(MembershipStatus.PaymentMissing));
+        Assert.That(membership.IsActiveOn(Today), Is.False);
+    }
+
+    [TestCase("2026-11-24", "2026-12-31")]
+    [TestCase("2026-11-30", "2026-12-31")]
+    [TestCase("2026-12-01", "2027-01-31")]
+    [TestCase("2026-12-31", "2027-01-31")]
+    [TestCase("2027-01-31", "2027-02-28")]
+    [TestCase("2028-01-31", "2028-02-29")]
+    [TestCase("2028-02-29", "2028-03-31")]
+    public void Cancel_OnADay_SetsTheLastTrainingDayToTheEndOfTheNextMonth(string cancelledOn, string lastTrainingDay)
+    {
+        // Arrange
+        Membership membership = ActiveMembership();
+        DateOnly today = DateOnly.Parse(cancelledOn, CultureInfo.InvariantCulture);
+
+        // Act
+        CancelResult result = membership.Cancel(today);
+
+        // Assert
+        Assert.That(result, Is.EqualTo(CancelResult.Cancelled));
+        Assert.That(membership.LastTrainingDay, Is.EqualTo(DateOnly.Parse(lastTrainingDay, CultureInfo.InvariantCulture)));
+        Assert.That(membership.StatusOn(today), Is.EqualTo(MembershipStatus.Cancelled));
+    }
+
+    [Test]
+    public void Cancel_WhilePaused_IsCancelled()
+    {
+        // Arrange
+        var membership = ActiveMembership();
+        membership.Pause(Today, new DateOnly(2026, 12, 15), Today);
+
+        // Act
+        CancelResult result = membership.Cancel(Today);
+
+        // Assert
+        Assert.That(result, Is.EqualTo(CancelResult.Cancelled));
+        Assert.That(membership.StatusOn(new DateOnly(2026, 12, 1)), Is.EqualTo(MembershipStatus.Cancelled));
+        Assert.That(membership.LastTrainingDay, Is.EqualTo(new DateOnly(2026, 12, 31)));
+    }
+
+    [Test]
+    public void Cancel_WhenAlreadyCancelled_IsRejected()
+    {
+        // Arrange
+        var membership = ActiveMembership();
+        membership.Cancel(Today);
+
+        // Act
+        CancelResult result = membership.Cancel(new DateOnly(2026, 12, 1));
+
+        // Assert
+        Assert.That(result, Is.EqualTo(CancelResult.MembershipAlreadyCancelled));
+        Assert.That(membership.LastTrainingDay, Is.EqualTo(new DateOnly(2026, 12, 31)));
+    }
+
+    [Test]
+    public void Cancel_AfterTheLastTrainingDay_IsRejected()
+    {
+        // Arrange
+        var membership = ActiveMembership();
+        membership.Cancel(Today);
+
+        // Act
+        CancelResult result = membership.Cancel(new DateOnly(2027, 1, 1));
+
+        // Assert
+        Assert.That(result, Is.EqualTo(CancelResult.MembershipAlreadyCancelled));
+        Assert.That(membership.LastTrainingDay, Is.EqualTo(new DateOnly(2026, 12, 31)));
+    }
+
+    [Test]
+    public void StatusOn_OnTheLastTrainingDay_IsCancelled()
+    {
+        // Arrange
+        var membership = ActiveMembership();
+        membership.Cancel(Today);
+
+        // Act
+        MembershipStatus status = membership.StatusOn(new DateOnly(2026, 12, 31));
+
+        // Assert
+        Assert.That(status, Is.EqualTo(MembershipStatus.Cancelled));
+    }
+
+    [Test]
+    public void StatusOn_TheDayAfterTheLastTrainingDay_IsEnded()
+    {
+        // Arrange
+        var membership = ActiveMembership();
+        membership.Cancel(Today);
+
+        // Act
+        MembershipStatus status = membership.StatusOn(new DateOnly(2027, 1, 1));
+
+        // Assert
+        Assert.That(status, Is.EqualTo(MembershipStatus.Ended));
+    }
+
+    [Test]
+    public void IsActive_AfterCancelling_IsFalse()
+    {
+        // Arrange
+        var membership = ActiveMembership();
+
+        // Act
+        membership.Cancel(Today);
+
+        // Assert
+        Assert.That(membership.IsActive, Is.False);
         Assert.That(membership.IsActiveOn(Today), Is.False);
     }
 

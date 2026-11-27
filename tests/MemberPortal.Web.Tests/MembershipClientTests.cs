@@ -13,6 +13,7 @@ namespace MemberPortal.Web.Tests;
 public sealed class MembershipClientTests
 {
     private const string Member = """{"memberId":"0b6f5f7e-2f0c-4b8e-9a51-6d2f4c1e7a90","membershipStatus":"PaymentMissing","isActive":false}""";
+    private const string ActiveMember = """{"memberId":"0b6f5f7e-2f0c-4b8e-9a51-6d2f4c1e7a90","membershipStatus":"Active","isActive":true}""";
 
     [Test]
     public async Task JoinAsync_PostsToMembershipThroughTheGatewayWithTheGivenToken()
@@ -49,7 +50,7 @@ public sealed class MembershipClientTests
     public async Task JoinAsync_ReturnsMembershipsAnswer(HttpStatusCode status, JoinMembershipAnswer expected)
     {
         // Arrange
-        using var gateway = new StubGateway(status, status == HttpStatusCode.Created ? Member : """{"status":409,"code":"AccountIsAlreadyAMember"}""");
+        using var gateway = new StubGateway(status, status == HttpStatusCode.Created ? ActiveMember : """{"status":409,"code":"AccountIsAlreadyAMember"}""");
         using ServiceProvider services = Services(gateway);
 
         // Act
@@ -66,6 +67,31 @@ public sealed class MembershipClientTests
     {
         // Arrange
         using var gateway = new StubGateway(HttpStatusCode.Conflict, body);
+        using ServiceProvider services = Services(gateway);
+
+        // Act & Assert
+        await Assert.ThatAsync(() => Join(services, "fresh.token.signature"), Throws.TypeOf<MembershipUnavailableException>()).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task JoinAsync_WhenTheAnswerIsPaymentMissing_SaysSo()
+    {
+        // Arrange: 201, but the first fee wasn't paid
+        using var gateway = new StubGateway(HttpStatusCode.Created, Member);
+        using ServiceProvider services = Services(gateway);
+
+        // Act
+        JoinMembershipAnswer answer = await Join(services, "fresh.token.signature").ConfigureAwait(false);
+
+        // Assert
+        Assert.That(answer, Is.EqualTo(JoinMembershipAnswer.PaymentMissing));
+    }
+
+    [Test]
+    public async Task JoinAsync_WhenTheBodyIsNotAMember_ThrowsMembershipUnavailable()
+    {
+        // Arrange
+        using var gateway = new StubGateway(HttpStatusCode.Created, "not json");
         using ServiceProvider services = Services(gateway);
 
         // Act & Assert

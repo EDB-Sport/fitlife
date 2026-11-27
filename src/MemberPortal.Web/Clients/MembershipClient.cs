@@ -1,11 +1,13 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace MemberPortal.Web.Clients;
 
 /// <summary>
 /// Membership's <c>POST members</c>, reached through the gateway's route <c>api/membership</c>, over a typed client.
-/// A 409 with <c>code</c> <c>AccountIsAlreadyAMember</c> is already a member (#542); every other failure becomes a <see cref="MembershipUnavailableException"/>.
+/// A 201 is read for the membership's status, a 409 with <c>code</c> <c>AccountIsAlreadyAMember</c> is already a member (#542); every other failure becomes a <see cref="MembershipUnavailableException"/>.
 /// </summary>
 /// <param name="http">A client with the gateway's base address and the <see cref="BearerTokenHandler"/>, from <c>IHttpClientFactory</c>.</param>
 public sealed class MembershipClient(HttpClient http) : IMembershipClient
@@ -13,6 +15,8 @@ public sealed class MembershipClient(HttpClient http) : IMembershipClient
     private const string MembersPath = "api/membership/members";
 
     private const string AccountIsAlreadyAMemberCode = "AccountIsAlreadyAMember";
+    // MembershipStatus.PaymentMissing in contracts/openapi/membershipservice.json
+    private const string PaymentMissing = "PaymentMissing";
 
     /// <inheritdoc />
     public async Task<JoinMembershipAnswer> JoinAsync(string? accessToken, CancellationToken cancellationToken)
@@ -33,7 +37,22 @@ public sealed class MembershipClient(HttpClient http) : IMembershipClient
             }
 
             response.EnsureSuccessStatusCode();
+            MemberResponse? member = await response.Content.ReadFromJsonAsync<MemberResponse>(cancellationToken).ConfigureAwait(false);
+            if (member is null)
+            {
+                throw new MembershipUnavailableException("Membership answered no member.");
+            }
+
+            if (string.Equals(member.MembershipStatus, PaymentMissing, StringComparison.Ordinal))
+            {
+                return JoinMembershipAnswer.PaymentMissing;
+            }
+
             return JoinMembershipAnswer.Joined;
+        }
+        catch (JsonException exception)
+        {
+            throw new MembershipUnavailableException("Membership answered a body that isn't a member.", exception);
         }
         catch (HttpRequestException exception)
         {

@@ -24,7 +24,7 @@ public sealed class NoSecretsInLogsAnalyzer : DiagnosticAnalyzer
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "Logs go to Loki, where everyone with Grafana access can read them. Never log secrets or personal data (course M9).",
-        helpLinkUri: "https://github.com/EDB-Sport/fitlife/blob/develop/docs/CSHARP_SETUP_TODO.md#4-project-specific-roslyn-analyzers-toolsanalyzers");
+        helpLinkUri: "https://github.com/EDB-Sport/fitlife/blob/develop/docs/TECHNICAL_REFERENCE.md#4-project-specific-roslyn-analyzers-toolsanalyzers");
 
     private const string LoggerExtensions = "Microsoft.Extensions.Logging.LoggerExtensions";
 

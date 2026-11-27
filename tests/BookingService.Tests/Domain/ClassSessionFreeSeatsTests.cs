@@ -35,7 +35,7 @@ public sealed class ClassSessionFreeSeatsTests
         ClassSession classSession = ClassSessionWithCapacity(2);
 
         // Act
-        classSession.Cancel();
+        classSession.Cancel(_clock);
 
         // Assert
         Assert.That(classSession.FreeSeats, Is.Zero);

@@ -58,6 +58,32 @@ public sealed class NavMenuTests : BunitContext
     }
 
     [Test]
+    public void NavMenu_WhenLoggedIn_ShowsMitMedlemskab()
+    {
+        // Arrange
+        AddAuthorization().SetAuthorized("medlem@fitlife.test");
+
+        // Act
+        IRenderedComponent<NavMenu> cut = Render<NavMenu>();
+
+        // Assert
+        Assert.That(cut.Find("a[href=mit-medlemskab]").TextContent.Trim(), Is.EqualTo("Mit medlemskab"));
+    }
+
+    [Test]
+    public void NavMenu_WhenNotLoggedIn_HasNoMitMedlemskab()
+    {
+        // Arrange
+        AddAuthorization();
+
+        // Act
+        IRenderedComponent<NavMenu> cut = Render<NavMenu>();
+
+        // Assert
+        Assert.That(cut.FindAll("a[href=mit-medlemskab]"), Is.Empty);
+    }
+
+    [Test]
     public void NavMenu_LogUd_PostsWithTheAntiforgeryToken()
     {
         // Arrange

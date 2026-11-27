@@ -45,6 +45,6 @@ This table is a reference, not a second spec. When an issue and the table disagr
 | `/log-ud` (planned) | MemberPortal.Web | not decided | not decided | not decided | not decided | [#206](https://github.com/EDB-Sport/fitlife/issues/206) |
 | `/bliv-medlem` | MemberPortal.Web | yes | yes | yes | yes | [#209](https://github.com/EDB-Sport/fitlife/issues/209) |
 | `/mine-bookinger` (planned) | MemberPortal.Web | – | not decided | not decided | not decided | [#208](https://github.com/EDB-Sport/fitlife/issues/208) |
-| `/mit-medlemskab` (planned) | MemberPortal.Web | – | not decided | not decided | not decided | [#210](https://github.com/EDB-Sport/fitlife/issues/210), [#211](https://github.com/EDB-Sport/fitlife/issues/211) |
+| `/mit-medlemskab` | MemberPortal.Web | – | yes | yes | yes | [#624](https://github.com/EDB-Sport/fitlife/issues/624) (status), [#210](https://github.com/EDB-Sport/fitlife/issues/210), [#211](https://github.com/EDB-Sport/fitlife/issues/211), [#535](https://github.com/EDB-Sport/fitlife/issues/535) |
 | `GET /health` | every service, the portal and the gateway | yes | yes | yes | yes | – |
 | The OpenAPI document and Scalar, in Development only | BookingService, IdentityService, MembershipService, NotificationService | yes | yes | yes | yes | – |

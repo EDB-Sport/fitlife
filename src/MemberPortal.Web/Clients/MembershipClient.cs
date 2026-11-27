@@ -14,6 +14,8 @@ public sealed class MembershipClient(HttpClient http) : IMembershipClient
 {
     private const string MembersPath = "api/membership/members";
 
+    private const string MyMembershipPath = "api/membership/members/me";
+
     // MembershipStatus.PaymentMissing in contracts/openapi/membershipservice.json
     private const string PaymentMissing = "PaymentMissing";
 
@@ -52,6 +54,37 @@ public sealed class MembershipClient(HttpClient http) : IMembershipClient
         catch (JsonException exception)
         {
             throw new MembershipUnavailableException("Membership answered a body that isn't a member.", exception);
+        }
+        catch (HttpRequestException exception)
+        {
+            throw new MembershipUnavailableException("Membership can't be reached, or answered an error.", exception);
+        }
+        catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            // HttpClient's timeout. The caller's own cancellation passes on untouched
+            throw new MembershipUnavailableException("Membership didn't answer in time.", exception);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<MyMembershipResponse?> GetMyMembershipAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using HttpResponseMessage response = await http.GetAsync(new Uri(MyMembershipPath, UriKind.Relative), cancellationToken).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                // The account has not joined (contracts/openapi/membershipservice.json)
+                return null;
+            }
+
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<MyMembershipResponse>(cancellationToken).ConfigureAwait(false)
+                ?? throw new MembershipUnavailableException("Membership answered no membership.");
+        }
+        catch (JsonException exception)
+        {
+            throw new MembershipUnavailableException("Membership answered a body that isn't a membership.", exception);
         }
         catch (HttpRequestException exception)
         {

@@ -1,4 +1,4 @@
-# MembershipService image (docs/CSHARP_SETUP_TODO.md section 8). Build from the repo root:
+# MembershipService image (docs/TECHNICAL_REFERENCE.md section 8). Build from the repo root:
 #   docker build -f src/MembershipService/Dockerfile .
 # A new service copies this file and replaces MembershipService (docs/ADDING_A_SERVICE.md).
 

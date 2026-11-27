@@ -16,11 +16,11 @@ This has already happened in this project in a related way: MongoDB 8 refuses to
 
 Every image in the compose files, the Dockerfiles and the Bicep parameters is pinned to an exact version, e.g. `mongo:8.0.38`, `rabbitmq:4.4.1-management`, `nginx:1.30.7-alpine`. Never `latest`, and never a bare major such as `mongo:8`. Upgrades are ordinary PRs that change the version and pass CI.
 
-CI enforces it (`docs/CSHARP_SETUP_TODO.md` sections 7 and 10):
+CI enforces it (`docs/TECHNICAL_REFERENCE.md` sections 7 and 10):
 - the `deploy-check` job fails on `:latest` in compose files and `main.bicepparam` (#21)
 - hadolint fails on DL3007 (`FROM ...:latest`) in Dockerfiles (#20)
 
-The one exception is the .NET SDK and runtime base images, which follow the course's floating `mcr.microsoft.com/dotnet/sdk:10.0-alpine` tag. This exception is not free. The Web SDK writes an implicit `Microsoft.AspNetCore.App.Internal.Assets` version into `packages.lock.json`, and that version follows the installed SDK patch. With `dotnet restore --locked-mode` (`docs/CSHARP_SETUP_TODO.md` section 1), a lock file made with one SDK patch fails with NU1004 on another, whether the newer patch comes from the image or from a laptop. `rollForward: latestFeature` in `global.json` does not prevent this: it is what lets the newer SDK in.
+The one exception is the .NET SDK and runtime base images, which follow the course's floating `mcr.microsoft.com/dotnet/sdk:10.0-alpine` tag. This exception is not free. The Web SDK writes an implicit `Microsoft.AspNetCore.App.Internal.Assets` version into `packages.lock.json`, and that version follows the installed SDK patch. With `dotnet restore --locked-mode` (`docs/TECHNICAL_REFERENCE.md` section 1), a lock file made with one SDK patch fails with NU1004 on another, whether the newer patch comes from the image or from a laptop. `rollForward: latestFeature` in `global.json` does not prevent this: it is what lets the newer SDK in.
 
 #47 tracks the fix the group chose: pin the exact SDK patch in `global.json` (`10.0.203` with `rollForward: disable`, PR #55) and use the matching SDK image `sdk:10.0.203-alpine3.23` in the Dockerfiles' build stage (PR #32). Once both are merged, only the runtime image floats. It does not restore packages, so the lock files do not depend on it.
 

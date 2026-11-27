@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# What a push to develop delivers (issue #340, docs/CSHARP_SETUP_TODO.md section 9, METHODOLOGY section 2.1).
+# What a push to develop delivers (issue #340, docs/TECHNICAL_REFERENCE.md section 9, METHODOLOGY section 2.1).
 # Every service whose :develop image on Docker Hub is out of date gets the images <namespace>/<prefix>:develop and
 # :sha-<short>. Out of date means: the image is missing, or its source changed since the commit the image was built
 # from (its revision label, tools/ci/delivered-revision.sh). "Changed" is the rule of release-gate.sh

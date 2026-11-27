@@ -49,7 +49,7 @@ No events yet. `MembershipPaused` comes with #251, `MembershipCancelled` with ca
 |---|---|---|---|
 | Identity | The JWT, checked with `libs/FitLife.Authentication` | Open Host Service (upstream) | Every service checks the same token the same way |
 | Booking; Access (NEXT) | REST, the lookup by account id | Open Host Service (we are upstream) | Several contexts need the same answer, synchronously |
-| Payment provider | REST, `POST /v1/charges` at `PaymentProvider:BaseUrl`; a Postman Mock Server in the PoC (`tests/postman/mocks/payment-provider.*`) | ACL: `PaymentProvider/PaymentProviderClient` is the only class that knows its field names | External system (P5). Declined, a provider error and no answer all mean the fee is not paid |
+| Payment provider | REST, `POST /v1/charges` at `PaymentProvider:BaseUrl`; a Postman Mock Server in the PoC (`tests/postman/mocks/payment-provider.*`) | ACL: `PaymentProvider/PaymentProviderClient` is the only class that knows its field names | External system (P5). Declined, a provider error and no answer all mean the fee is not paid. Once a charge starts, a cancelled request stops neither the charge nor the save of its result, so a paid fee is never left as `PaymentMissing`; the client's 10 s time-out still applies (#544) |
 
 ## Rules for this folder
 

@@ -99,6 +99,20 @@ public sealed class ReservationMadeSubscriberTests
         Assert.That((stored.Kind, stored.OccurredAt), Is.EqualTo(("ReservationMade", now)));
     }
 
+    [Test]
+    public async Task HandleAsync_ReservationMade_TextIsDanishAndNamesTheStart()
+    {
+        // Arrange
+        var repository = new InMemoryNotificationRepository();
+        var subscriber = new ReservationMadeSubscriber(repository, TimeProvider.System, new CapturingLogger());
+
+        // Act
+        await subscriber.HandleAsync(Sample, CancellationToken.None).ConfigureAwait(false);
+
+        // Assert: the start in the offset the event carries, and no id. A seat from the waitlist is the same event
+        Assert.That(repository.Stored.Single().Text, Is.EqualTo("Din booking på holdet den 01.12.2026 kl. 18:00 er bekræftet."));
+    }
+
     /// <summary>The clock, stopped at one instant.</summary>
     private sealed class FixedTime(DateTimeOffset now) : TimeProvider
     {

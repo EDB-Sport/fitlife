@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MembershipPaused",
+  "description": "Medlemskab pauset: a member paused the membership for a period, both days included. Published by Membership, consumed by Booking, which frees the member's seats inside the period (docs/domain/CONTEXT-MAP.md section 5). The message carries the correlation ID in its X-Correlation-ID header, not in the body.",
+  "type": "object",
+  "properties": {
+    "memberId": {
+      "description": "The member whose membership is paused (MemberId). Consumers use it with from to handle the same event only once.",
+      "type": "string",
+      "minLength": 1
+    },
+    "from": {
+      "description": "The first day of the pause, a date without a time.",
+      "type": "string",
+      "format": "date"
+    },
+    "to": {
+      "description": "The last day of the pause, a date without a time.",
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "memberId",
+    "from",
+    "to"
+  ],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "memberId": "6741f0c2a9e1b3d4c5f6071a",
+      "from": "2026-12-01",
+      "to": "2026-12-31"
+    }
+  ]
+}

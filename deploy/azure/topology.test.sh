@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Acceptance check for #23 and #371: the production topology on Azure Container Instances, checked offline.
+# Acceptance check for #23, #371 and #386: the production topology on Azure Container Instances, checked offline.
 # It compiles deploy/azure/main.bicep to ARM JSON, works out the container group the way Azure would (for the
 # values main.bicepparam gives), and checks it. It needs no Azure login and creates nothing.
 #
@@ -24,10 +24,12 @@
 #  11. Booking, Membership and Identity are in the group (#371), each on its own port (the one Nginx routes to),
 #      with ASPNETCORE_HTTP_PORTS and both probes on /health
 #  12. each of the three gets the settings its block in deploy/compose/services.yml has, with 127.0.0.1 addresses
-#      and its secrets as secureValue, and nothing else
+#      and its secrets as secureValue, and nothing else (only Loki__Url is left out, #277)
 #  13. the Nginx container has a value for every ${...} in the template
 #  14. the demo accounts' passwords reach Identity from their own secrets, and no password of .env.example is in
 #      deploy/azure
+#  15. Booking seeds the demo class schedule (#386): booking-svc has the seed setting at "true", under the one key
+#      src/BookingService/Program.cs reads, and compose's booking-svc block has the same key
 set -euo pipefail
 
 # The limit per container group for Linux containers without GPU in most regions, switzerlandnorth included
@@ -552,7 +554,6 @@ for context in SERVICES:
 #     ASPNETCORE_HTTP_PORTS.
 LEFT_OUT = {
     "Loki__Url": "Loki isn't in the group (#277)",
-    "Seed__Enabled": "Booking's demo data in Azure waits for #386",
 }
 for context in SERVICES:
     name = f"{context}-svc"
@@ -625,6 +626,24 @@ if leaks:
         fail(leak)
 else:
     ok("no password of .env.example is in deploy/azure")
+
+# 15. Booking's demo class schedule: the seed key is the one Program.cs reads (Seed:Enabled on 27 Nov 2026, #255),
+#     written as an environment variable (: becomes __), "true" in Azure, and the same key in compose.
+with open(os.path.join(root, "src/BookingService/Program.cs"), encoding="utf-8") as program:
+    seed_keys = sorted(set(re.findall(r'GetValue<bool>\("(Seed:\w+)"\)', program.read())))
+if len(seed_keys) != 1:
+    fail(f"expected one seed key read in src/BookingService/Program.cs, found {seed_keys}")
+else:
+    seed_setting = seed_keys[0].replace(":", "__")
+    booking = environment("booking-svc")
+    if booking.get(seed_setting, {}).get("value") == "true":
+        ok(f"booking-svc: {seed_setting} is 'true', the key Program.cs reads ({seed_keys[0]})")
+    else:
+        fail(f"booking-svc: {seed_setting} should be 'true' (the key Program.cs reads), got {booking.get(seed_setting)}")
+    if seed_setting in compose_environment("booking-svc"):
+        ok(f"compose's booking-svc sets the same key, {seed_setting}")
+    else:
+        fail(f"compose's booking-svc doesn't set {seed_setting}, the key Program.cs reads")
 
 if failures:
     print(f"\n{len(failures)} check(s) failed", file=sys.stderr)

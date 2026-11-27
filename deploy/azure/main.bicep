@@ -1,4 +1,4 @@
-// FitLife production on Azure Container Instances (docs/CSHARP_SETUP_TODO.md section 9a, issues #10 and #23).
+// FitLife production on Azure Container Instances (docs/TECHNICAL_REFERENCE.md section 9a, issues #10 and #23).
 // One container group: Caddy (HTTPS) -> Nginx -> the services and the member portal, with MongoDB, RabbitMQ
 // and Vault next to them. Loki and Grafana join with #6, the other services and UIs as they are released.
 // Deploy: see deploy/azure/README.md. Values for production are in main.bicepparam.

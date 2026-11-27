@@ -1,6 +1,6 @@
 # Production on Azure: Bicep + Azure Container Instances
 
-Production runs as one container group on Azure Container Instances (ACI), described in Bicep (`docs/CSHARP_SETUP_TODO.md` section 9a). It holds Booking, Membership and Identity (#371), NotificationService (#261) and the member portal, plus MongoDB, RabbitMQ and Vault (#23). Identity seeds the three demo accounts, one per role, so the public URL can be logged in to. Loki and Grafana join with #6, and the other services and UIs as they are released (#217).
+Production runs as one container group on Azure Container Instances (ACI), described in Bicep (`docs/TECHNICAL_REFERENCE.md` section 9a). It holds Booking, Membership and Identity (#371), NotificationService (#261) and the member portal, plus MongoDB, RabbitMQ and Vault (#23). Identity seeds the three demo accounts, one per role, so the public URL can be logged in to. Loki and Grafana join with #6, and the other services and UIs as they are released (#217).
 
 ```
 internet --HTTPS 443--> caddy --:80--> nginx --/api/<context>/--> services       :5001-5003 --> mongodb  :27017

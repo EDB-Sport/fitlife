@@ -1,4 +1,4 @@
-# IdentityService image (docs/CSHARP_SETUP_TODO.md section 8). Build from the repo root:
+# IdentityService image (docs/TECHNICAL_REFERENCE.md section 8). Build from the repo root:
 #   docker build -f src/IdentityService/Dockerfile .
 # A new service copies this file and replaces IdentityService (docs/ADDING_A_SERVICE.md).
 

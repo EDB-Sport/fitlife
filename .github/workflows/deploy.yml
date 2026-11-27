@@ -1,4 +1,4 @@
-# Deploys production to Azure Container Instances with Bicep (docs/CSHARP_SETUP_TODO.md section 9a, issue #10).
+# Deploys production to Azure Container Instances with Bicep (docs/TECHNICAL_REFERENCE.md section 9a, issue #10).
 #
 # release.yml calls it (workflow_call) as its last job, after the tags job, with the image versions that
 # release tagged. It runs in release.yml's push context on main: a workflow_run trigger would run it on the

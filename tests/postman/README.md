@@ -1,6 +1,6 @@
 # Postman collections
 
-Run by Newman (`docs/METHODOLOGY.md` section 7). Layout from `docs/CSHARP_SETUP_TODO.md` section 6:
+Run by Newman (`docs/METHODOLOGY.md` section 7). Layout from `docs/TECHNICAL_REFERENCE.md` section 6:
 
 ```
 services/<service>.postman_collection.json         API tests, one per service: happy path + at least one error case per endpoint

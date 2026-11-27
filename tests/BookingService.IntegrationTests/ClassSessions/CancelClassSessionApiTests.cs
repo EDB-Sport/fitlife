@@ -3,8 +3,10 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using BookingService.Api;
+using BookingService.Application;
 using BookingService.Domain;
 using FitLife.Authentication;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 
 namespace BookingService.IntegrationTests.ClassSessions;
@@ -64,6 +66,33 @@ public sealed class CancelClassSessionApiTests
 
         // Assert
         Assert.That(await StatusAndCodeAsync(second).ConfigureAwait(false), Is.EqualTo((HttpStatusCode.Conflict, "ClassSessionAlreadyCancelled")));
+    }
+
+    [Test]
+    public async Task PostCancellation_AfterTheClassSessionHasStarted_Returns409ClassSessionStartedAndSavesNothing()
+    {
+        // Arrange: started five minutes ago (#538)
+        using BookingApiFactory factory = Factory();
+        ClassSession classSession = await StoredAsync(factory, Now.AddMinutes(-5)).ConfigureAwait(false);
+        using HttpClient client = ClientWithRole(factory, FitLifeRoles.Traener);
+
+        // Act
+        using HttpResponseMessage response = await client.PostAsync(CancellationOf(classSession.Id), content: null).ConfigureAwait(false);
+
+        // Assert
+        (HttpStatusCode Status, string? Code) problem = await StatusAndCodeAsync(response).ConfigureAwait(false);
+        ClassSession? stored;
+        using (IServiceScope scope = factory.Services.CreateScope())
+        {
+            stored = await scope.ServiceProvider.GetRequiredService<IClassSessionRepository>().GetByIdAsync(classSession.Id, CancellationToken.None).ConfigureAwait(false);
+        }
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(problem, Is.EqualTo((HttpStatusCode.Conflict, "ClassSessionStarted")));
+            Assert.That(response.Content.Headers.ContentType?.MediaType, Is.EqualTo("application/problem+json"));
+            Assert.That(stored?.IsCancelled, Is.False);
+        });
     }
 
     [Test]
@@ -133,10 +162,15 @@ public sealed class CancelClassSessionApiTests
         return new Uri($"/class-sessions/{classSessionId}/cancellation", UriKind.Relative);
     }
 
-    private static async Task<ClassSession> StoredAsync(BookingApiFactory factory)
+    private static Task<ClassSession> StoredAsync(BookingApiFactory factory)
+    {
+        return StoredAsync(factory, Now.AddDays(1));
+    }
+
+    private static async Task<ClassSession> StoredAsync(BookingApiFactory factory, DateTimeOffset startTime)
     {
         var classSession = new ClassSession(
-            Guid.NewGuid(), new Capacity(2), Now.AddDays(1), new ClassSessionDetails(Guid.NewGuid(), Guid.NewGuid(), new Instructor("Mette"), TimeSpan.FromMinutes(60)));
+            Guid.NewGuid(), new Capacity(2), startTime, new ClassSessionDetails(Guid.NewGuid(), Guid.NewGuid(), new Instructor("Mette"), TimeSpan.FromMinutes(60)));
         await factory.AddAsync(classSession).ConfigureAwait(false);
         return classSession;
     }

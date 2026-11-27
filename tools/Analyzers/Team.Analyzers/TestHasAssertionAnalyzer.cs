@@ -23,7 +23,7 @@ public sealed class TestHasAssertionAnalyzer : DiagnosticAnalyzer
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "A test with no assertion always passes (F.I.R.S.T.: Self-validating). Agents write those when they're asked to add tests.",
-        helpLinkUri: "https://github.com/EDB-Sport/fitlife/blob/develop/docs/CSHARP_SETUP_TODO.md#4-project-specific-roslyn-analyzers-toolsanalyzers");
+        helpLinkUri: "https://github.com/EDB-Sport/fitlife/blob/develop/docs/TECHNICAL_REFERENCE.md#4-project-specific-roslyn-analyzers-toolsanalyzers");
 
     private static readonly ImmutableHashSet<string> TestAttributes = ImmutableHashSet.Create(
         StringComparer.Ordinal,

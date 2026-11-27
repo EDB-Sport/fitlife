@@ -1,4 +1,4 @@
-# NotificationService image (docs/CSHARP_SETUP_TODO.md section 8). Build from the repo root:
+# NotificationService image (docs/TECHNICAL_REFERENCE.md section 8). Build from the repo root:
 #   docker build -f src/NotificationService/Dockerfile .
 # A new service copies this file and replaces NotificationService (docs/ADDING_A_SERVICE.md).
 

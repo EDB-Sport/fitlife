@@ -1,0 +1,68 @@
+# Starts or stops the production container group from GitHub (issue #278), so a group member without
+# Azure CLI rights can bring the demo up before a meeting and stop it after, and the run log records
+# when the PoC was up. Run it from main: the production environment allows only that branch.
+#
+# It never runs on a PR: tools/ci/azure-power-workflow.test.sh and actionlint (tools/ci/static-check.sh)
+# are its proof. Every run waits for one approval on the GitHub environment `production`, like deploy.yml,
+# and logs in with the same identity: `fitlife-github-deploy`, Contributor on rg-fitlife-prod (#179).
+name: azure-power
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Start or stop the Azure container group
+        required: true
+        type: choice
+        options:
+          - start
+          - stop
+
+permissions:
+  contents: read
+
+env:
+  RESOURCE_GROUP: rg-fitlife-prod
+  CONTAINER_GROUP: fitlife
+
+jobs:
+  power:
+    runs-on: ubuntu-latest
+    environment:
+      name: production # required reviewers: the job waits here for one group member's approval
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write # lets azure/login get an OpenID Connect token; no client secret is stored
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Log in to Azure (OpenID Connect)
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # The input is a choice, and the case makes "nothing else accepted" true even if that ever changes.
+      - name: Start or stop the container group
+        env:
+          ACTION: ${{ inputs.action }}
+        run: |
+          set -euo pipefail
+          case "$ACTION" in
+            start | stop) az container "$ACTION" --resource-group "$RESOURCE_GROUP" --name "$CONTAINER_GROUP" ;;
+            *)
+              echo "::error::action must be start or stop, not '$ACTION'"
+              exit 1
+              ;;
+          esac
+
+      # A stopped group takes a moment to start, and Caddy asks Let's Encrypt for a certificate then.
+      # The wait is shared with deploy.yml: tools/ci/wait-for-health.sh.
+      - name: Wait for HTTPS
+        if: inputs.action == 'start'
+        run: |
+          set -euo pipefail
+          fqdn="$(az container show --resource-group "$RESOURCE_GROUP" --name "$CONTAINER_GROUP" --query ipAddress.fqdn --output tsv)"
+          tools/ci/wait-for-health.sh "https://$fqdn"

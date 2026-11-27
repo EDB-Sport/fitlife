@@ -1,6 +1,7 @@
 using FitLife.Messaging.Events;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -57,5 +58,22 @@ public sealed class MessagingServiceCollectionExtensionsTests
         // Assert
         RabbitMqEventConsumer<ReservationMade> consumer = provider.GetServices<IHostedService>().OfType<RabbitMqEventConsumer<ReservationMade>>().Single();
         Assert.That(consumer.Queue, Is.EqualTo("notification.reservation-made"));
+    }
+
+    [Test]
+    public void AddEventConsumer_TagsTheConsumerHealthCheckReady()
+    {
+        // Arrange
+        IServiceCollection services = new ServiceCollection()
+            .AddSingleton(typeof(Microsoft.Extensions.Logging.ILogger<>), typeof(NullLogger<>))
+            .AddRabbitMq(new ConfigurationBuilder().Build());
+
+        // Act
+        using ServiceProvider provider = services.AddEventConsumer<ReservationMade>("notification").BuildServiceProvider();
+
+        // Assert
+        HealthCheckRegistration registration = provider.GetRequiredService<IOptions<HealthCheckServiceOptions>>().Value.Registrations
+            .Single(check => string.Equals(check.Name, "rabbitmq-" + ReservationMade.RoutingKey, StringComparison.Ordinal));
+        Assert.That(registration.Tags, Does.Contain("ready"));
     }
 }

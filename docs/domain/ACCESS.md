@@ -47,4 +47,5 @@ This table is a reference, not a second spec. When an issue and the table disagr
 | `/mine-bookinger` (planned) | MemberPortal.Web | – | not decided | not decided | not decided | [#208](https://github.com/EDB-Sport/fitlife/issues/208) |
 | `/mit-medlemskab` (planned) | MemberPortal.Web | – | not decided | not decided | not decided | [#210](https://github.com/EDB-Sport/fitlife/issues/210), [#211](https://github.com/EDB-Sport/fitlife/issues/211) |
 | `GET /health` | every service, the portal and the gateway | yes | yes | yes | yes | – |
+| `GET /health/live` | NotificationService | yes | yes | yes | yes | [#303](https://github.com/EDB-Sport/fitlife/issues/303) |
 | The OpenAPI document and Scalar, in Development only | BookingService, IdentityService, MembershipService, NotificationService | yes | yes | yes | yes | – |

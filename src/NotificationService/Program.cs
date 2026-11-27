@@ -5,6 +5,7 @@ using FitLife.Configuration;
 using FitLife.Correlation;
 using FitLife.Messaging;
 using FitLife.Messaging.Events;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using NLog;
 using NLog.Web;
 using NotificationService.Api;
@@ -53,7 +54,11 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
 
+    // The readiness probe: all checks, so a RabbitMQ outage keeps traffic away (#258, #302)
     app.MapHealthChecks("/health").AllowAnonymous();
+
+    // The liveness probe: no dependency checks, so a RabbitMQ outage never restarts the container (#303)
+    app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = static _ => false }).AllowAnonymous();
 
     // The delivery log for staff (#221)
     app.MapNotificationEndpoints();

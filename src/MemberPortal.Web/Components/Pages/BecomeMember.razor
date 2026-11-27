@@ -36,7 +36,8 @@
                 </div>
                 <div class="mb-3">
                     <label for="password" class="form-label">Adgangskode</label>
-                    <InputText id="password" type="password" class="form-control" autocomplete="new-password" @bind-Value="Fields.Password" />
+                    @* The password is never written back into the page (#541): the input always renders empty, also after an invalid post *@
+                    <InputText id="password" type="password" class="form-control" autocomplete="new-password" Value="@string.Empty" ValueChanged="SetPassword" ValueExpression="() => Fields.Password" />
                 </div>
             }
             <button type="submit" class="btn btn-primary">Bliv medlem</button>

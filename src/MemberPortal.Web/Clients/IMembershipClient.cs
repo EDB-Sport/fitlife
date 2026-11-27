@@ -27,4 +27,17 @@ public interface IMembershipClient
     /// <returns>The membership after a 200; on a 409 its <c>code</c>; on a 404 or a 409 without a code, neither.</returns>
     /// <exception cref="MembershipUnavailableException">Membership answered another error, a body that isn't a membership, or nothing.</exception>
     Task<PaymentAnswer> PayAsync(CancellationToken cancellationToken);
+
+    /// <summary>Pauses the membership of the account in the cookie's token with <c>PUT api/membership/members/me/pause</c> (#211).</summary>
+    /// <param name="request">The first and the last day of the pause.</param>
+    /// <param name="cancellationToken">Stops the request.</param>
+    /// <returns>The membership after a 200; on a 409 its <c>code</c>; on a 400, a 404 or a 409 without a code, neither.</returns>
+    /// <exception cref="MembershipUnavailableException">Membership answered another error, a body that isn't a membership, or nothing.</exception>
+    Task<PauseAnswer> PauseAsync(PauseRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Ends the pause with <c>DELETE api/membership/members/me/pause</c> (#211).</summary>
+    /// <param name="cancellationToken">Stops the request.</param>
+    /// <returns>The membership after a 200; on a 409 its <c>code</c>; on a 404 or a 409 without a code, neither.</returns>
+    /// <exception cref="MembershipUnavailableException">Membership answered another error, a body that isn't a membership, or nothing.</exception>
+    Task<PauseAnswer> EndPauseAsync(CancellationToken cancellationToken);
 }

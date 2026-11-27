@@ -192,6 +192,16 @@ public sealed class BecomeMemberTests : IDisposable
         {
             throw new NotSupportedException("Becoming a member pays nothing.");
         }
+
+        public Task<PauseAnswer> PauseAsync(PauseRequest request, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException("Becoming a member pauses nothing.");
+        }
+
+        public Task<PauseAnswer> EndPauseAsync(CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException("Becoming a member ends no pause.");
+        }
     }
 
     private sealed class PortalFactory : WebApplicationFactory<Program>

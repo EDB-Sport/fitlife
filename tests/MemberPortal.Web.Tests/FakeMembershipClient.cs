@@ -17,6 +17,14 @@ internal sealed class FakeMembershipClient : IMembershipClient
 
     public Exception? PaymentFailure { get; set; }
 
+    public PauseAnswer PauseAnswer { get; set; } = new(Membership: null, RejectionCode: null);
+
+    public PauseRequest? PauseRequest { get; private set; }
+
+    public PauseAnswer EndPauseAnswer { get; set; } = new(Membership: null, RejectionCode: null);
+
+    public int EndPauseCalls { get; private set; }
+
     public int Calls { get; private set; }
 
     public string? AccessToken { get; private set; }
@@ -53,5 +61,17 @@ internal sealed class FakeMembershipClient : IMembershipClient
         }
 
         return Task.FromResult(PaymentAnswer);
+    }
+
+    public Task<PauseAnswer> PauseAsync(PauseRequest request, CancellationToken cancellationToken)
+    {
+        PauseRequest = request;
+        return Task.FromResult(PauseAnswer);
+    }
+
+    public Task<PauseAnswer> EndPauseAsync(CancellationToken cancellationToken)
+    {
+        EndPauseCalls++;
+        return Task.FromResult(EndPauseAnswer);
     }
 }

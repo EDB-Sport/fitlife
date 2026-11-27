@@ -26,6 +26,38 @@
             <dd class="col-sm-8" id="membership-status">@Status(Membership)</dd>
         </dl>
 
+        @if (PausedFrom is DateOnly from && PausedTo is DateOnly to)
+        {
+            <p class="pause-period">Pause fra @Day(from) til @Day(to)</p>
+        }
+
+        @if (CanEndPause(Membership))
+        {
+            <form class="end-pause mb-3" method="post" @formname="afslut-pause" @onsubmit="EndPauseAsync">
+                <AntiforgeryToken />
+                <button type="submit" class="btn btn-secondary">Afslut pause</button>
+            </form>
+        }
+
+        @if (CanPause(Membership))
+        {
+            <h2 class="h4 pause-heading">Pause</h2>
+            <EditForm Model="PauseFields" FormName="pause" OnValidSubmit="PauseAsync" method="post" class="pause">
+                <DataAnnotationsValidator />
+                <div class="mb-3">
+                    <label for="pause-from" class="form-label">Pause fra</label>
+                    <InputDate id="pause-from" class="form-control" @bind-Value="PauseFields.From" />
+                    <ValidationMessage For="() => PauseFields.From" />
+                </div>
+                <div class="mb-3">
+                    <label for="pause-to" class="form-label">Pause til</label>
+                    <InputDate id="pause-to" class="form-control" @bind-Value="PauseFields.To" />
+                    <ValidationMessage For="() => PauseFields.To" />
+                </div>
+                <button type="submit" class="btn btn-primary">Sæt på pause</button>
+            </EditForm>
+        }
+
         @if (CanPay(Membership))
         {
             <form class="pay" method="post" @formname="betal-nu" @onsubmit="PayAsync">

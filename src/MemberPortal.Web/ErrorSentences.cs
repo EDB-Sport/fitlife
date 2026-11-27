@@ -30,6 +30,18 @@ public static class ErrorSentences
     /// <summary>Membership's <c>NothingIsOwed</c>: the membership owes no fee (#535).</summary>
     public const string NothingIsOwed = "Du skylder ikke noget.";
 
+    /// <summary>Membership's <c>MembershipNotActive</c>: only an active membership can be paused (#211).</summary>
+    public const string MembershipNotActive = "Dit medlemskab er ikke aktivt.";
+
+    /// <summary>Membership's <c>PauseStartsInThePast</c> (#211).</summary>
+    public const string PauseStartsInThePast = "Pausen kan ikke starte før i dag.";
+
+    /// <summary>Membership's <c>PauseEndsBeforeItStarts</c> (#211).</summary>
+    public const string PauseEndsBeforeItStarts = "Pausen skal slutte efter den dag, den starter.";
+
+    /// <summary>Membership's <c>NoPauseToEnd</c> (#211).</summary>
+    public const string NoPauseToEnd = "Du har ingen pause at afslutte.";
+
     /// <summary>The sentence for a service's problem-details <c>code</c>, never its text.</summary>
     /// <param name="code">The <c>code</c>, or <see langword="null"/> when the answer had none.</param>
     /// <returns>The code's sentence, or <see cref="Generic"/> for any code the portal has no sentence for.</returns>
@@ -39,6 +51,10 @@ public static class ErrorSentences
         {
             "ChargeDeclined" => ChargeDeclined,
             "NothingIsOwed" => NothingIsOwed,
+            "MembershipNotActive" => MembershipNotActive,
+            "PauseStartsInThePast" => PauseStartsInThePast,
+            "PauseEndsBeforeItStarts" => PauseEndsBeforeItStarts,
+            "NoPauseToEnd" => NoPauseToEnd,
             _ => Generic,
         };
     }

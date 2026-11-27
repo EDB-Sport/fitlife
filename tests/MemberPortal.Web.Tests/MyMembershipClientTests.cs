@@ -14,6 +14,7 @@ namespace MemberPortal.Web.Tests;
 public sealed class MyMembershipClientTests
 {
     private const string MyMembership = """{"memberId":"0b6f5f7e-2f0c-4b8e-9a51-6d2f4c1e7a90","membershipType":"Standard","membershipStatus":"Paused","isActive":false,"startDate":"2026-11-03"}""";
+    private const string PausedMembership = """{"memberId":"0b6f5f7e-2f0c-4b8e-9a51-6d2f4c1e7a90","membershipType":"Standard","membershipStatus":"Paused","isActive":false,"startDate":"2026-11-03","pausedFrom":"2026-12-01","pausedTo":"2026-12-31"}""";
     private const string ActiveMembership = """{"memberId":"0b6f5f7e-2f0c-4b8e-9a51-6d2f4c1e7a90","membershipType":"Standard","membershipStatus":"Active","isActive":true,"startDate":"2026-11-03"}""";
 
     [Test]
@@ -205,6 +206,137 @@ public sealed class MyMembershipClientTests
     }
 
     [Test]
+    public async Task PauseAsync_PutsTheTwoDatesToMembershipThroughTheGateway()
+    {
+        // Arrange
+        using var gateway = new StubGateway(HttpStatusCode.OK, PausedMembership);
+        using ServiceProvider services = Services(gateway);
+
+        // Act
+        await Pause(services).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(gateway.Method, Is.EqualTo(HttpMethod.Put));
+        Assert.That(gateway.Uri, Is.EqualTo(new Uri("https://gateway.test/api/membership/members/me/pause")));
+        Assert.That(gateway.Body, Is.EqualTo("""{"from":"2026-12-01","to":"2026-12-31"}"""));
+    }
+
+    [Test]
+    public async Task PauseAsync_On200_ReturnsTheMembershipFromTheAnswer()
+    {
+        // Arrange
+        using var gateway = new StubGateway(HttpStatusCode.OK, PausedMembership);
+        using ServiceProvider services = Services(gateway);
+
+        // Act
+        PauseAnswer answer = await Pause(services).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(answer, Is.EqualTo(new PauseAnswer(
+            new MembershipPauseResponse(
+                new Guid("0b6f5f7e-2f0c-4b8e-9a51-6d2f4c1e7a90"), "Standard", "Paused", IsActive: false, new DateOnly(2026, 11, 3), new DateOnly(2026, 12, 1), new DateOnly(2026, 12, 31)),
+            RejectionCode: null)));
+    }
+
+    [TestCase("PauseStartsInThePast")]
+    [TestCase("MembershipNotActive")]
+    public async Task PauseAsync_On409_ReturnsTheCode(string code)
+    {
+        // Arrange
+        using var gateway = new StubGateway(HttpStatusCode.Conflict, $$"""{"title":"Rejected","status":409,"code":"{{code}}"}""");
+        using ServiceProvider services = Services(gateway);
+
+        // Act
+        PauseAnswer answer = await Pause(services).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(answer, Is.EqualTo(new PauseAnswer(Membership: null, code)));
+    }
+
+    [TestCase(HttpStatusCode.NotFound, "")]
+    [TestCase(HttpStatusCode.BadRequest, """{"errors":{"from":["Both from and to are needed."]}}""")]
+    public async Task PauseAsync_OnAnAnswerWithoutACode_ReturnsNoMembershipAndNoCode(HttpStatusCode status, string body)
+    {
+        // Arrange
+        using var gateway = new StubGateway(status, body);
+        using ServiceProvider services = Services(gateway);
+
+        // Act
+        PauseAnswer answer = await Pause(services).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(answer, Is.EqualTo(new PauseAnswer(Membership: null, RejectionCode: null)));
+    }
+
+    [Test]
+    public async Task EndPauseAsync_DeletesThePauseThroughTheGateway()
+    {
+        // Arrange
+        using var gateway = new StubGateway(HttpStatusCode.OK, PausedMembership);
+        using ServiceProvider services = Services(gateway);
+
+        // Act
+        await services.GetRequiredService<IMembershipClient>().EndPauseAsync(CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(gateway.Method, Is.EqualTo(HttpMethod.Delete));
+        Assert.That(gateway.Uri, Is.EqualTo(new Uri("https://gateway.test/api/membership/members/me/pause")));
+    }
+
+    [Test]
+    public async Task EndPauseAsync_On409_ReturnsTheCode()
+    {
+        // Arrange
+        using var gateway = new StubGateway(HttpStatusCode.Conflict, """{"title":"Rejected","status":409,"code":"NoPauseToEnd"}""");
+        using ServiceProvider services = Services(gateway);
+
+        // Act
+        PauseAnswer answer = await services.GetRequiredService<IMembershipClient>().EndPauseAsync(CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(answer, Is.EqualTo(new PauseAnswer(Membership: null, "NoPauseToEnd")));
+    }
+
+    [TestCase(HttpStatusCode.InternalServerError, "{}")]
+    [TestCase(HttpStatusCode.OK, "not json")]
+    [TestCase(HttpStatusCode.OK, "null")]
+    public async Task PauseAsync_OnAnErrorOrABodyThatIsNotAMembership_ThrowsMembershipUnavailable(HttpStatusCode status, string body)
+    {
+        // Arrange
+        using var gateway = new StubGateway(status, body);
+        using ServiceProvider services = Services(gateway);
+
+        // Act & Assert
+        await Assert.ThatAsync(() => Pause(services), Throws.TypeOf<MembershipUnavailableException>()).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task EndPauseAsync_WhenTheGatewayCantBeReached_ThrowsMembershipUnavailable()
+    {
+        // Arrange
+        using var gateway = new StubGateway(new HttpRequestException("No connection could be made."));
+        using ServiceProvider services = Services(gateway);
+
+        // Act & Assert
+        await Assert.ThatAsync(
+            () => services.GetRequiredService<IMembershipClient>().EndPauseAsync(CancellationToken.None), Throws.TypeOf<MembershipUnavailableException>()).ConfigureAwait(false);
+    }
+
+    [TestCase(typeof(PauseRequest), "PauseRequest")]
+    [TestCase(typeof(MembershipPauseResponse), "MembershipPauseResponse")]
+    public void PauseRecord_HasTheFieldsOfMembershipsContract(Type record, string schema)
+    {
+        // Arrange
+        string[] contract = ContractProperties(schema);
+
+        // Act
+        string[] fields = [.. record.GetProperties().Select(property => JsonNamingPolicy.CamelCase.ConvertName(property.Name)).Order(StringComparer.Ordinal)];
+
+        // Assert
+        Assert.That(fields, Is.EqualTo(contract));
+    }
+
+    [Test]
     public void MyMembershipResponse_HasTheFieldsOfMembershipsContract()
     {
         // Arrange
@@ -215,6 +347,11 @@ public sealed class MyMembershipClientTests
 
         // Assert
         Assert.That(fields, Is.EqualTo(contract));
+    }
+
+    private static Task<PauseAnswer> Pause(ServiceProvider services)
+    {
+        return services.GetRequiredService<IMembershipClient>().PauseAsync(new PauseRequest(new DateOnly(2026, 12, 1), new DateOnly(2026, 12, 31)), CancellationToken.None);
     }
 
     private static Task<PaymentAnswer> Pay(ServiceProvider services)
@@ -287,18 +424,25 @@ public sealed class MyMembershipClientTests
 
         public bool HadBody { get; private set; }
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        public string? Body { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Method = request.Method;
             Uri = request.RequestUri;
             Authorization = request.Headers.Authorization?.ToString();
             HadBody = request.Content is not null;
+            if (request.Content is not null)
+            {
+                Body = await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            }
+
             if (_failure is not null)
             {
                 throw _failure;
             }
 
-            return Task.FromResult(new HttpResponseMessage(_status) { Content = new StringContent(_body, Encoding.UTF8, "application/json") });
+            return new HttpResponseMessage(_status) { Content = new StringContent(_body, Encoding.UTF8, "application/json") };
         }
     }
 }

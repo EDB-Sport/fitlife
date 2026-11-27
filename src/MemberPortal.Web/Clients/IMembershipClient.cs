@@ -21,4 +21,10 @@ public interface IMembershipClient
     /// <returns>The membership, or <see langword="null"/> on a 404: the account has not joined.</returns>
     /// <exception cref="MembershipUnavailableException">Membership answered another error, a body that isn't a membership, or nothing.</exception>
     Task<MyMembershipResponse?> GetMyMembershipAsync(CancellationToken cancellationToken);
+
+    /// <summary>The account in the cookie's token pays the missing fee with <c>POST api/membership/members/me/payment</c>, without a body.</summary>
+    /// <param name="cancellationToken">Stops the request.</param>
+    /// <returns>The membership after a 200; on a 409 its <c>code</c>; on a 404 or a 409 without a code, neither.</returns>
+    /// <exception cref="MembershipUnavailableException">Membership answered another error, a body that isn't a membership, or nothing.</exception>
+    Task<PaymentAnswer> PayAsync(CancellationToken cancellationToken);
 }

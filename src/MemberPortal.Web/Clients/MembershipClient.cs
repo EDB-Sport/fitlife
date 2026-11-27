@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
 
 namespace MemberPortal.Web.Clients;
 
@@ -15,6 +16,8 @@ public sealed class MembershipClient(HttpClient http) : IMembershipClient
     private const string MembersPath = "api/membership/members";
 
     private const string MyMembershipPath = "api/membership/members/me";
+
+    private const string PaymentPath = "api/membership/members/me/payment";
 
     // MembershipStatus.PaymentMissing in contracts/openapi/membershipservice.json
     private const string PaymentMissing = "PaymentMissing";
@@ -94,6 +97,62 @@ public sealed class MembershipClient(HttpClient http) : IMembershipClient
         {
             // HttpClient's timeout. The caller's own cancellation passes on untouched
             throw new MembershipUnavailableException("Membership didn't answer in time.", exception);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<PaymentAnswer> PayAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using HttpResponseMessage response = await http.PostAsync(new Uri(PaymentPath, UriKind.Relative), content: null, cancellationToken).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.Conflict)
+            {
+                return new PaymentAnswer(Membership: null, await RejectionCodeAsync(response, cancellationToken).ConfigureAwait(false));
+            }
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                // The account has not joined: nothing the member can pay
+                return new PaymentAnswer(Membership: null, RejectionCode: null);
+            }
+
+            response.EnsureSuccessStatusCode();
+            MyMembershipResponse membership = await response.Content.ReadFromJsonAsync<MyMembershipResponse>(cancellationToken).ConfigureAwait(false)
+                ?? throw new MembershipUnavailableException("Membership answered no membership.");
+            return new PaymentAnswer(membership, RejectionCode: null);
+        }
+        catch (JsonException exception)
+        {
+            throw new MembershipUnavailableException("Membership answered a body that isn't a membership.", exception);
+        }
+        catch (HttpRequestException exception)
+        {
+            throw new MembershipUnavailableException("Membership can't be reached, or answered an error.", exception);
+        }
+        catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            // HttpClient's timeout. The caller's own cancellation passes on untouched
+            throw new MembershipUnavailableException("Membership didn't answer in time.", exception);
+        }
+    }
+
+    // The problem details' "code" extension (Membership's MemberEndpoints), or null when the body has none
+    private static async Task<string?> RejectionCodeAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        try
+        {
+            ProblemDetails? problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(cancellationToken).ConfigureAwait(false);
+            if (problem is not null && problem.Extensions.TryGetValue("code", out object? code) && code is JsonElement { ValueKind: JsonValueKind.String } text)
+            {
+                return text.GetString();
+            }
+
+            return null;
+        }
+        catch (JsonException)
+        {
+            return null;
         }
     }
 }

@@ -23,4 +23,23 @@ public static class ErrorSentences
 
     /// <summary>Membership's 201 with <c>PaymentMissing</c>: the person is a member, but the first fee isn't paid (#546).</summary>
     public const string JoinedButPaymentMissing = "Du er meldt ind, men betalingen mangler. Du kan ikke booke, før den er betalt.";
+
+    /// <summary>Membership's <c>ChargeDeclined</c>: the payment provider did not accept the charge (#535).</summary>
+    public const string ChargeDeclined = "Betalingen blev afvist. Prøv igen senere.";
+
+    /// <summary>Membership's <c>NothingIsOwed</c>: the membership owes no fee (#535).</summary>
+    public const string NothingIsOwed = "Du skylder ikke noget.";
+
+    /// <summary>The sentence for a service's problem-details <c>code</c>, never its text.</summary>
+    /// <param name="code">The <c>code</c>, or <see langword="null"/> when the answer had none.</param>
+    /// <returns>The code's sentence, or <see cref="Generic"/> for any code the portal has no sentence for.</returns>
+    public static string ForCode(string? code)
+    {
+        return code switch
+        {
+            "ChargeDeclined" => ChargeDeclined,
+            "NothingIsOwed" => NothingIsOwed,
+            _ => Generic,
+        };
+    }
 }

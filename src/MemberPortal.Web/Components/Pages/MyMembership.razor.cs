@@ -17,7 +17,18 @@ public partial class MyMembership(IMembershipClient membershipClient)
 
     private MyMembershipResponse? Membership { get; set; }
 
+    /// <summary>Shown when the missing fee is paid (#535).</summary>
+    public const string PaymentReceivedSentence = "Din betaling er modtaget.";
+
+    // MembershipStatus.PaymentMissing in contracts/openapi/membershipservice.json
+    private const string PaymentMissing = "PaymentMissing";
+
     private string? ErrorSentence { get; set; }
+
+    private string? ConfirmationSentence { get; set; }
+
+    // Membership answered 404: the account has not joined
+    private bool IsNotAMember { get; set; }
 
 
     /// <inheritdoc />
@@ -26,6 +37,7 @@ public partial class MyMembership(IMembershipClient membershipClient)
         try
         {
             Membership = await membershipClient.GetMyMembershipAsync(CancellationToken.None).ConfigureAwait(false);
+            IsNotAMember = Membership is null;
         }
         catch (MembershipUnavailableException)
         {
@@ -41,5 +53,34 @@ public partial class MyMembership(IMembershipClient membershipClient)
     private static string Status(MyMembershipResponse membership)
     {
         return MembershipStatusText.InDanish(membership.MembershipStatus);
+    }
+
+    private static bool CanPay(MyMembershipResponse membership)
+    {
+        return string.Equals(membership.MembershipStatus, PaymentMissing, StringComparison.Ordinal);
+    }
+
+    // "Betal nu": the membership from the answer, or the code's sentence and the membership as it was
+    private async Task PayAsync()
+    {
+        PaymentAnswer answer;
+        try
+        {
+            answer = await membershipClient.PayAsync(CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (MembershipUnavailableException)
+        {
+            ErrorSentence = ErrorSentences.Generic;
+            return;
+        }
+
+        if (answer.Membership is null)
+        {
+            ErrorSentence = ErrorSentences.ForCode(answer.RejectionCode);
+            return;
+        }
+
+        Membership = answer.Membership;
+        ConfirmationSentence = PaymentReceivedSentence;
     }
 }

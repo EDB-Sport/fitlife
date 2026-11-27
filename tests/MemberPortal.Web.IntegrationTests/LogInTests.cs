@@ -1,5 +1,4 @@
 using System.Net;
-using System.Text.RegularExpressions;
 using MemberPortal.Web.Clients;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -15,9 +14,8 @@ namespace MemberPortal.Web.IntegrationTests;
 /// </summary>
 [TestFixture]
 [FixtureLifeCycle(LifeCycle.InstancePerTestCase)] // a new portal and cookie jar per test, so no test sees another's log-in
-public sealed partial class LogInTests : IDisposable
+public sealed class LogInTests : IDisposable
 {
-    private const string AuthenticationCookie = ".AspNetCore.Cookies";
     private static readonly DateTimeOffset ExpiresAt = new(2030, 1, 1, 12, 0, 0, TimeSpan.Zero);
 
     private readonly PortalFactory _factory = new();
@@ -43,8 +41,8 @@ public sealed partial class LogInTests : IDisposable
 
         // Assert
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Redirect));
-        Assert.That(RedirectPath(response), Is.EqualTo("/"));
-        Assert.That(SetCookie(response, AuthenticationCookie), Is.Not.Null);
+        Assert.That(PortalForms.RedirectPath(_client, response), Is.EqualTo("/"));
+        Assert.That(PortalForms.SetCookie(response, PortalForms.AuthenticationCookie), Is.Not.Null);
     }
 
     [Test]
@@ -54,7 +52,7 @@ public sealed partial class LogInTests : IDisposable
         using HttpResponseMessage response = await LogInAsync().ConfigureAwait(false);
 
         // Assert
-        string cookie = (SetCookie(response, AuthenticationCookie) ?? string.Empty).ToUpperInvariant();
+        string cookie = (PortalForms.SetCookie(response, PortalForms.AuthenticationCookie) ?? string.Empty).ToUpperInvariant();
         Assert.That(cookie, Does.Contain("; SECURE"));
         Assert.That(cookie, Does.Contain("; HTTPONLY"));
         Assert.That(cookie, Does.Contain("; SAMESITE=LAX"));
@@ -99,7 +97,7 @@ public sealed partial class LogInTests : IDisposable
 
         // Assert
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        Assert.That(SetCookie(response, AuthenticationCookie), Is.Null);
+        Assert.That(PortalForms.SetCookie(response, PortalForms.AuthenticationCookie), Is.Null);
         string page = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         Assert.That(page, Does.Contain("Forkert e-mail eller adgangskode."));
     }
@@ -112,13 +110,13 @@ public sealed partial class LogInTests : IDisposable
         string page = await _client.GetStringAsync(new Uri("/", UriKind.Relative)).ConfigureAwait(false);
 
         // Act
-        using var form = new FormUrlEncodedContent(HiddenFields(page));
+        using var form = new FormUrlEncodedContent(PortalForms.HiddenFields(page));
         using HttpResponseMessage response = await _client.PostAsync(new Uri("/log-ud", UriKind.Relative), form).ConfigureAwait(false);
 
         // Assert
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Redirect));
-        Assert.That(RedirectPath(response), Is.EqualTo("/"));
-        Assert.That(SetCookie(response, AuthenticationCookie), Does.Contain("expires=Thu, 01 Jan 1970"));
+        Assert.That(PortalForms.RedirectPath(_client, response), Is.EqualTo("/"));
+        Assert.That(PortalForms.SetCookie(response, PortalForms.AuthenticationCookie), Does.Contain("expires=Thu, 01 Jan 1970"));
     }
 
     [Test]
@@ -133,60 +131,29 @@ public sealed partial class LogInTests : IDisposable
 
         // Assert
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
-        Assert.That(SetCookie(response, AuthenticationCookie), Is.Null);
+        Assert.That(PortalForms.SetCookie(response, PortalForms.AuthenticationCookie), Is.Null);
     }
 
     private async Task<HttpResponseMessage> LogInAsync()
     {
         string page = await _client.GetStringAsync(new Uri("/log-ind", UriKind.Relative)).ConfigureAwait(false);
-        Dictionary<string, string> fields = HiddenFields(page);
+        Dictionary<string, string> fields = PortalForms.HiddenFields(page);
         fields["Form.Email"] = "medlem@fitlife.test";
         fields["Form.Password"] = "hemmelig";
         using var form = new FormUrlEncodedContent(fields);
         return await _client.PostAsync(new Uri("/log-ind", UriKind.Relative), form).ConfigureAwait(false);
     }
 
-    private static Dictionary<string, string> HiddenFields(string page)
-    {
-        // The antiforgery field can appear once per form; its value is the same in every form of one page
-        var fields = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (Match match in HiddenField().Matches(page))
-        {
-            fields.TryAdd(WebUtility.HtmlDecode(match.Groups["name"].Value), WebUtility.HtmlDecode(match.Groups["value"].Value));
-        }
-
-        return fields;
-    }
-
-    private static string? SetCookie(HttpResponseMessage response, string name)
-    {
-        if (!response.Headers.TryGetValues("Set-Cookie", out IEnumerable<string>? cookies))
-        {
-            return null;
-        }
-
-        return cookies.FirstOrDefault(cookie => cookie.StartsWith(name + "=", StringComparison.Ordinal));
-    }
-
-    // The path a redirect goes to, whether its Location is relative or absolute
-    private string? RedirectPath(HttpResponseMessage response)
-    {
-        if (response.Headers.Location is not Uri location || _client.BaseAddress is not Uri baseAddress)
-        {
-            return null;
-        }
-
-        return new Uri(baseAddress, location).AbsolutePath;
-    }
-
-    [GeneratedRegex("""<input type="hidden" name="(?<name>[^"]+)" value="(?<value>[^"]*)" */?>""", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
-    private static partial Regex HiddenField();
-
     private sealed class FakeIdentity : IIdentityClient
     {
         public const string AccessToken = "header.payload.signature-for-the-test";
 
         public TokenResponse? Token { get; set; } = new(AccessToken, ExpiresAt);
+
+        public Task<CreateAccountAnswer> CreateAccountAsync(CreateAccountRequest request, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException("Logging in creates no account.");
+        }
 
         public Task<TokenResponse?> LogInAsync(LogInRequest request, CancellationToken cancellationToken)
         {

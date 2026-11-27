@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\BookingService\BookingService.csproj" />
+    <ProjectReference Include="..\FitLife.Contracts.Testing\FitLife.Contracts.Testing.csproj" />
   </ItemGroup>
 
 </Project>

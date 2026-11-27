@@ -8,12 +8,13 @@ using Microsoft.Extensions.DependencyInjection;
 namespace MemberPortal.Web.Tests;
 
 /// <summary>
-/// The portal logs in through the gateway with <c>POST api/identity/tokens</c> (#206). The real registration, with a stub
+/// The portal logs in through the gateway with <c>POST api/identity/tokens</c> (#206), and creates an account with <c>POST api/identity/accounts</c> (#209). The real registration, with a stub
 /// handler in place of the gateway.
 /// </summary>
 public sealed class IdentityClientTests
 {
     private const string Token = """{"accessToken":"header.payload.signature","expiresAt":"2026-12-01T18:00:00+00:00"}""";
+    private const string Account = """{"id":"7d0c6a4e-3a52-4f7e-9d43-1c2b8f0e5a11","email":"medlem@fitlife.test","roles":["Medlem"]}""";
 
     [Test]
     public async Task LogInAsync_PostsTheEmailAndPasswordToIdentityThroughTheGateway()
@@ -94,8 +95,74 @@ public sealed class IdentityClientTests
         await Assert.ThatAsync(() => LogIn(services), Throws.TypeOf<IdentityUnavailableException>()).ConfigureAwait(false);
     }
 
+    [Test]
+    public async Task CreateAccountAsync_PostsTheEmailAndPasswordToIdentityThroughTheGateway()
+    {
+        // Arrange
+        using var gateway = new StubGateway(HttpStatusCode.Created, Account);
+        using ServiceProvider services = Services(gateway);
+
+        // Act
+        await CreateAccount(services).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(gateway.Method, Is.EqualTo(HttpMethod.Post));
+        Assert.That(gateway.Uri, Is.EqualTo(new Uri("https://gateway.test/api/identity/accounts")));
+        Assert.That(gateway.Body, Is.EqualTo("""{"email":"medlem@fitlife.test","password":"hemmelig"}"""));
+    }
+
+    [TestCase(HttpStatusCode.Created, CreateAccountAnswer.Created)]
+    [TestCase(HttpStatusCode.Conflict, CreateAccountAnswer.EmailAlreadyTaken)]
+    [TestCase(HttpStatusCode.BadRequest, CreateAccountAnswer.Rejected)]
+    public async Task CreateAccountAsync_ReturnsIdentitysAnswer(HttpStatusCode status, CreateAccountAnswer expected)
+    {
+        // Arrange
+        using var gateway = new StubGateway(status, status == HttpStatusCode.Conflict ? """{"status":409,"code":"EmailAlreadyTaken"}""" : Account);
+        using ServiceProvider services = Services(gateway);
+
+        // Act
+        CreateAccountAnswer answer = await CreateAccount(services).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(answer, Is.EqualTo(expected));
+    }
+
+    [Test]
+    public async Task CreateAccountAsync_On409WithAnotherCode_ThrowsIdentityUnavailable()
+    {
+        // Arrange
+        using var gateway = new StubGateway(HttpStatusCode.Conflict, """{"status":409,"code":"SomethingElse"}""");
+        using ServiceProvider services = Services(gateway);
+
+        // Act & Assert
+        await Assert.ThatAsync(() => CreateAccount(services), Throws.TypeOf<IdentityUnavailableException>()).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task CreateAccountAsync_OnAnotherError_ThrowsIdentityUnavailable()
+    {
+        // Arrange
+        using var gateway = new StubGateway(HttpStatusCode.InternalServerError, "{}");
+        using ServiceProvider services = Services(gateway);
+
+        // Act & Assert
+        await Assert.ThatAsync(() => CreateAccount(services), Throws.TypeOf<IdentityUnavailableException>()).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task CreateAccountAsync_WhenTheGatewayCantBeReached_ThrowsIdentityUnavailable()
+    {
+        // Arrange
+        using var gateway = new StubGateway(new HttpRequestException("No connection could be made."));
+        using ServiceProvider services = Services(gateway);
+
+        // Act & Assert
+        await Assert.ThatAsync(() => CreateAccount(services), Throws.TypeOf<IdentityUnavailableException>()).ConfigureAwait(false);
+    }
+
     [TestCase(typeof(LogInRequest), "LogInRequest")]
     [TestCase(typeof(TokenResponse), "TokenResponse")]
+    [TestCase(typeof(CreateAccountRequest), "CreateAccountRequest")]
     public void Record_HasTheFieldsOfIdentitysContract(Type record, string schema)
     {
         // Arrange
@@ -112,6 +179,12 @@ public sealed class IdentityClientTests
     {
         return services.GetRequiredService<IIdentityClient>()
             .LogInAsync(new LogInRequest("medlem@fitlife.test", "hemmelig"), CancellationToken.None);
+    }
+
+    private static Task<CreateAccountAnswer> CreateAccount(ServiceProvider services)
+    {
+        return services.GetRequiredService<IIdentityClient>()
+            .CreateAccountAsync(new CreateAccountRequest("medlem@fitlife.test", "hemmelig"), CancellationToken.None);
     }
 
     private static ServiceProvider Services(StubGateway gateway)

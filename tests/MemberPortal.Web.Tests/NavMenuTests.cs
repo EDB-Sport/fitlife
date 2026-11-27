@@ -29,6 +29,19 @@ public sealed class NavMenuTests : BunitContext
     }
 
     [Test]
+    public void NavMenu_WhenNotLoggedIn_ShowsBlivMedlem()
+    {
+        // Arrange
+        AddAuthorization();
+
+        // Act
+        IRenderedComponent<NavMenu> cut = Render<NavMenu>();
+
+        // Assert
+        Assert.That(cut.Find("a[href=bliv-medlem]").TextContent.Trim(), Is.EqualTo("Bliv medlem"));
+    }
+
+    [Test]
     public void NavMenu_WhenLoggedIn_ShowsTheEmailAndLogUd()
     {
         // Arrange
@@ -41,6 +54,7 @@ public sealed class NavMenuTests : BunitContext
         Assert.That(cut.Find(".logged-in-email").TextContent, Is.EqualTo("medlem@fitlife.test"));
         Assert.That(cut.Find("form[action=log-ud] button[type=submit]").TextContent, Is.EqualTo("Log ud"));
         Assert.That(cut.FindAll("a[href=log-ind]"), Is.Empty);
+        Assert.That(cut.FindAll("a[href=bliv-medlem]"), Is.Empty);
     }
 
     [Test]

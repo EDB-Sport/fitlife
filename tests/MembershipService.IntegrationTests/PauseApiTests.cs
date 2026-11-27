@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using MembershipService.Domain;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -90,6 +91,72 @@ public sealed class PauseApiTests
         using JsonDocument body = await Body(response).ConfigureAwait(false);
         Assert.That(body.RootElement.GetProperty("membershipStatus").GetString(), Is.EqualTo("Paused"));
         Assert.That(body.RootElement.GetProperty("isActive").GetBoolean(), Is.False);
+    }
+
+    [Test]
+    public async Task GetByAccount_WithAComingPause_IsActiveAndNamesThePeriod()
+    {
+        // Arrange: Booking needs the period to refuse a class session inside a pause that hasn't started yet (#536)
+        string accountId = TestTokens.NewAccountId();
+        using HttpClient client = await JoinedClient(accountId).ConfigureAwait(false);
+        DateOnly from = Today.AddDays(7);
+        DateOnly to = Today.AddDays(37);
+        using HttpResponseMessage paused = await Pause(client, Iso(from), Iso(to)).ConfigureAwait(false);
+
+        // Act
+        using HttpResponseMessage response = await GetByAccount(client, accountId).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(paused.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        using JsonDocument body = await Body(response).ConfigureAwait(false);
+        Assert.Multiple(() =>
+        {
+            Assert.That(body.RootElement.GetProperty("membershipStatus").GetString(), Is.EqualTo("Active"));
+            Assert.That(body.RootElement.GetProperty("isActive").GetBoolean(), Is.True);
+            Assert.That(body.RootElement.GetProperty("pausedFrom").GetString(), Is.EqualTo(Iso(from)));
+            Assert.That(body.RootElement.GetProperty("pausedTo").GetString(), Is.EqualTo(Iso(to)));
+        });
+    }
+
+    [Test]
+    public async Task GetByAccount_WithoutAPause_HasNoPausePeriod()
+    {
+        // Arrange
+        string accountId = TestTokens.NewAccountId();
+        using HttpClient client = await JoinedClient(accountId).ConfigureAwait(false);
+
+        // Act
+        using HttpResponseMessage response = await GetByAccount(client, accountId).ConfigureAwait(false);
+
+        // Assert
+        using JsonDocument body = await Body(response).ConfigureAwait(false);
+        Assert.Multiple(() =>
+        {
+            Assert.That(body.RootElement.GetProperty("pausedFrom").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(body.RootElement.GetProperty("pausedTo").ValueKind, Is.EqualTo(JsonValueKind.Null));
+        });
+    }
+
+    [Test]
+    public async Task GetByAccount_WhenThePauseIsOver_HasNoPausePeriod()
+    {
+        // Arrange: a pause that ended yesterday, stored as it was made ten days ago (the API refuses a start in the past)
+        string accountId = TestTokens.NewAccountId();
+        await StoreMemberPausedBetween(accountId, Today.AddDays(-10), Today.AddDays(-1)).ConfigureAwait(false);
+        using HttpClient client = ClientFor(TestTokens.For(accountId));
+
+        // Act
+        using HttpResponseMessage response = await GetByAccount(client, accountId).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        using JsonDocument body = await Body(response).ConfigureAwait(false);
+        Assert.Multiple(() =>
+        {
+            Assert.That(body.RootElement.GetProperty("isActive").GetBoolean(), Is.True);
+            Assert.That(body.RootElement.GetProperty("pausedFrom").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(body.RootElement.GetProperty("pausedTo").ValueKind, Is.EqualTo(JsonValueKind.Null));
+        });
     }
 
     [Test]
@@ -261,6 +328,11 @@ public sealed class PauseApiTests
         return client.PutAsJsonAsync(PauseUri, new { from, to });
     }
 
+    private static Task<HttpResponseMessage> GetByAccount(HttpClient client, string accountId)
+    {
+        return client.GetAsync(new Uri($"/members/by-account/{accountId}", UriKind.Relative));
+    }
+
     private static async Task<JsonDocument> Body(HttpResponseMessage response)
     {
         Stream stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
@@ -272,6 +344,16 @@ public sealed class PauseApiTests
         HttpClient client = App.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return client;
+    }
+
+    /// <summary>Stores a member with a paid membership whose pause period was made on its first day.</summary>
+    private async Task StoreMemberPausedBetween(string accountId, DateOnly from, DateOnly to)
+    {
+        var member = Member.Join(accountId);
+        var membership = Membership.Restore(Guid.NewGuid(), member.Id, MembershipType.Standard, MembershipStatus.Active, from.AddDays(-30));
+        Assert.That(membership.Pause(from, to, today: from), Is.EqualTo(PauseResult.Paused));
+        await App.Services.GetRequiredService<IMembershipRepository>().AddAsync(membership, CancellationToken.None).ConfigureAwait(false);
+        Assert.That(await App.Services.GetRequiredService<IMemberRepository>().TryAddAsync(member, CancellationToken.None).ConfigureAwait(false), Is.True);
     }
 
     /// <summary>A client for a new account that has joined, with an active membership (the payment provider accepts).</summary>

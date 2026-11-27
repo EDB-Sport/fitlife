@@ -58,6 +58,32 @@ public sealed class NavMenuTests : BunitContext
     }
 
     [Test]
+    public void NavMenu_WhenNotLoggedIn_ShowsHold()
+    {
+        // Arrange
+        AddAuthorization();
+
+        // Act
+        IRenderedComponent<NavMenu> cut = Render<NavMenu>();
+
+        // Assert
+        Assert.That(cut.Find("a[href=hold]").TextContent.Trim(), Is.EqualTo("Hold"));
+    }
+
+    [Test]
+    public void NavMenu_WhenLoggedIn_ShowsHold()
+    {
+        // Arrange
+        AddAuthorization().SetAuthorized("medlem@fitlife.test");
+
+        // Act
+        IRenderedComponent<NavMenu> cut = Render<NavMenu>();
+
+        // Assert
+        Assert.That(cut.Find("a[href=hold]").TextContent.Trim(), Is.EqualTo("Hold"));
+    }
+
+    [Test]
     public void NavMenu_LogUd_PostsWithTheAntiforgeryToken()
     {
         // Arrange

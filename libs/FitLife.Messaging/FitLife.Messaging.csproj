@@ -6,7 +6,7 @@
   -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <!-- Shared code has its own version (docs/CSHARP_SETUP_TODO.md section 1), raised when it changes -->
+    <!-- Shared code has its own version (docs/TECHNICAL_REFERENCE.md section 1), raised when it changes -->
     <Version>0.2.0</Version>
   </PropertyGroup>
 

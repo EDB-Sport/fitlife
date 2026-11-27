@@ -24,7 +24,7 @@ public sealed class NoHardCodedUrlsAnalyzer : DiagnosticAnalyzer
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "Course rule #13: no hard-coded URLs, so components can be moved. It also catches connection strings that belong in Vault (rule #9).",
-        helpLinkUri: "https://github.com/EDB-Sport/fitlife/blob/develop/docs/CSHARP_SETUP_TODO.md#4-project-specific-roslyn-analyzers-toolsanalyzers");
+        helpLinkUri: "https://github.com/EDB-Sport/fitlife/blob/develop/docs/TECHNICAL_REFERENCE.md#4-project-specific-roslyn-analyzers-toolsanalyzers");
 
     private static readonly string[] Schemes = ["http://", "https://", "mongodb://", "amqp://"];
 

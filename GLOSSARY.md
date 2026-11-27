@@ -1,7 +1,7 @@
 # Glossary: the ubiquitous language of FitLife Digital
 
 > Rules: `docs/METHODOLOGY.md` sections 6 and 11.
-> The rows below are the first terms the context map needs (ADR 007). Kinds are a first guess and are settled per context in DDD_PLAN step 4. Sources are explained at the top of `docs/domain/CONTEXT-MAP.md`.
+> The rows below are the first terms the context map needs (ADR 007). Kinds are a first guess and are settled per context in its `CONTEXT.md`, when the context's tactical model is made (METHODOLOGY section 11). Sources are explained at the top of `docs/domain/CONTEXT-MAP.md`.
 
 People and agents use these words, and only these words, in code, tests, issues, PRs and prompts.
 
@@ -55,7 +55,7 @@ People and agents use these words, and only these words, in code, tests, issues,
 
 ## Words that mean different things in different contexts
 
-From the language test, step 1 of `docs/DDD_PLAN.md`. Each line here points at a context boundary, except *hold* (see the note under the table). The references point to the user interviews (*Brugerinddragelse: Unge medlemmer i FitLife Fitness*, on the group's Drive; I1 Freja, I2 Mikkel, I3 Amira, I4 Jonas), with a short quote for each.
+From the language test, the first step of the domain model (METHODOLOGY section 11). Each line here points at a context boundary, except *hold* (see the note under the table). The references point to the user interviews (*Brugerinddragelse: Unge medlemmer i FitLife Fitness*, on the group's Drive; I1 Freja, I2 Mikkel, I3 Amira, I4 Jonas), with a short quote for each.
 
 | Word | Meaning in context A | Meaning in context B | Names in code |
 |---|---|---|---|

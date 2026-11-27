@@ -1,4 +1,4 @@
-# The API gateway. One template for compose and Azure (docs/CSHARP_SETUP_TODO.md section 9a).
+# The API gateway. One template for compose and Azure (docs/TECHNICAL_REFERENCE.md section 9a).
 # The nginx image renders it with envsubst at start, so ${...} comes from the container's environment
 # and the upstream addresses are configuration, not code (course rule #13).
 #

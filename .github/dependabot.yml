@@ -2,7 +2,7 @@
 # One grouped PR per ecosystem per month. Check with tools/ci/dependabot.test.sh.
 #
 # Not covered: NuGet. Whether Dependabot regenerates packages.lock.json on a version bump is unconfirmed,
-# so NuGet updates stay manual until that is checked (docs/CSHARP_SETUP_TODO.md section 1).
+# so NuGet updates stay manual until that is checked (docs/TECHNICAL_REFERENCE.md section 1).
 #
 # Not covered: the .NET SDK image (mcr.microsoft.com/dotnet/sdk) in the Dockerfiles. It has to move together
 # with global.json and the Web SDK lock files (ADR 004), so it is a reviewed change, not a Dependabot PR.

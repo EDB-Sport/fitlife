@@ -304,7 +304,7 @@ public sealed class MembershipTests
     {
         // Arrange
         Membership membership = ActiveMembership();
-        DateOnly today = DateOnly.Parse(cancelledOn, CultureInfo.InvariantCulture);
+        var today = DateOnly.Parse(cancelledOn, CultureInfo.InvariantCulture);
 
         // Act
         CancelResult result = membership.Cancel(today);
@@ -319,7 +319,7 @@ public sealed class MembershipTests
     public void Cancel_WhilePaused_IsCancelled()
     {
         // Arrange
-        var membership = ActiveMembership();
+        Membership membership = ActiveMembership();
         membership.Pause(Today, new DateOnly(2026, 12, 15), Today);
 
         // Act
@@ -335,7 +335,7 @@ public sealed class MembershipTests
     public void Cancel_WhenAlreadyCancelled_IsRejected()
     {
         // Arrange
-        var membership = ActiveMembership();
+        Membership membership = ActiveMembership();
         membership.Cancel(Today);
 
         // Act
@@ -350,7 +350,7 @@ public sealed class MembershipTests
     public void Cancel_AfterTheLastTrainingDay_IsRejected()
     {
         // Arrange
-        var membership = ActiveMembership();
+        Membership membership = ActiveMembership();
         membership.Cancel(Today);
 
         // Act
@@ -365,7 +365,7 @@ public sealed class MembershipTests
     public void StatusOn_OnTheLastTrainingDay_IsCancelled()
     {
         // Arrange
-        var membership = ActiveMembership();
+        Membership membership = ActiveMembership();
         membership.Cancel(Today);
 
         // Act
@@ -379,7 +379,7 @@ public sealed class MembershipTests
     public void StatusOn_TheDayAfterTheLastTrainingDay_IsEnded()
     {
         // Arrange
-        var membership = ActiveMembership();
+        Membership membership = ActiveMembership();
         membership.Cancel(Today);
 
         // Act
@@ -393,7 +393,7 @@ public sealed class MembershipTests
     public void IsActive_AfterCancelling_IsFalse()
     {
         // Arrange
-        var membership = ActiveMembership();
+        Membership membership = ActiveMembership();
 
         // Act
         membership.Cancel(Today);

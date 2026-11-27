@@ -43,6 +43,7 @@ try
     builder.Services.AddScoped<JoinMembershipHandler>();
     builder.Services.AddScoped<PauseMembershipHandler>();
     builder.Services.AddScoped<EndPauseHandler>();
+    builder.Services.AddScoped<CancelMembershipHandler>();
     builder.Services.AddScoped<PayMembershipHandler>();
 
     WebApplication app = builder.Build();

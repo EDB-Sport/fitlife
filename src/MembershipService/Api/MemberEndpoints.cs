@@ -11,7 +11,7 @@ public static class MemberEndpoints
 {
     /// <summary>
     /// Maps <c>POST /members</c>, <c>GET /members/me</c>, <c>POST /members/me/payment</c>, <c>GET /members/by-account/{accountId}</c>,
-    /// and <c>PUT</c> and <c>DELETE /members/me/pause</c>. All need a token from Identity. A status is the status on today, the UTC date.
+    /// <c>PUT</c> and <c>DELETE /members/me/pause</c>, and <c>POST /members/me/cancellation</c>. All need a token from Identity. A status is the status on today, the UTC date.
     /// </summary>
     /// <param name="app">The routes.</param>
     /// <returns>The routes.</returns>
@@ -40,6 +40,10 @@ public static class MemberEndpoints
         members.MapDelete("/me/pause", EndPause)
             .WithName("EndMyPause")
             .WithSummary("Ends the pause of the membership of the account in the token: it is active from today")
+            .ProducesProblem(StatusCodes.Status409Conflict);
+        members.MapPost("/me/cancellation", Cancel)
+            .WithName("CancelMyMembership")
+            .WithSummary("Cancels the membership of the account in the token with one month's notice: it gives access until the last day of the next month")
             .ProducesProblem(StatusCodes.Status409Conflict);
         return app;
     }
@@ -157,6 +161,24 @@ public static class MemberEndpoints
         return TypedResults.Ok(PauseResponse(result.Membership, MembershipLookup.Today(clock)));
     }
 
+    private static async Task<Results<Ok<MembershipCancellationResponse>, NotFound, ProblemHttpResult>> Cancel(
+        ClaimsPrincipal user, CancelMembershipHandler handler, CancellationToken cancellationToken)
+    {
+        MembershipCommandResult<CancelResult> result = await handler.HandleAsync(
+            new CancelMembershipCommand(user.GetAccountId()), cancellationToken).ConfigureAwait(false);
+        if (result.Membership is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (result.Result != CancelResult.Cancelled || result.Membership.LastTrainingDay is not { } lastTrainingDay)
+        {
+            return Conflict("The membership is already cancelled", nameof(CancelResult.MembershipAlreadyCancelled));
+        }
+
+        return TypedResults.Ok(new MembershipCancellationResponse(lastTrainingDay));
+    }
+
     // 409 problem details whose extension "code" names what was rejected, e.g. "PauseStartsInThePast"
     private static ProblemHttpResult Conflict(string title, string code)
     {
@@ -187,7 +209,7 @@ public static class MemberEndpoints
         }
 
         DateOnly today = MembershipLookup.Today(readers.Clock);
-        return new MyMembershipResponse(member.Id, membership.Type, membership.StatusOn(today), membership.IsActiveOn(today), membership.StartDate);
+        return new MyMembershipResponse(member.Id, membership.Type, membership.StatusOn(today), membership.IsActiveOn(today), membership.StartDate, membership.LastTrainingDay);
     }
 
     private static async Task<Results<Ok<MemberResponse>, NotFound>> GetByAccount(

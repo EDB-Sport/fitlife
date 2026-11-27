@@ -69,7 +69,7 @@ The root `.globalconfig` switches off, each with its reason in the file: CA2007 
 
 Built: TEAM001 to TEAM010, and TEAM012. The rule table, with what each one allows, is in [`tools/Analyzers/README.md`](../tools/Analyzers/README.md). In short: MongoDB only in `*.Repositories` (TEAM001), NLog API only in `Program.cs` (TEAM002), no secrets in log calls (TEAM003), every suppression names an issue (TEAM004), readability limits (TEAM005), every test asserts (TEAM006), no waiting in tests (TEAM007), `*.Models` types are in the glossary (TEAM008), controller actions have a verb and a typed result (TEAM009), no hard-coded URLs in `src/` (TEAM010), no conditional expression as a return value (TEAM012, #60).
 
-Not built: TEAM011 (no public setters in `*.Domain`). METHODOLOGY section 11.2 names it; today review checks that rule.
+Not built: TEAM011 (no public setters in `*.Domain`, #582). METHODOLOGY section 11.2 names it; today review checks that rule.
 
 ## 5. Formatting, and tools agents call directly
 

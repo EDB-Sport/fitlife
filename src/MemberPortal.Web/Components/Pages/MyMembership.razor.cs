@@ -15,13 +15,13 @@ public partial class MyMembership(IMembershipClient membershipClient)
     /// <summary>Shown when the account has not joined; the page adds the link to <c>/bliv-medlem</c>.</summary>
     public const string NotAMemberSentence = "Du er ikke medlem endnu.";
 
-    private MyMembershipResponse? Membership { get; set; }
-
     /// <summary>Shown when the missing fee is paid (#535).</summary>
     public const string PaymentReceivedSentence = "Din betaling er modtaget.";
 
     // MembershipStatus.PaymentMissing in contracts/openapi/membershipservice.json
     private const string PaymentMissing = "PaymentMissing";
+
+    private MyMembershipResponse? Membership { get; set; }
 
     private string? ErrorSentence { get; set; }
 
@@ -29,7 +29,6 @@ public partial class MyMembership(IMembershipClient membershipClient)
 
     // Membership answered 404: the account has not joined
     private bool IsNotAMember { get; set; }
-
 
     /// <inheritdoc />
     protected override async Task OnInitializedAsync()

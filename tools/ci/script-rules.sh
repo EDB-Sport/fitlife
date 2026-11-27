@@ -28,6 +28,7 @@ status=0
 
 # Bash 4 forms outside comments and outside quoted heredoc bodies (literal text that is never run).
 # A comment is a line that starts with #, or text after whitespace and #. The messages avoid spelling the forms out.
+# Known gap: a whitespace-then-# inside a string ends the code early, so a form after it on the same line is not seen.
 bash4_rules() {
   awk -v path="$1" '
     heredoc != "" {
@@ -44,10 +45,10 @@ bash4_rules() {
     code ~ /(declare|typeset|local)[[:space:]]+-[A-Za-z]*A/ {
       print path ":" NR ": associative arrays are bash 4 only (macOS bash 3.2): use plain variables"
     }
-    code ~ /(^|[;&|({][[:space:]]*|then[[:space:]]+|do[[:space:]]+)(mapfile|readarray)([[:space:]]|$)/ {
+    code ~ /(^[[:space:]]*|[;&|({][[:space:]]*|then[[:space:]]+|do[[:space:]]+)(mapfile|readarray)([[:space:]]|$)/ {
       print path ":" NR ": mapfile and readarray are bash 4 only: read the lines with while read"
     }
-    code ~ /\$\{[A-Za-z_][A-Za-z0-9_]*(\^\^?|,,?)/ {
+    code ~ /\$\{[A-Za-z0-9_@*#]+(\[[^]]*\])?(\^\^?|,,?)/ {
       print path ":" NR ": case-changing expansions (^^ and ,,) are bash 4 only: use tr"
     }
     code ~ /&[>][>]/ {

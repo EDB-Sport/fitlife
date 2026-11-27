@@ -60,6 +60,34 @@ mapfile -t lines < file.txt
 S
 expect "mapfile fails with the file and line" 1 "tools/ci/bad.sh:3: " mapfile
 
+new_repo indented-mapfile
+add_script indented-mapfile tools/ci/bad.sh 755 <<'S'
+#!/usr/bin/env bash
+set -uo pipefail
+load() {
+  mapfile -t a < x
+}
+S
+expect "an indented mapfile in a function fails" 1 "tools/ci/bad.sh:4: " indented-mapfile
+
+new_repo indented-readarray
+add_script indented-readarray tools/ci/bad.sh 755 <<'S'
+#!/usr/bin/env bash
+set -uo pipefail
+while true; do
+    readarray -t b < y
+done
+S
+expect "an indented readarray in a loop body fails" 1 "tools/ci/bad.sh:4: " indented-readarray
+
+new_repo positional-case
+add_script positional-case tools/ci/bad.sh 755 <<'S'
+#!/usr/bin/env bash
+set -uo pipefail
+echo "${1^^}" "${arr[i]^^}"
+S
+expect "case-changing on a positional or indexed name fails" 1 "tools/ci/bad.sh:3: " positional-case
+
 new_repo readarray
 add_script readarray tools/ci/bad.sh 755 <<'S'
 #!/usr/bin/env bash

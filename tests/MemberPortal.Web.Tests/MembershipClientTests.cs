@@ -49,7 +49,7 @@ public sealed class MembershipClientTests
     public async Task JoinAsync_ReturnsMembershipsAnswer(HttpStatusCode status, JoinMembershipAnswer expected)
     {
         // Arrange
-        using var gateway = new StubGateway(status, status == HttpStatusCode.Created ? Member : """{"status":409}""");
+        using var gateway = new StubGateway(status, status == HttpStatusCode.Created ? Member : """{"status":409,"code":"AccountIsAlreadyAMember"}""");
         using ServiceProvider services = Services(gateway);
 
         // Act
@@ -57,6 +57,19 @@ public sealed class MembershipClientTests
 
         // Assert
         Assert.That(answer, Is.EqualTo(expected));
+    }
+
+    [TestCase("""{"status":409,"code":"SomethingElse"}""")]
+    [TestCase("""{"status":409}""")]
+    [TestCase("not json")]
+    public async Task JoinAsync_On409WithAnotherCode_ThrowsMembershipUnavailable(string body)
+    {
+        // Arrange
+        using var gateway = new StubGateway(HttpStatusCode.Conflict, body);
+        using ServiceProvider services = Services(gateway);
+
+        // Act & Assert
+        await Assert.ThatAsync(() => Join(services, "fresh.token.signature"), Throws.TypeOf<MembershipUnavailableException>()).ConfigureAwait(false);
     }
 
     [TestCase(HttpStatusCode.Unauthorized)]

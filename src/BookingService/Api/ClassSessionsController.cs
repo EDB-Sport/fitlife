@@ -18,6 +18,7 @@ public sealed class ClassSessionsController : ControllerBase
 {
     private const string ChangedMeanwhileTitle = "The class session changed at the same time. Try again.";
     private const string ClassSessionCancelledTitle = "The class session is cancelled.";
+    private const string NoReservationTitle = "You have no seat on this class session.";
 
     private readonly IClassSessionRepository _repository;
     private readonly TimeProvider _clock;
@@ -75,35 +76,49 @@ public sealed class ClassSessionsController : ControllerBase
         }
     }
 
-    /// <summary>Cancels the member's reservation. When someone is on the waitlist, the first waitlist entry gets the seat.</summary>
+    /// <summary>
+    /// Cancels the reservation of the member behind the token (#262). The route has no member id, so nobody can cancel another
+    /// member's reservation. When someone is on the waitlist, the first waitlist entry gets the seat.
+    /// </summary>
     /// <param name="id">The class session.</param>
-    /// <param name="memberId">The member who gives up the seat.</param>
+    /// <param name="cancelReservation">Asks Membership, then the class session.</param>
     /// <param name="cancellationToken">Stops the request.</param>
-    /// <response code="404">No such class session, or the member has no seat on it.</response>
-    [HttpDelete("{id:guid}/reservations/{memberId:guid}")]
+    /// <response code="404">No such class session (code ClassSessionNotFound), or the member has no seat on it (code NoReservation).</response>
+    /// <response code="409">Another request changed the class session at the same time (code ChangedMeanwhile).</response>
+    /// <response code="503">Membership didn't answer (code MembershipUnavailable).</response>
+    [HttpDelete("{id:guid}/reservations/mine")]
     [Authorize(Policy = FitLifePolicies.Medlem)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
-    public async Task<Results<NoContent, ProblemHttpResult>> DeleteReservation(Guid id, Guid memberId, CancellationToken cancellationToken)
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable, "application/problem+json")]
+    public async Task<Results<NoContent, ProblemHttpResult>> DeleteMyReservation(Guid id, [FromServices] CancelReservationCommandHandler cancelReservation, CancellationToken cancellationToken)
     {
-        ClassSession? classSession = await _repository.GetByIdAsync(id, cancellationToken).ConfigureAwait(false);
-        if (classSession is null)
+        ArgumentNullException.ThrowIfNull(cancelReservation);
+        if (!Guid.TryParse(User.GetAccountId(), out Guid accountId))
         {
-            return TypedResults.Problem(statusCode: StatusCodes.Status404NotFound, title: "No such class session.", detail: $"There is no class session {id}.");
+            return CodedProblem(StatusCodes.Status404NotFound, NoReservationTitle, nameof(CancelReservationOutcome.NoReservation));
         }
 
-        if (classSession.CancelReservation(memberId, _clock) == CancellationResult.NoReservation)
+        string bearerToken = Request.Headers.Authorization.ToString()["Bearer ".Length..];
+        CancelReservationOutcome outcome = await cancelReservation.Handle(new CancelReservationCommand(id, accountId, bearerToken), cancellationToken).ConfigureAwait(false);
+        switch (outcome)
         {
-            return TypedResults.Problem(statusCode: StatusCodes.Status404NotFound, title: "The member has no seat on this class session.");
+            case CancelReservationOutcome.Cancelled:
+                return TypedResults.NoContent();
+            case CancelReservationOutcome.NoReservation:
+                return CodedProblem(StatusCodes.Status404NotFound, NoReservationTitle, outcome.ToString());
+            case CancelReservationOutcome.ClassSessionNotFound:
+                return CodedProblem(StatusCodes.Status404NotFound, "No such class session.", outcome.ToString());
+            case CancelReservationOutcome.MembershipUnavailable:
+                return CodedProblem(StatusCodes.Status503ServiceUnavailable, "Membership didn't answer. Try again.", outcome.ToString());
+            case CancelReservationOutcome.ChangedMeanwhile:
+                return CodedProblem(StatusCodes.Status409Conflict, ChangedMeanwhileTitle, outcome.ToString());
+            default:
+                throw new UnreachableException($"CancelReservationOutcome.{outcome} has no status code.");
         }
-
-        if (!await _repository.SaveAsync(classSession, cancellationToken).ConfigureAwait(false))
-        {
-            return TypedResults.Problem(statusCode: StatusCodes.Status409Conflict, title: ChangedMeanwhileTitle);
-        }
-
-        return TypedResults.NoContent();
     }
 
     /// <summary>Puts the member at the end of the waitlist of a full class session.</summary>
@@ -151,6 +166,11 @@ public sealed class ClassSessionsController : ControllerBase
         }
 
         return StatusCode(StatusCodes.Status201Created, new WaitlistEntryResponse(id, request.MemberId));
+    }
+
+    private static ProblemHttpResult CodedProblem(int status, string title, string code)
+    {
+        return TypedResults.Problem(statusCode: status, title: title, extensions: new Dictionary<string, object?>(StringComparer.Ordinal) { [ReservationProblems.CodeExtension] = code });
     }
 
     private ObjectResult ClassSessionNotFound(Guid id)

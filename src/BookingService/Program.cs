@@ -53,6 +53,7 @@ try
     // Who the member behind an account is, from Membership (#256). The reservation endpoints use it (#260)
     builder.Services.AddMembershipClient();
     builder.Services.AddScoped<ReserveSeatCommandHandler>();
+    builder.Services.AddScoped<CancelReservationCommandHandler>();
 
     // The member's token (#183, #260), closed by default (#369): an endpoint needs a token unless it allows anonymous calls.
     // Reserving, cancelling and joining the waitlist need the role Medlem, scheduling and cancelling a class session Træner or

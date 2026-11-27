@@ -143,7 +143,7 @@ public sealed class AuthorizationTests
 
     private static Uri UnknownReservation()
     {
-        return new Uri($"/class-sessions/{Guid.NewGuid()}/reservations/{Guid.NewGuid()}", UriKind.Relative);
+        return new Uri($"/class-sessions/{Guid.NewGuid()}/reservations/mine", UriKind.Relative);
     }
 
     private static Uri UnknownWaitlist()

@@ -56,7 +56,7 @@ public sealed class ApiDocumentationTests
         Assert.Multiple(() =>
         {
             Assert.That(RequiresBearer(paths?["/class-sessions/{id}/reservations"]?["post"]), Is.True, "POST reservation");
-            Assert.That(RequiresBearer(paths?["/class-sessions/{id}/reservations/{memberId}"]?["delete"]), Is.True, "DELETE reservation");
+            Assert.That(RequiresBearer(paths?["/class-sessions/{id}/reservations/mine"]?["delete"]), Is.True, "DELETE reservation");
             Assert.That(RequiresBearer(paths?["/class-sessions/{id}/waitlist"]?["post"]), Is.True, "POST waitlist");
             Assert.That(RequiresBearer(paths?["/class-sessions"]?["post"]), Is.True, "POST class session");
             Assert.That(RequiresBearer(paths?["/class-sessions/{id}/cancellation"]?["post"]), Is.True, "POST cancellation");

@@ -1,7 +1,7 @@
 {
   "uid": "fitlife-logs",
   "title": "FitLife logs",
-  "description": "Logs from every service, by service and level, filterable by CorrelationId (docs/CSHARP_SETUP_TODO.md section 7).",
+  "description": "Logs from every service, by service and level, filterable by CorrelationId (docs/TECHNICAL_REFERENCE.md section 7).",
   "tags": [
     "fitlife",
     "logs"

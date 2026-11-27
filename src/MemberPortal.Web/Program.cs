@@ -24,6 +24,9 @@ try
     builder.Services.AddPortalAuthentication();
     builder.Services.AddIdentityClient();
 
+    // Becoming a member joins in Membership with the token (#209)
+    builder.Services.AddMembershipClient();
+
     WebApplication app = builder.Build();
 
     // First, so every log line of the request carries its X-Correlation-ID

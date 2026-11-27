@@ -1,4 +1,4 @@
-# CI on every PR and on every push to develop and main (issue #5, docs/CSHARP_SETUP_TODO.md section 10).
+# CI on every PR and on every push to develop and main (issue #5, docs/TECHNICAL_REFERENCE.md section 10).
 # Pushes to other branches get CI through their PR, so a PR head has one run, not a push run
 # plus a PR run with diff-scan skipped (GitHub reports a skipped job as passing).
 # Every job here is meant to be a required check on develop and main, by its job name (section 9).
@@ -109,7 +109,7 @@ jobs:
       - name: No breaking change since each service's last release (oasdiff)
         run: tools/ci/summarize.sh contract "A contract breaks its service's last release. Keep the old shape, or release a new major version." -- tools/ci/oasdiff-breaking.sh
 
-  # Runs the tests of the CI scripts themselves, so a change to a script fails its own tests.
+  # Runs the tests of the CI scripts and the dev tools (tools/dev, #488), so a change to a script fails its own tests.
   ci-scripts:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -118,10 +118,13 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0; mutation.test.sh builds and mutates a throwaway project
         with:
           global-json-file: global.json
+      # actionlint on the workflows and shellcheck on tools/ and deploy/ scripts, from pinned images (#273).
+      - name: Static checks (actionlint, shellcheck)
+        run: tools/ci/static-check.sh
       - name: Run every tools/ci/*.test.sh
         run: |
           status=0
-          for test in tools/ci/*.test.sh; do
+          for test in tools/ci/*.test.sh tools/dev/*.test.sh; do
             echo "::group::$test"
             if ! "$test"; then
               status=1
@@ -174,7 +177,8 @@ jobs:
   # FITLIFE_MUTATION: 1 in the ci-scripts env, the one switch that runs mutation.test.sh (#461).
   # Original condition: if: github.event_name == 'pull_request'
   mutation:
-    if: false
+    # Nothing triggers workflow_dispatch, so this never runs (actionlint rejects a constant `if: false`).
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     # Measured (issue #335): service PRs with Testcontainers integration tests take 8-20 min (max 20.2 min).
     # Don't tighten this by the "2-3x normal run time" rule; a 10-minute limit cancelled them.

@@ -1,6 +1,7 @@
 # Security checks: gitleaks (secrets in commits) and hadolint (Dockerfiles).
-# docs/CSHARP_SETUP_TODO.md section 8 and section 10 job 8, issue #20.
-# Temporary file: issue #5 moves the "security" job into ci.yml, and this file is deleted then.
+# docs/TECHNICAL_REFERENCE.md section 8 and section 10 (security.yml), issue #20.
+# It stays a workflow of its own: the group has not decided to move the job into ci.yml, and doing so
+# is a separate change that must keep the required check name (#283).
 # Make "security" a required check on develop and main (repo ruleset).
 name: security
 

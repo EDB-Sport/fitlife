@@ -1,5 +1,7 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
+using FitLife.Contracts.Testing;
 using FitLife.Correlation;
 using McpServer.Booking;
 using Microsoft.Extensions.Configuration;
@@ -21,6 +23,19 @@ public sealed class BookingClientTests
         """;
 
     private static readonly Guid CenterId = Guid.Parse("6f1f6d0e-0b0e-4a6e-9a43-3c6a0d6f0001");
+
+    // Every answer the stub gave in the current test, so the fake can't drift from Booking's contract (#522).
+    // The 404 is the gateway's answer when Booking's route is missing, not one of Booking's own answers.
+    private static readonly ConcurrentQueue<FakeAnswer> Served = new();
+
+    [TearDown]
+    public void TheFakesAnswers_AreInBookingsContract()
+    {
+        IReadOnlyList<string> missing = OpenApiContracts.Missing(
+            "bookingservice", Served, gatewayRoute: "api/booking", notTheProvidersAnswers: [HttpStatusCode.NotFound]);
+        Served.Clear();
+        Assert.That(missing, Is.Empty, "The stub answers with something contracts/openapi/bookingservice.json doesn't have.");
+    }
 
     [Test]
     public async Task GetClassSessionsAsync_WithACenterId_AsksBookingThroughTheGateway()
@@ -259,6 +274,8 @@ public sealed class BookingClientTests
             {
                 throw _failure;
             }
+
+            Served.Enqueue(new FakeAnswer(request.Method, request.RequestUri?.AbsolutePath ?? string.Empty, _status));
 
             if (_failureWhileReadingTheBody is not null)
             {

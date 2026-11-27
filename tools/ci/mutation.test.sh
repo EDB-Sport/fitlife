@@ -203,6 +203,32 @@ write_tests "$add_async_weak_test"
 commit "AddAsync with a weak test"
 expect fail "the arithmetic mutant inside ConfigureAwait is still counted" "break threshold"
 
+# 3d. A comment-only or whitespace-only change to a .cs file mutates 0 mutants: Stryker isn't run (#382).
+setup_repo
+sed -i 's|Adds and subtracts numbers|Adds numbers|; s|^        return left + right;|            return left + right;|' src/MutationCheck/Calculator.cs
+commit "comment and indentation only"
+expect pass "a comment-only change mutates nothing" "nothing to mutate"
+
+# 3e. Only the changed lines are mutated (#382): the base has an untested Subtract, so mutating the whole file
+#     would fail the threshold. The non-ASCII comment checks that the span counts characters, not bytes.
+setup_repo
+write_calculator "$subtract"
+sed -i '1i // æøåæøåæøåæøåæøåæøåæøåæøåæøåæøåæøåæøåæøåæøåæøåæøåæøåæøåæøåæøå — 𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸𝔸' src/MutationCheck/Calculator.cs
+commit "base with an untested Subtract"
+base=$(git rev-parse HEAD)
+sed -i 's|return left + right;|return right + left;|' src/MutationCheck/Calculator.cs
+commit "change Add only"
+expect pass "a one-method change leaves the other methods unmutated" "final mutation score is 100"
+
+# 3f. A change that only removes lines is still a code change: the whole file is mutated, so the job doesn't skip it.
+setup_repo
+sed -i 's|^        return left + right;|        left += 0;\n        return left + right;|' src/MutationCheck/Calculator.cs
+commit "base with an extra line"
+base=$(git rev-parse HEAD)
+sed -i '/left += 0;/d' src/MutationCheck/Calculator.cs
+commit "remove the line"
+expect pass "a change that only removes code is still mutated" "final mutation score is 100"
+
 # 4. Without a base to compare with, the script refuses to run
 cd "$work" || exit 1
 if out=$(env -u SINCE "$script" 2>&1); then

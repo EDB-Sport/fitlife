@@ -6,13 +6,14 @@ services:
     environment:
       # Rendered into nginx/default.conf.template by the image's envsubst at start.
       # In compose a service is reached by its container name; in Azure by http://127.0.0.1:<port> (section 9a).
+      # Each *_URL can be set in the shell to reach a service run from your IDE instead (README.md, #525).
       NGINX_RESOLVER: 127.0.0.11 # Docker's internal DNS
-      BOOKING_URL: http://booking-svc:8080
-      MEMBERSHIP_URL: http://membership-svc:8080
-      NOTIFICATION_URL: http://notification-svc:8080 # the delivery log for staff (#221)
-      IDENTITY_URL: http://identity-svc:8080
-      MCP_SERVER_URL: http://mcp-server:8080 # the MCP server (#213), on /mcp
-      MEMBER_PORTAL_URL: http://member-portal:8080 # the Blazor UI (#8), on every path that isn't /api/ or /health
+      BOOKING_URL: ${BOOKING_URL:-http://booking-svc:8080}
+      MEMBERSHIP_URL: ${MEMBERSHIP_URL:-http://membership-svc:8080}
+      NOTIFICATION_URL: ${NOTIFICATION_URL:-http://notification-svc:8080} # the delivery log for staff (#221)
+      IDENTITY_URL: ${IDENTITY_URL:-http://identity-svc:8080}
+      MCP_SERVER_URL: ${MCP_SERVER_URL:-http://mcp-server:8080} # the MCP server (#213), on /mcp
+      MEMBER_PORTAL_URL: ${MEMBER_PORTAL_URL:-http://member-portal:8080} # the Blazor UI (#8), on every path that isn't /api/ or /health
       GRAFANA_URL: http://grafana:3000 # monitoring.yml
       # Log-ins per client address on POST /api/identity/tokens (#366); above them the gateway answers 429
       LOGIN_RATE_LIMIT: ${LOGIN_RATE_LIMIT:-10r/m}
@@ -111,6 +112,10 @@ services:
       # Database membership, user membership-svc (infrastructure.yml, SERVICE_DATABASES)
       MongoDb__Host: mongodb
       MongoDb__Port: "27017"
+      # Publishes MembershipPaused and PaymentFailed (#251). RabbitMq:Username and RabbitMq:Password are in the same Vault
+      # secret. Nothing connects until the first publish, and a failed publish is only logged, so no depends_on
+      RabbitMq__HostName: rabbitmq
+      RabbitMq__Port: "5672"
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
       interval: 5s

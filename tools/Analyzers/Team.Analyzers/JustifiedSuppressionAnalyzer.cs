@@ -32,7 +32,7 @@ public sealed class JustifiedSuppressionAnalyzer : DiagnosticAnalyzer
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "A pragma, a '#nullable disable' or a [SuppressMessage] switches a check off. Each one must name the GitHub issue that allows it, so every exception is traceable and reviewed.",
-        helpLinkUri: "https://github.com/EDB-Sport/fitlife/blob/develop/docs/CSHARP_SETUP_TODO.md#4-project-specific-roslyn-analyzers-toolsanalyzers",
+        helpLinkUri: "https://github.com/EDB-Sport/fitlife/blob/develop/docs/TECHNICAL_REFERENCE.md#4-project-specific-roslyn-analyzers-toolsanalyzers",
         customTags: Unsuppressible);
 
     private const string CommentFix = "'// #<issue>: <reason>' at the end of the same line";
@@ -63,24 +63,23 @@ public sealed class JustifiedSuppressionAnalyzer : DiagnosticAnalyzer
     }
 
     // .editorconfig marks Razor's output as hand-written so the style rules check @code blocks (#397).
-    // Its #pragma and #nullable lines are written by the Razor generator, so TEAM004 still skips that file.
-    private static bool IsRazorOutput(SyntaxTree tree)
+    // The Razor generator writes its own #pragma and #nullable lines there. A directive someone wrote in a
+    // .razor file is told apart by the #line mapping that points back to that file (#437). One generator line is
+    // inside such a mapping too: the '#nullable disable' between an @using and the ';' the generator adds.
+    private static bool IsWrittenByRazorGenerator(DirectiveTriviaSyntax directive)
     {
-        return tree.FilePath.EndsWith("_razor.g.cs", StringComparison.OrdinalIgnoreCase);
+        return directive.SyntaxTree.FilePath.EndsWith("_razor.g.cs", StringComparison.OrdinalIgnoreCase)
+            && (!directive.GetLocation().GetMappedLineSpan().Path.EndsWith(".razor", StringComparison.OrdinalIgnoreCase)
+                || directive.ParentTrivia.Token.IsKind(SyntaxKind.SemicolonToken));
     }
 
     private static void AnalyzeDirectives(SyntaxTreeAnalysisContext context)
     {
-        if (IsRazorOutput(context.Tree))
-        {
-            return;
-        }
-
         SyntaxNode root = context.Tree.GetRoot(context.CancellationToken);
         for (DirectiveTriviaSyntax? directive = root.GetFirstDirective(); directive is not null; directive = directive.GetNextDirective())
         {
             string? found = DisablingDirectiveName(directive);
-            if (found is not null && !HasIssueComment(directive))
+            if (found is not null && !HasIssueComment(directive) && !IsWrittenByRazorGenerator(directive))
             {
                 var location = Location.Create(context.Tree, SpanWithoutComment(directive));
                 context.ReportDiagnostic(Diagnostic.Create(Rule, location, found, CommentFix));

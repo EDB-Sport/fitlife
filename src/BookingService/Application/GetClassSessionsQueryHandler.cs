@@ -31,17 +31,9 @@ public sealed class GetClassSessionsQueryHandler
             .ToDictionary(center => center.Id, center => center.Name);
         var classTypes = (await _referenceData.ListClassTypesAsync(cancellationToken).ConfigureAwait(false))
             .ToDictionary(classType => classType.Id, classType => classType.Name);
-        return classSessions.Select(classSession => new ClassSessionSummary(
-            classSession.Id,
-            classSession.CenterId,
+        return classSessions.Select(classSession => ClassSessionSummary.Of(
+            classSession,
             centers.GetValueOrDefault(classSession.CenterId, ""),
-            classSession.ClassTypeId,
-            classTypes.GetValueOrDefault(classSession.ClassTypeId, ""),
-            classSession.Details.Instructor.Name,
-            classSession.StartTime,
-            (int)classSession.Details.Duration.TotalMinutes,
-            classSession.Capacity.Value,
-            classSession.FreeSeats,
-            classSession.IsCancelled)).ToList();
+            classTypes.GetValueOrDefault(classSession.ClassTypeId, ""))).ToList();
     }
 }

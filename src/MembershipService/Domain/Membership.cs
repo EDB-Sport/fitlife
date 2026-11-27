@@ -21,13 +21,22 @@ public sealed class Membership
     /// <summary>The kind of membership.</summary>
     public MembershipType Type { get; }
 
-    /// <summary>Where the membership is in its life.</summary>
+    /// <summary>
+    /// The stored status: <see cref="MembershipStatus.Active"/> or <see cref="MembershipStatus.PaymentMissing"/>. It doesn't
+    /// look at the pause period; the status on a given day is <see cref="StatusOn"/>.
+    /// </summary>
     public MembershipStatus Status { get; private set; }
 
     /// <summary>The day the membership started.</summary>
     public DateOnly StartDate { get; }
 
-    /// <summary>Whether the membership gives access and the right to book.</summary>
+    /// <summary>The first day of the pause period, both days included; null without one.</summary>
+    public DateOnly? PausedFrom { get; private set; }
+
+    /// <summary>The last day of the pause period; null without one.</summary>
+    public DateOnly? PausedTo { get; private set; }
+
+    /// <summary>Whether the stored status is <see cref="MembershipStatus.Active"/>. A pause period isn't counted: use <see cref="IsActiveOn"/>.</summary>
     public bool IsActive => Status == MembershipStatus.Active;
 
     /// <summary>
@@ -49,6 +58,91 @@ public sealed class Membership
     }
 
     /// <summary>
+    /// Where the membership is on a day: Pause from <see cref="PausedFrom"/> to <see cref="PausedTo"/>, both included, when the
+    /// stored status is Aktiv, else the stored status (TO-BE-kontekst §8). No background job: the dates decide.
+    /// </summary>
+    /// <param name="day">The day.</param>
+    /// <returns>The status on that day.</returns>
+    public MembershipStatus StatusOn(DateOnly day)
+    {
+        if (Status != MembershipStatus.Active)
+        {
+            return Status;
+        }
+
+        if (PausedFrom is { } from && PausedTo is { } to && from <= day && day <= to)
+        {
+            return MembershipStatus.Paused;
+        }
+
+        return MembershipStatus.Active;
+    }
+
+    /// <summary>Whether the membership gives access and the right to book on a day.</summary>
+    /// <param name="day">The day.</param>
+    /// <returns>True when the status on that day is Aktiv.</returns>
+    public bool IsActiveOn(DateOnly day)
+    {
+        return StatusOn(day) == MembershipStatus.Active;
+    }
+
+    /// <summary>
+    /// Pauses the membership from <paramref name="from"/> to <paramref name="to"/>, both included (UC6). There is one pause
+    /// period: a new one replaces one still to come. The rules are checked in the order of <see cref="PauseResult"/>.
+    /// </summary>
+    /// <param name="from">The first day of the pause.</param>
+    /// <param name="to">The last day of the pause, after <paramref name="from"/>.</param>
+    /// <param name="today">Today.</param>
+    /// <returns><see cref="PauseResult.Paused"/>, or why the pause was rejected.</returns>
+    public PauseResult Pause(DateOnly from, DateOnly to, DateOnly today)
+    {
+        if (StatusOn(today) != MembershipStatus.Active)
+        {
+            return PauseResult.MembershipNotActive;
+        }
+
+        if (from < today)
+        {
+            return PauseResult.PauseStartsInThePast;
+        }
+
+        if (to <= from)
+        {
+            return PauseResult.PauseEndsBeforeItStarts;
+        }
+
+        PausedFrom = from;
+        PausedTo = to;
+        return PauseResult.Paused;
+    }
+
+    /// <summary>Whether the pause period is running or still to come on a day: it has one, and its last day isn't before it.</summary>
+    /// <param name="day">The day, usually today.</param>
+    /// <returns>True while the pause period isn't over.</returns>
+    public bool HasPauseNotOverOn(DateOnly day)
+    {
+        return PausedTo is { } to && day <= to;
+    }
+
+    /// <summary>
+    /// Ends the pause early (UC6): a pause period that isn't over on <paramref name="today"/>, running or still to come, is
+    /// removed, so the membership is Aktiv from today.
+    /// </summary>
+    /// <param name="today">Today.</param>
+    /// <returns><see cref="EndPauseResult.PauseEnded"/>, or <see cref="EndPauseResult.NoPauseToEnd"/>.</returns>
+    public EndPauseResult EndPause(DateOnly today)
+    {
+        if (!HasPauseNotOverOn(today))
+        {
+            return EndPauseResult.NoPauseToEnd;
+        }
+
+        PausedFrom = null;
+        PausedTo = null;
+        return EndPauseResult.PauseEnded;
+    }
+
+    /// <summary>
     /// The member paid the missing fee: Betaling mangler becomes Aktiv (TO-BE-kontekst §8, UC18). Any other status owes nothing,
     /// and nothing changes.
     /// </summary>
@@ -64,7 +158,7 @@ public sealed class Membership
         return PaymentResult.Paid;
     }
 
-    /// <summary>Rebuilds a stored membership.</summary>
+    /// <summary>Rebuilds a stored membership. A stored pause period is given back with <see cref="RestorePausePeriod"/>.</summary>
     /// <param name="id">The membership id.</param>
     /// <param name="memberId">The member id.</param>
     /// <param name="type">The kind of membership.</param>
@@ -74,5 +168,17 @@ public sealed class Membership
     public static Membership Restore(Guid id, Guid memberId, MembershipType type, MembershipStatus status, DateOnly startDate)
     {
         return new Membership(id, memberId, type, status, startDate);
+    }
+
+    /// <summary>
+    /// Gives a restored membership back its stored pause period, without the rules of <see cref="Pause"/>: they were checked
+    /// when it was stored. Only the repository calls it, while it rebuilds a membership.
+    /// </summary>
+    /// <param name="pausedFrom">The stored first day, or null.</param>
+    /// <param name="pausedTo">The stored last day, or null.</param>
+    internal void RestorePausePeriod(DateOnly? pausedFrom, DateOnly? pausedTo)
+    {
+        PausedFrom = pausedFrom;
+        PausedTo = pausedTo;
     }
 }

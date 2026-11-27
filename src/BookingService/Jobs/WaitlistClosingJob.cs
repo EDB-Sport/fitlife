@@ -6,7 +6,7 @@ namespace BookingService.Jobs;
 /// <summary>
 /// Closes the waitlist of every upcoming class session that starts within 2 hours, once a minute (#314). It runs when
 /// <c>WaitlistClosing:Enabled</c> is true. A save that loses to another request is not lost: the next run reads the class
-/// session again and closes it then.
+/// session again and closes it then. A run that fails is logged, and the next run tries again (#543).
 /// </summary>
 public sealed partial class WaitlistClosingJob : BackgroundService
 {
@@ -66,6 +66,10 @@ public sealed partial class WaitlistClosingJob : BackgroundService
             {
                 LogMongoDbNotReady(exception);
             }
+            catch (Exception exception) when (exception is not OperationCanceledException) // a failed run must not stop the service (#543)
+            {
+                LogRunFailed(exception);
+            }
         }
         while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false));
     }
@@ -78,4 +82,7 @@ public sealed partial class WaitlistClosingJob : BackgroundService
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "MongoDB isn't ready, so no waitlist was closed this run")]
     private partial void LogMongoDbNotReady(Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The waitlist closing run failed. The job tries again on the next run")]
+    private partial void LogRunFailed(Exception exception);
 }

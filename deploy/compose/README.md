@@ -52,6 +52,12 @@ docker compose down -v
 docker compose up -d --wait --build
 ```
 
+Rebuild and restart one service only, here Booking:
+
+```bash
+docker compose up -d --wait --build booking-svc
+```
+
 `tools/ci/api-tests.sh` does the same with `API_TESTS_BUILD=1 tools/ci/api-tests.sh`. Without the switch it reuses the images it has, as before. CI starts on a fresh runner with no images, so it builds them either way (#284).
 
 ### Pull the images of `develop` instead of building them
@@ -63,6 +69,36 @@ docker compose -f compose.yaml -f compose.develop.yml up -d --wait
 ```
 
 `pull_policy: always` pulls the newest `:develop` on every `up`. To run one service from your own code, leave the override out and build from source (`docker compose up -d --wait --build`). `:develop` is a moving tag, allowed only in `compose.develop.yml` (`tools/ci/image-versions.sh`); the other compose files, CI and the api-tests build the PR's code from source. A run delivers every service whose `:develop` image is missing or older than its source (it compares with the image's revision label, not with the previous push), so a skipped or failed run is made up by the next one. The released versions (`X.Y.Z`, `latest`) are still the release's alone.
+
+## Run one service from your IDE
+
+Run one service from your IDE or with `dotnet watch`, against the rest of the stack in compose (#525). Every service has a launch profile named `stack`. It runs on the port below and reaches MongoDB (27018), Vault (8200), RabbitMQ (5672), Loki (3100) and the gateway (8080) on your machine. The gateway still runs in compose. You point it at your service with that service's `*_URL` variable, and the other services stay in compose.
+
+| Service in compose | Project | Port of the `stack` profile | Gateway variable |
+|---|---|---|---|
+| `booking-svc` | `src/BookingService` | 5080 | `BOOKING_URL` |
+| `identity-svc` | `src/IdentityService` | 5003 | `IDENTITY_URL` |
+| `mcp-server` | `src/McpServer` | 5005 | `MCP_SERVER_URL` |
+| `member-portal` | `src/MemberPortal.Web` | 5066 | `MEMBER_PORTAL_URL` |
+| `membership-svc` | `src/MembershipService` | 5082 | `MEMBERSHIP_URL` |
+| `notification-svc` | `src/NotificationService` | 5083 | `NOTIFICATION_URL` |
+
+Booking, here. From this folder, with the stack up:
+
+1. Stop the service in compose: `docker compose stop booking-svc`
+2. Point the gateway at your machine: `BOOKING_URL=http://host.docker.internal:5080 docker compose up -d --wait --no-deps gateway`
+3. Run the service. The profile has no Vault token (it's in your `.env`), so pass it in. From the repo root: `Vault__Token=$(sed -n 's/^VAULT_DEV_ROOT_TOKEN=//p' deploy/compose/.env) dotnet watch --project src/BookingService --launch-profile stack`. In an IDE, pick the profile `stack` and add `Vault__Token` to its environment variables there (not in the committed file). McpServer and MemberPortal.Web read no Vault and need no token.
+
+Requests through http://localhost:8080/api/booking/ now reach your service. Go back to the service in compose:
+
+```bash
+docker compose up -d --wait --no-deps gateway booking-svc
+```
+
+Without `BOOKING_URL` in the shell, the gateway gets its default `http://booking-svc:8080` again. Every `*_URL` in `services.yml` defaults to the service in compose, so `docker compose up` without them runs the stack as before.
+
+- Booking's profile asks Membership through the gateway (`http://localhost:8080/api/membership/`), since `membership-svc` has no port on your machine.
+- **Linux:** `host.docker.internal` works only with Docker Desktop. With Docker Engine, use the address of the stack's network gateway instead (`docker network inspect fitlife_default -f '{{(index .IPAM.Config 0).Gateway}}'`), and let the service listen there: `dotnet watch --project src/BookingService --launch-profile stack -- --urls http://0.0.0.0:5080`.
 
 ## Local builds: base images
 
@@ -129,7 +165,7 @@ A new secret: add it to `.env.example`, to the `vault` service's environment in 
 
 ## MongoDB: one database per service
 
-`mongodb/init/01-service-users.js` runs the first time MongoDB starts with an empty volume. For each name in `SERVICE_DATABASES` it creates the database `<name>` and the user `<name>-svc` with `readWrite` on that database only, so a service can't read another service's data (`docs/CSHARP_SETUP_TODO.md` section 1).
+`mongodb/init/01-service-users.js` runs the first time MongoDB starts with an empty volume. For each name in `SERVICE_DATABASES` it creates the database `<name>` and the user `<name>-svc` with `readWrite` on that database only, so a service can't read another service's data (`docs/TECHNICAL_REFERENCE.md` section 1).
 
 A service's connection string inside the stack:
 
@@ -160,7 +196,7 @@ mongodb://booking-svc:<BOOKING_DB_PASSWORD>@mongodb:27017/booking?authSource=boo
 
 ## Logging and monitoring
 
-Services log with NLog to Loki; Grafana shows the logs and raises alerts (`docs/CSHARP_SETUP_TODO.md` section 7). Inside the stack a service pushes to `http://loki:3100`; a service started with `dotnet run` pushes to `http://localhost:3100` (`LOKI_HOST_PORT`).
+Services log with NLog to Loki; Grafana shows the logs and raises alerts (`docs/TECHNICAL_REFERENCE.md` section 7). Inside the stack a service pushes to `http://loki:3100`; a service started with `dotnet run` pushes to `http://localhost:3100` (`LOKI_HOST_PORT`).
 
 What the dashboard and alert rules expect from a service's log lines (the NLog config comes with the first service, #18):
 

@@ -113,6 +113,9 @@ public sealed partial class RabbitMqEventConsumer<TEvent> : BackgroundService, I
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
+        // Cancels a set-up that is still running and waits for it to end: RabbitMQ.Client throws if the channel is torn
+        // down while BasicConsumeAsync runs (#573). base.StopAsync ignores how the set-up ends
+        await base.StopAsync(CancellationToken.None).ConfigureAwait(false);
         if (_channel is not null)
         {
             await _channel.DisposeAsync().ConfigureAwait(false);

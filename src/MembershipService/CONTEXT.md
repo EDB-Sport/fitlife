@@ -42,8 +42,10 @@ Words from other contexts that we do **not** use here: *user* or *login* (that i
 | Command | `CancelMembershipCommand` | `POST /members/me/cancellation`, no body (UC8): 200 `{ "lastTrainingDay": "2026-12-31" }`, or 409 with `"code": "MembershipAlreadyCancelled"`. 404 when the account hasn't joined; "today" is the UTC date from `TimeProvider` |
 | Query | by account id | `GET /members/by-account/{accountId}`: the `MemberId`, whether the membership is active today (`Paused` inside a pause period), and `pausedFrom` and `pausedTo` while a pause period is running or still to come (`HasPauseNotOverOn`), else both null (#536), 404 for an unknown account. Only for the account in the token: another account answers 404 too, so a member can't look up other members. Booking asks this before a reservation (#173) |
 | Query | my membership | `GET /members/me`: the membership of the account in the token (`sub`, never the path): `memberId`, `membershipType`, `membershipStatus`, `isActive`, `startDate`, `lastTrainingDay` (null unless cancelled). 404 when the account hasn't joined. The member portal's "Mit medlemskab" reads it (#210) |
+| Event published | `MembershipPaused` (`contracts/events/membership-paused.schema.json`) | After a pause is saved: `memberId`, `from`, `to` (#251). Not for a rejected pause or a pause ended early |
+| Event published | `PaymentFailed` (`contracts/events/payment-failed.schema.json`) | After a join is saved with `PaymentMissing` because the first charge didn't go through: `memberId`, `failedAt` (#251). Not for a declined `POST /members/me/payment`, which saves nothing |
 
-No events yet. `MembershipPaused` comes with #251, `MembershipCancelled` with #251.
+Both are published after the save, through `Application/MembershipEventPublisher` and `libs/FitLife.Messaging`, without the request's token. A failed publish is logged and the change is kept, so the member's answer is the same; there is no outbox, so that event is lost (#192's safe default). `MembershipCancelled` is not published yet: `POST /members/me/cancellation` saves and answers, and the event follows in #251's second PR.
 
 ## Talks to
 
@@ -51,6 +53,7 @@ No events yet. `MembershipPaused` comes with #251, `MembershipCancelled` with #2
 |---|---|---|---|
 | Identity | The JWT, checked with `libs/FitLife.Authentication` | Open Host Service (upstream) | Every service checks the same token the same way |
 | Booking; Access (NEXT) | REST, the lookup by account id | Open Host Service (we are upstream) | Several contexts need the same answer, synchronously |
+| Booking, Notification | RabbitMQ events (`MembershipPaused`, `PaymentFailed`) on `fitlife.events` | Customer-Supplier (we are upstream) | Booking frees a paused member's seats (#243); Notification tells the member (#224) |
 | Payment provider | REST, `POST /v1/charges` at `PaymentProvider:BaseUrl`; a Postman Mock Server in the PoC (`tests/postman/mocks/payment-provider.*`) | ACL: `PaymentProvider/PaymentProviderClient` is the only class that knows its field names | External system (P5). Declined, a provider error and no answer all mean the fee is not paid. Once a charge starts, a cancelled request stops neither the charge nor the save of its result, so a paid fee is never left as `PaymentMissing`; the client's 10 s time-out still applies (#544) |
 
 ## Rules for this folder

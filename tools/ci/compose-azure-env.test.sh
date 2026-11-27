@@ -24,7 +24,9 @@ check() { # check <description> <command...>
 has() { grep -qF -- "$1" <<<"$out"; }
 lacks() { ! grep -qF -- "$1" <<<"$out"; }
 
-# compose <booking-svc keys...>: a services.yml with a gateway, booking-svc with those keys, and identity-svc (not in Azure)
+# compose <booking-svc keys...>: a services.yml with a gateway, booking-svc with those keys, membership-svc with the keys
+# in $membership_keys, and identity-svc (not in Azure)
+membership_keys="Vault__Address Vault__Token"
 compose() {
   {
     echo "services:"
@@ -37,14 +39,29 @@ compose() {
     for key in "$@"; do echo "      $key: x # a comment"; done
     echo "    healthcheck:"
     echo "      test: [\"CMD\", \"true\"]"
+    echo "  membership-svc:"
+    echo "    environment:"
+    for key in $membership_keys; do echo "      $key: x"; done
     echo "  identity-svc:"
     echo "    environment:"
     echo "      Only__InCompose: x"
   } >"$work/services.yml"
 }
 
+# The form of deploy/azure/modules/containers.bicep: one container per entry of services (main.bicepparam), with the
+# settings every service shares and its own in serviceSettings.
 cat >"$work/containers.bicep" <<'BICEP'
-var containers = [
+var serviceSettings = {
+  booking: [
+    {
+      name: 'Membership__BaseUrl' // a comment
+      value: 'http://127.0.0.1:5002'
+    }
+  ]
+  membership: []
+}
+
+var containerDefinitions = [
   {
     name: 'nginx'
     properties: {
@@ -61,24 +78,41 @@ var containers = [
       ]
     }
   }
-  {
-    name: '${serviceContext}-svc'
+]
+
+var serviceContainers = [
+  for service in services: {
+    name: '${service.context}-svc'
     properties: {
-      environmentVariables: [
-        {
-          name: 'Vault__Address'
-          value: 'http://127.0.0.1:8200'
-        }
-        {
-          name: 'Vault__Token'
-          secureValue: vaultRootToken
-        }
-      ]
+      environmentVariables: concat(
+        [
+          {
+            name: 'Vault__Address'
+            value: 'http://127.0.0.1:8200'
+          }
+          {
+            name: 'Vault__Token'
+            secureValue: vaultRootToken
+          }
+        ],
+        serviceSettings[service.context]
+      )
     }
   }
 ]
 BICEP
-echo "param serviceContext = 'booking'" >"$work/main.bicepparam"
+cat >"$work/main.bicepparam" <<'PARAM'
+param services = [
+  {
+    context: 'booking'
+    image: 'albertarnason/bookingservice'
+  }
+  {
+    context: 'membership'
+    image: 'albertarnason/membershipservice'
+  }
+]
+PARAM
 
 # run [local-only list]: runs the script on the fixtures; sets out and status
 run() {
@@ -90,7 +124,8 @@ compose Vault__Address Vault__Token
 run ""
 check "a key in both passes" test "$status" = 0
 check "the gateway is compared with the nginx container" has "gateway (Azure: nginx)"
-check "\${serviceContext}-svc is the bicepparam's context" has "booking-svc (Azure: booking-svc)"
+check "each entry of services in main.bicepparam is a container" has "booking-svc (Azure: booking-svc)"
+check "a second entry of services is a container too" has "membership-svc (Azure: membership-svc)"
 check "a service with no Azure container is skipped and named" has "identity-svc: no container in Azure, skipped"
 
 compose Vault__Address Vault__Token MongoDb__Host
@@ -108,6 +143,16 @@ check "a local-only entry for every service (*) passes" test "$status" = 0
 
 run "membership-svc:MongoDb__Host another service"
 check "a local-only entry of another service doesn't cover this one" test "$status" != 0
+
+compose Vault__Address Vault__Token Membership__BaseUrl
+run ""
+check "a service's own settings in serviceSettings are in its container" test "$status" = 0
+
+membership_keys="Vault__Address Vault__Token Membership__BaseUrl"
+compose Vault__Address Vault__Token
+run ""
+check "another service's settings in serviceSettings are not" has "FAIL membership-svc: Membership__BaseUrl is in compose but not in Azure's membership-svc container"
+membership_keys="Vault__Address Vault__Token"
 
 compose Vault__Address Vault__Token
 run "booking-svc:Seed__Enabled #386"

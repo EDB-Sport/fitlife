@@ -12,10 +12,19 @@ name: deploy
 on:
   workflow_call:
   workflow_dispatch:
+    # An empty version means the newest <prefix>/v* release of that image (tools/ci/deploy-versions.sh).
     inputs:
-      service_tag:
-        description: Version of the thin-slice service image (X.Y.Z)
-        required: true
+      booking_tag:
+        description: Version of the Booking image (X.Y.Z). Empty means the newest bookingservice/v* release
+        required: false
+        type: string
+      membership_tag:
+        description: Version of the Membership image (X.Y.Z). Empty means the newest membershipservice/v* release
+        required: false
+        type: string
+      identity_tag:
+        description: Version of the Identity image (X.Y.Z). Empty means the newest identityservice/v* release
+        required: false
         type: string
       ui_tag:
         description: Version of the member portal image (X.Y.Z). Empty means the newest memberportal/v* release, or no portal while it has none
@@ -31,11 +40,6 @@ permissions:
 
 env:
   RESOURCE_GROUP: rg-fitlife-prod
-  # Git tag prefixes of the released images (section 9: <prefix>/vX.Y.Z), the same names as the
-  # Docker Hub repositories in deploy/azure/main.bicepparam.
-  SERVICE_TAG_PREFIX: bookingservice
-  UI_TAG_PREFIX: memberportal
-  NOTIFICATION_TAG_PREFIX: notificationservice
 
 jobs:
   deploy:
@@ -64,59 +68,16 @@ jobs:
       - name: Choose image versions
         id: versions
         env:
-          INPUT_SERVICE_TAG: ${{ inputs.service_tag }}
+          INPUT_BOOKING_TAG: ${{ inputs.booking_tag }}
+          INPUT_MEMBERSHIP_TAG: ${{ inputs.membership_tag }}
+          INPUT_IDENTITY_TAG: ${{ inputs.identity_tag }}
           INPUT_UI_TAG: ${{ inputs.ui_tag }}
           INPUT_NOTIFICATION_TAG: ${{ inputs.notification_tag }}
-        run: |
-          set -euo pipefail
-          # The newest <prefix>/vX.Y.Z tag on the released commit's history, without the prefix.
-          # Empty if there is none: the service then fails the check below, the member portal (#198) and
-          # NotificationService (#261) are left out.
-          released_version() {
-            { git describe --tags --abbrev=0 --match "$1/v*" HEAD 2>/dev/null || true; } | sed "s|^$1/v||"
-          }
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            service_tag="$INPUT_SERVICE_TAG"
-            # Empty means the released member portal, so redeploying a service by hand keeps a live portal.
-            ui_tag="${INPUT_UI_TAG:-$(released_version "$UI_TAG_PREFIX")}"
-            notification_tag="${INPUT_NOTIFICATION_TAG:-$(released_version "$NOTIFICATION_TAG_PREFIX")}"
-          else
-            service_tag="$(released_version "$SERVICE_TAG_PREFIX")"
-            ui_tag="$(released_version "$UI_TAG_PREFIX")"
-            notification_tag="$(released_version "$NOTIFICATION_TAG_PREFIX")"
-          fi
-          # Released versions only: this also rules out latest, develop and typos.
-          is_version() { [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; }
-          if ! is_version "$service_tag"; then
-            echo "::error::'$service_tag' is not a released version of $SERVICE_TAG_PREFIX (X.Y.Z)"
-            exit 1
-          fi
-          if [ -n "$ui_tag" ] && ! is_version "$ui_tag"; then
-            echo "::error::'$ui_tag' is not a released version of $UI_TAG_PREFIX (X.Y.Z)"
-            exit 1
-          fi
-          if [ -n "$notification_tag" ] && ! is_version "$notification_tag"; then
-            echo "::error::'$notification_tag' is not a released version of $NOTIFICATION_TAG_PREFIX (X.Y.Z)"
-            exit 1
-          fi
-          # main.bicepparam reads the versions from the environment. Without UI_IMAGE_TAG it leaves the
-          # member portal out, and without NOTIFICATION_IMAGE_TAG NotificationService, so each variable is set
-          # only when there is a version: a step's env: would set it to an empty string instead.
-          echo "SERVICE_IMAGE_TAG=$service_tag" >> "$GITHUB_ENV"
-          if [ -n "$ui_tag" ]; then
-            echo "Deploying $SERVICE_TAG_PREFIX $service_tag and $UI_TAG_PREFIX $ui_tag"
-            echo "UI_IMAGE_TAG=$ui_tag" >> "$GITHUB_ENV"
-          else
-            echo "Deploying $SERVICE_TAG_PREFIX $service_tag without $UI_TAG_PREFIX, which has no release yet"
-          fi
-          if [ -n "$notification_tag" ]; then
-            echo "With $NOTIFICATION_TAG_PREFIX $notification_tag"
-            echo "NOTIFICATION_IMAGE_TAG=$notification_tag" >> "$GITHUB_ENV"
-          else
-            echo "Without $NOTIFICATION_TAG_PREFIX, which has no release yet"
-          fi
-          echo "service_tag=$service_tag" >> "$GITHUB_OUTPUT"
-          echo "ui_tag=$ui_tag" >> "$GITHUB_OUTPUT"
+        # The newest <prefix>/vX.Y.Z tag of each image on the released commit's history, or the version typed in
+        # by hand. Only X.Y.Z. It sets BOOKING_IMAGE_TAG, MEMBERSHIP_IMAGE_TAG, IDENTITY_IMAGE_TAG and, once the
+        # member portal (#198) and NotificationService (#261) have a release, UI_IMAGE_TAG and
+        # NOTIFICATION_IMAGE_TAG: main.bicepparam reads them. Tested by deploy-versions.test.sh.
+        run: tools/ci/deploy-versions.sh
 
       - name: Log in to Azure (OpenID Connect)
         uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
@@ -142,6 +103,9 @@ jobs:
           RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
           VAULT_DEV_ROOT_TOKEN: ${{ secrets.VAULT_DEV_ROOT_TOKEN }}
           JWT_SIGNING_KEY: ${{ secrets.JWT_SIGNING_KEY }}
+          DEMO_MEDLEM_PASSWORD: ${{ secrets.DEMO_MEDLEM_PASSWORD }}
+          DEMO_TRAENER_PASSWORD: ${{ secrets.DEMO_TRAENER_PASSWORD }}
+          DEMO_ADMIN_PASSWORD: ${{ secrets.DEMO_ADMIN_PASSWORD }}
         run: |
           az deployment group what-if \
             --resource-group "$RESOURCE_GROUP" \
@@ -160,6 +124,9 @@ jobs:
           RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
           VAULT_DEV_ROOT_TOKEN: ${{ secrets.VAULT_DEV_ROOT_TOKEN }}
           JWT_SIGNING_KEY: ${{ secrets.JWT_SIGNING_KEY }}
+          DEMO_MEDLEM_PASSWORD: ${{ secrets.DEMO_MEDLEM_PASSWORD }}
+          DEMO_TRAENER_PASSWORD: ${{ secrets.DEMO_TRAENER_PASSWORD }}
+          DEMO_ADMIN_PASSWORD: ${{ secrets.DEMO_ADMIN_PASSWORD }}
         run: |
           set -euo pipefail
           outputs="$(az deployment group create \
@@ -169,7 +136,6 @@ jobs:
             --query properties.outputs \
             --output json)"
           echo "public_url=$(jq -r .publicUrl.value <<< "$outputs")" >> "$GITHUB_OUTPUT"
-          echo "service_base_path=$(jq -r .serviceBasePath.value <<< "$outputs")" >> "$GITHUB_OUTPUT"
 
       # Caddy asks Let's Encrypt for a certificate on the first start, which takes a moment.
       # The wait is shared with azure-power.yml: tools/ci/wait-for-health.sh (#278).
@@ -180,16 +146,22 @@ jobs:
 
       # A failure fails the deploy. The fix is to run this workflow by hand with the previous versions.
       # The per-service collections and e2e/booking-flow join this step as they are written (section 9a).
+      # The collection logs in as the Medlem demo account. Its password is written to a globals file here, not
+      # given with --env-var: on the command line it would show in the runner's process list.
       - name: Smoke test (Newman)
         env:
           PUBLIC_URL: ${{ steps.deploy.outputs.public_url }}
-          SERVICE_BASE_PATH: ${{ steps.deploy.outputs.service_base_path }}
           MEMBER_PORTAL: ${{ steps.versions.outputs.ui_tag != '' }}
+          DEMO_MEDLEM_PASSWORD: ${{ secrets.DEMO_MEDLEM_PASSWORD }}
         run: |
+          set -euo pipefail
+          umask 077
+          globals="$RUNNER_TEMP/smoke-globals.json"
+          jq -n '{values: [{key: "medlemPassword", value: env.DEMO_MEDLEM_PASSWORD, type: "secret", enabled: true}]}' > "$globals"
           npx --yes newman@6.2.3 run tests/postman/smoke/thin-slice.postman_collection.json \
             --environment tests/postman/environments/azure.postman_environment.json \
+            --globals "$globals" \
             --env-var "baseUrl=$PUBLIC_URL" \
-            --env-var "serviceBasePath=$SERVICE_BASE_PATH" \
             --env-var "memberPortal=$MEMBER_PORTAL" \
             --reporters cli,junit \
             --reporter-junit-export newman/thin-slice.xml

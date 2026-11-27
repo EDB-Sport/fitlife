@@ -1,3 +1,4 @@
+using FitLife.Messaging;
 using MembershipService.Domain;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -17,12 +18,27 @@ public sealed class MembershipFactory(MongoDbFixture? mongo = null) : WebApplica
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("Jwt:SigningKey", TestTokens.SigningKey);
-        builder.ConfigureTestServices(services => services.AddSingleton<IPaymentProvider>(new AcceptingPaymentProvider()));
+        builder.ConfigureTestServices(services =>
+        {
+            services.AddSingleton<IPaymentProvider>(new AcceptingPaymentProvider());
+
+            // No RabbitMQ in these tests: the handler tests check what is published (#251)
+            services.AddSingleton<IEventPublisher>(new DiscardingEventPublisher());
+        });
         if (mongo is not null)
         {
             builder.UseSetting("MongoDb:Host", mongo.Host);
             builder.UseSetting("MongoDb:Port", mongo.Port.ToString(System.Globalization.CultureInfo.InvariantCulture));
             builder.UseSetting("MongoDb:Password", MongoDbFixture.ServicePassword);
+        }
+    }
+
+    private sealed class DiscardingEventPublisher : IEventPublisher
+    {
+        public Task PublishAsync<TEvent>(TEvent integrationEvent, CancellationToken cancellationToken)
+            where TEvent : IIntegrationEvent
+        {
+            return Task.CompletedTask;
         }
     }
 

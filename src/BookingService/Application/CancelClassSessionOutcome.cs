@@ -11,7 +11,4 @@ public enum CancelClassSessionOutcome
 
     /// <summary>The class session was cancelled before.</summary>
     ClassSessionAlreadyCancelled,
-
-    /// <summary>Another request saved the class session first.</summary>
-    ChangedMeanwhile,
 }

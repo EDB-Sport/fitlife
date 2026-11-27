@@ -373,6 +373,11 @@ var containerDefinitions = [
           name: 'ASPNETCORE_HTTP_PORTS'
           value: string(uiPort)
         }
+        {
+          // Where the portal's clients reach the services' APIs: Nginx in the group (compose: http://gateway:80)
+          name: 'Gateway__BaseUrl'
+          value: 'http://127.0.0.1:${gatewayPort}'
+        }
       ]
       livenessProbe: healthProbe(uiHealthPath, uiPort, 30)
       readinessProbe: healthProbe(uiHealthPath, uiPort, 10)

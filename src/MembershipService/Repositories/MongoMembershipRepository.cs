@@ -57,6 +57,10 @@ public sealed class MongoMembershipRepository(IMongoDatabase database) : IMember
 
         public DateOnly StartDate { get; init; }
 
+        public DateOnly? PausedFrom { get; init; }
+
+        public DateOnly? PausedTo { get; init; }
+
         public static MembershipDocument From(Membership membership)
         {
             return new MembershipDocument
@@ -66,12 +70,16 @@ public sealed class MongoMembershipRepository(IMongoDatabase database) : IMember
                 Type = membership.Type,
                 Status = membership.Status,
                 StartDate = membership.StartDate,
+                PausedFrom = membership.PausedFrom,
+                PausedTo = membership.PausedTo,
             };
         }
 
         public Membership ToMembership()
         {
-            return Membership.Restore(Id, MemberId, Type, Status, StartDate);
+            var membership = Membership.Restore(Id, MemberId, Type, Status, StartDate);
+            membership.RestorePausePeriod(PausedFrom, PausedTo);
+            return membership;
         }
     }
 }

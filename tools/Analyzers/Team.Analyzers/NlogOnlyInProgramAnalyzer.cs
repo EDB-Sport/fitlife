@@ -26,7 +26,7 @@ public sealed class NlogOnlyInProgramAnalyzer : DiagnosticAnalyzer
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "NLog is set up in Program.cs. Other code logs through ILogger<T>, which tests can fake and CA2254 checks.",
-        helpLinkUri: "https://github.com/EDB-Sport/fitlife/blob/develop/docs/CSHARP_SETUP_TODO.md#4-project-specific-roslyn-analyzers-toolsanalyzers");
+        helpLinkUri: "https://github.com/EDB-Sport/fitlife/blob/develop/docs/TECHNICAL_REFERENCE.md#4-project-specific-roslyn-analyzers-toolsanalyzers");
 
     private static readonly ImmutableHashSet<string> NlogTypes = ImmutableHashSet.Create(StringComparer.Ordinal, "LogManager", "Logger", "ILogger");
 

@@ -6,6 +6,8 @@ Checked by CI (`PR description`, `tools/ci/check-pr-body.sh`):
 2. Fill in **What changed and why**: one or two lines.
 3. In **Tests**, tick "No existing test was changed or removed", or say which test changed and why.
 
+The template's **What to verify and how** section is optional, for feature PRs only; CI doesn't require it.
+
 Not checked by CI: assign yourself to the issue when you start, before you open the PR, so nobody else starts the same work.
 
 A PR that adds or changes an endpoint or a page updates its row in `docs/domain/ACCESS.md`. Checked by CI for the endpoints of BookingService, IdentityService, MembershipService and NotificationService (`AccessTableTests` in each service's integration tests, #489): route, method, roles and AllowAnonymous must match the row, and a row not marked "(planned)" needs an endpoint. Not checked by CI: pages, `/mcp`, and the rows of services without an endpoint yet.

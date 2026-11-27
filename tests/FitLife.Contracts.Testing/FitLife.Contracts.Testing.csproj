@@ -5,7 +5,7 @@
     consumer's fake against the provider's OpenAPI contract in contracts/openapi/ (#522), and compares
     docs/domain/ACCESS.md with a service's endpoints (#489).
     Producer tests (the publishing service) and consumer tests (the consuming service) reference it,
-    so both sides test against exactly the same file (docs/CSHARP_SETUP_TODO.md section 6).
+    so both sides test against exactly the same file (docs/TECHNICAL_REFERENCE.md section 6).
   -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The docs layout of issue #515: docs/TECHNICAL_REFERENCE.md says what is built, the planning docs are history in
-# docs/legacy/ with a warning banner, and a stub at each old path keeps its links working until #516 repoints them.
+# docs/legacy/ with a warning banner. The stubs at the old paths were removed in #516 (tools/ci/docs-references.test.sh).
 # Usage: tools/ci/docs-legacy.test.sh   (from anywhere in the repo; exit 0 = all pass)
 . "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
@@ -46,15 +46,6 @@ if [ -f docs/legacy/README.md ]; then
 else
   fail "docs/legacy/README.md is missing: say what the folder holds and that it is history"
 fi
-
-# The stubs: short, and pointing at the replacement
-for stub in docs/CSHARP_SETUP_TODO.md docs/DDD_PLAN.md; do
-  if [ -f "$stub" ] && [ "$(wc -l <"$stub")" -le 5 ] && grep -q 'Moved' "$stub"; then
-    pass "$stub is a short 'Moved' stub"
-  else
-    fail "$stub is not a stub of at most 5 lines that says 'Moved'"
-  fi
-done
 
 if grep -q 'docs/legacy/' AGENTS.md; then
   pass "AGENTS.md says docs/legacy/ is history"

@@ -1,5 +1,5 @@
 <!--
-  Restore settings and defaults for every project (docs/CSHARP_SETUP_TODO.md section 1).
+  Restore settings and defaults for every project (docs/TECHNICAL_REFERENCE.md section 1).
   The strictness settings are in Directory.Build.targets, so a .csproj can't switch them off.
   Code-owned: changes need a review from the maintainers.
 -->

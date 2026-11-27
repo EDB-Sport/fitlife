@@ -28,7 +28,7 @@ public sealed class ReservationMadeSubscriberTests
         // Arrange
         ReservationMade example = EventJson.Deserialize<ReservationMade>(Encoding.UTF8.GetBytes(EventSchemas.Example("reservation-made")));
         var logger = new CapturingLogger();
-        var subscriber = new ReservationMadeSubscriber(new InMemoryNotificationRepository(), logger);
+        var subscriber = new ReservationMadeSubscriber(new InMemoryNotificationRepository(), TimeProvider.System, logger);
 
         // Act
         await subscriber.HandleAsync(example, CancellationToken.None).ConfigureAwait(false);
@@ -42,7 +42,7 @@ public sealed class ReservationMadeSubscriberTests
     {
         // Arrange
         var logger = new CapturingLogger();
-        var subscriber = new ReservationMadeSubscriber(new InMemoryNotificationRepository(), logger);
+        var subscriber = new ReservationMadeSubscriber(new InMemoryNotificationRepository(), TimeProvider.System, logger);
         await subscriber.HandleAsync(Sample, CancellationToken.None).ConfigureAwait(false);
 
         // Act
@@ -57,7 +57,7 @@ public sealed class ReservationMadeSubscriberTests
     {
         // Arrange
         var logger = new CapturingLogger();
-        var subscriber = new ReservationMadeSubscriber(new InMemoryNotificationRepository(), logger);
+        var subscriber = new ReservationMadeSubscriber(new InMemoryNotificationRepository(), TimeProvider.System, logger);
 
         // Act
         using (CorrelationContext.Begin(NullLogger.Instance, "corr-1"))
@@ -74,13 +74,38 @@ public sealed class ReservationMadeSubscriberTests
     {
         // Arrange
         var repository = new InMemoryNotificationRepository();
-        var subscriber = new ReservationMadeSubscriber(repository, new CapturingLogger());
+        var subscriber = new ReservationMadeSubscriber(repository, TimeProvider.System, new CapturingLogger());
 
         // Act
         await subscriber.HandleAsync(Sample, CancellationToken.None).ConfigureAwait(false);
 
         // Assert
         Assert.That(repository.Stored.Select(notification => notification.Id), Is.EquivalentTo(StoredIds));
+    }
+
+    [Test]
+    public async Task HandleAsync_ReservationMade_StoresTheKindAndTheTime()
+    {
+        // Arrange
+        var now = new DateTimeOffset(2026, 11, 30, 9, 15, 0, TimeSpan.Zero);
+        var repository = new InMemoryNotificationRepository();
+        var subscriber = new ReservationMadeSubscriber(repository, new FixedTime(now), new CapturingLogger());
+
+        // Act
+        await subscriber.HandleAsync(Sample, CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Notification stored = repository.Stored.Single();
+        Assert.That((stored.Kind, stored.OccurredAt), Is.EqualTo(("ReservationMade", now)));
+    }
+
+    /// <summary>The clock, stopped at one instant.</summary>
+    private sealed class FixedTime(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow()
+        {
+            return now;
+        }
     }
 
     /// <summary>The repository's contract: a second notification with the same id is not added.</summary>
@@ -93,6 +118,12 @@ public sealed class ReservationMadeSubscriberTests
         public Task<bool> TryAddAsync(Notification notification, CancellationToken cancellationToken)
         {
             return Task.FromResult(_stored.TryAdd(notification.Id, notification));
+        }
+
+        public Task<IReadOnlyList<Notification>> ListForMemberAsync(string memberId, CancellationToken cancellationToken)
+        {
+            IReadOnlyList<Notification> listed = [.. _stored.Values.Where(notification => string.Equals(notification.MemberId, memberId, StringComparison.Ordinal)).OrderByDescending(notification => notification.OccurredAt)];
+            return Task.FromResult(listed);
         }
     }
 

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using BookingService.Api;
 using BookingService.Application;
 using BookingService.Clients;
 using BookingService.Jobs;
@@ -8,6 +9,7 @@ using BookingService.Seed;
 using FitLife.Authentication;
 using FitLife.Configuration;
 using FitLife.Correlation;
+using Microsoft.AspNetCore.OpenApi;
 using NLog;
 using NLog.Web;
 using Scalar.AspNetCore;
@@ -23,7 +25,13 @@ try
     builder.Logging.ClearProviders();
     builder.Host.UseNLog();
 
-    builder.Services.AddOpenApi();
+    builder.Services.AddOpenApi(options =>
+    {
+        // The bearer token in the document: the scheme, and a requirement on each endpoint with [Authorize] (#369)
+        var bearer = new BearerSecurityTransformer();
+        options.AddDocumentTransformer(bearer);
+        options.AddOperationTransformer(bearer);
+    });
     builder.Services.AddHealthChecks();
     builder.Services.AddControllers();
     builder.Services.AddProblemDetails();
@@ -46,9 +54,11 @@ try
     builder.Services.AddMembershipClient();
     builder.Services.AddScoped<ReserveSeatCommandHandler>();
 
-    // The member's token (#183, #260): POST reservations needs the role Medlem, POST class-sessions Træner or Admin (#238); reading the class schedule and /health stay open
+    // The member's token (#183, #260), closed by default (#369): an endpoint needs a token unless it allows anonymous calls.
+    // Reserving, cancelling and joining the waitlist need the role Medlem, scheduling and cancelling a class session Træner or
+    // Admin (#238, #239); reading the class schedule and /health stay open
     builder.Services.AddFitLifeJwtAuthentication();
-    builder.Services.AddAuthorization();
+    builder.Services.AddFitLifeAuthorization();
 
     WebApplication app = builder.Build();
 
@@ -58,15 +68,18 @@ try
     // Course rule #7: the OpenAPI document and Scalar only in Development
     if (app.Environment.IsDevelopment())
     {
-        app.MapOpenApi();
-        app.MapScalarApiReference();
+        app.MapOpenApi().AllowAnonymous();
+        app.MapScalarApiReference().AllowAnonymous();
     }
 
     app.UseExceptionHandler(); // an unexpected error is a problem-details 500, without the exception's text
     app.UseAuthentication();
     app.UseAuthorization();
-    app.MapHealthChecks("/health");
+    app.MapHealthChecks("/health").AllowAnonymous();
     app.MapControllers();
+
+    // A path with no endpoint answers 404, not 401 (#440)
+    app.MapFitLifeNotFoundFallback();
 
     // The startup line: which service and which release is running (the version is also a Loki label)
     if (app.Logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information))

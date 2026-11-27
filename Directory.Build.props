@@ -28,6 +28,8 @@
   <ItemGroup Condition="'$(MSBuildProjectName)' != 'Team.Analyzers' And '$(MSBuildProjectName)' != 'Team.Analyzers.Tests'">
     <ProjectReference Include="$(MSBuildThisFileDirectory)tools/Analyzers/Team.Analyzers/Team.Analyzers.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <!-- Read by TEAM010 as build_property.RepoRoot: only files under the repo's own src/ count, wherever the clone is (#533) -->
+    <CompilerVisibleProperty Include="RepoRoot" />
     <!-- Read by TEAM008: public *.Models types must be in the In code column (issue #76) -->
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)GLOSSARY.md" />
   </ItemGroup>

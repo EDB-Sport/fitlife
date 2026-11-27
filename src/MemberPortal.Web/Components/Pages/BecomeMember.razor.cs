@@ -35,6 +35,9 @@ public partial class BecomeMember(IIdentityClient identityClient, IMembershipCli
 
     private bool ShowLogInLink { get; set; }
 
+    // Joined, but the first fee isn't paid: the page says so instead of the form (#546)
+    private bool PaymentIsMissing { get; set; }
+
     /// <inheritdoc />
     protected override async Task OnInitializedAsync()
     {
@@ -45,16 +48,18 @@ public partial class BecomeMember(IIdentityClient identityClient, IMembershipCli
         }
     }
 
+    // The input renders empty, so the value goes one way only: from the input to the form
+    private void SetPassword(string? password)
+    {
+        Fields.Password = password ?? string.Empty;
+    }
+
     private async Task BecomeMemberAsync()
     {
-        // The password is never written back into the page
-        string password = Fields.Password;
-        Fields.Password = string.Empty;
-
         string? accessToken = null;
         if (!IsLoggedIn)
         {
-            TokenResponse? token = await CreateAccountAndLogInAsync(password).ConfigureAwait(false);
+            TokenResponse? token = await CreateAccountAndLogInAsync(Fields.Password).ConfigureAwait(false);
             if (token is null)
             {
                 return;
@@ -110,6 +115,7 @@ public partial class BecomeMember(IIdentityClient identityClient, IMembershipCli
     }
 
     // Joins with the fresh token, or with the cookie's when accessToken is null. False, with the sentence set, when it failed
+    // or the first fee isn't paid
     private async Task<bool> JoinAsync(string? accessToken)
     {
         JoinMembershipAnswer answer;
@@ -134,6 +140,12 @@ public partial class BecomeMember(IIdentityClient identityClient, IMembershipCli
         if (answer == JoinMembershipAnswer.AlreadyAMember)
         {
             ErrorSentence = ErrorSentences.AlreadyAMember;
+            return false;
+        }
+
+        if (answer == JoinMembershipAnswer.PaymentMissing)
+        {
+            PaymentIsMissing = true;
             return false;
         }
 

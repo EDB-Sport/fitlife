@@ -48,7 +48,7 @@ Rules:
 - **Hotfixes:** create `hotfix/<service>-<x.y.z>` from `main` and raise that service's PATCH number. Merge into `main`, where CI tags and deploys it like a release, then merge into `develop` so the fix isn't lost.
 - **CI checks the versions** before a release or hotfix can merge: every changed service has a higher version, a hotfix raises only PATCH, and a breaking API change raises MAJOR (`CSHARP_SETUP_TODO.md` section 9).
 - **Merge with merge commits, not squash.** That way the network graph shows feature, release and hotfix branches, as `git flow ... finish` would.
-- **The `git flow` CLI:** use it to start branches (`git flow feature start ...`). Finish through a PR instead of `git flow ... finish`, because finish merges and pushes locally, and branch protection blocks that.
+- **Starting a branch:** `git switch -c feature/<issue>-<name> origin/develop --no-track`, as in the §2.2 block (a release or hotfix branch the same way, from `origin/develop` or `origin/main`). Don't use `git flow feature start`: it fails in a fresh clone ("Not a gitflow-enabled repo", #480). Finish through a PR instead of `git flow ... finish`, because finish merges and pushes locally, and branch protection blocks that.
 - **Delete** feature, release and hotfix branches after they are merged.
 - **Keep feature branches short-lived** to avoid large conflicts between parallel agents.
 - **Merge `develop` (or the base) into a feature branch only** when GitHub shows a conflict, or when a fix on `develop` is needed for green CI, which includes stale CI (section 3). Don't merge it in just to be up to date.

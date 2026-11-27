@@ -1,7 +1,7 @@
 # Booking (`src/BookingService/`)
 
 > From `docs/templates/CONTEXT.md`. Keep it under about 80 lines, and update it in the same PR that changes the model.
-> **Status: invariants 1–8 modelled (#155–#162).** The context map (`docs/domain/CONTEXT-MAP.md`) is decided in ADR 007. The tactical model below is DDD_PLAN step 4; the rules come from the TO-BE-kontekst §8 (Booking). Each further invariant is its own issue.
+> **Status: invariants 1–8 modelled (#155–#162).** The context map (`docs/domain/CONTEXT-MAP.md`) is decided in ADR 007. The tactical model below follows METHODOLOGY section 11; the rules come from the TO-BE-kontekst §8 (Booking). Each further invariant is its own issue.
 
 ## Purpose
 

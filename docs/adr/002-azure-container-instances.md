@@ -6,7 +6,7 @@
 
 ## Context
 
-The IT-arkitektur course runs the system on-premises with Docker Compose, and its cloud variant (module M15, `foodfactory.bicep`) uses several Azure Container Instances (ACI) container groups in a virtual network behind an Application Gateway. The project description says the solution runs container-based with monitoring, prefers a cloud solution, and needs links to the running functionality in the hand-in. The group pays with Azure for Students credit, which has to last from the first deploy through the exam in January. The Application Gateway has a fixed hourly cost that would use most of that credit (`docs/CSHARP_SETUP_TODO.md` section 9a).
+The IT-arkitektur course runs the system on-premises with Docker Compose, and its cloud variant (module M15, `foodfactory.bicep`) uses several Azure Container Instances (ACI) container groups in a virtual network behind an Application Gateway. The project description says the solution runs container-based with monitoring, prefers a cloud solution, and needs links to the running functionality in the hand-in. The group pays with Azure for Students credit, which has to last from the first deploy through the exam in January. The Application Gateway has a fixed hourly cost that would use most of that credit (`docs/TECHNICAL_REFERENCE.md` section 9a).
 
 ## Decision
 
@@ -16,7 +16,7 @@ Production runs on **Azure Container Instances**, provisioned with **Bicep** in 
 
 ## App registration check
 
-OIDC from GitHub Actions needs a federated credential, usually on an app registration in Microsoft Entra ID. An Azure for Students subscription in a school tenant may not allow members to create app registrations (`docs/CSHARP_SETUP_TODO.md` section 9a, "Check early").
+OIDC from GitHub Actions needs a federated credential, usually on an app registration in Microsoft Entra ID. An Azure for Students subscription in a school tenant may not allow members to create app registrations (`docs/TECHNICAL_REFERENCE.md` section 9a).
 
 **Result: not yet checked.** Issue #1's agent has no access to the Azure portal or the Azure CLI. A member with the subscription runs the check and writes the result here:
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # deploy-check: broken deployment files fail on the PR, not during a deploy.
-# Issue #21, docs/CSHARP_SETUP_TODO.md section 10 job 9. CI runs it in .github/workflows/deploy-check.yml.
+# Issue #21, docs/TECHNICAL_REFERENCE.md section 10. CI runs it in .github/workflows/deploy-check.yml.
 #
 # Run it locally from anywhere in the repo:  tools/ci/deploy-check.sh
 # Needs bash, git, jq, python3 and Docker with Compose v2. Every other tool (nginx, yq, gcx, az bicep)
@@ -20,7 +20,7 @@
 # Every check runs, and the script exits 1 at the end if any of them failed.
 set -euo pipefail
 
-# Pinned tool versions. Never :latest (docs/CSHARP_SETUP_TODO.md section 7).
+# Pinned tool versions. Never :latest (docs/TECHNICAL_REFERENCE.md section 7).
 YQ_IMAGE=mikefarah/yq:4.54.2
 GCX_VERSION=1.7.1 # https://github.com/grafana/gcx/releases, checksums from gcx_<version>_checksums.txt
 GCX_SHA256_AMD64=5f1601feac13d850017064a9b556f11983de6def2986ba0bee402a947659c3e9

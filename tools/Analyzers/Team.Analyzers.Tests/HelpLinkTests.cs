@@ -50,6 +50,6 @@ public sealed class HelpLinkTests
         string[] links = [.. analyzer.SupportedDiagnostics.Select(rule => rule.HelpLinkUri ?? string.Empty)];
 
         // Assert
-        Assert.That(links, Has.None.Contains("CSHARP_SETUP_TODO"));
+        Assert.That(links, Has.None.Contains("SETUP_TODO"));
     }
 }

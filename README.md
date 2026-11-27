@@ -29,7 +29,7 @@ issue → failing test → simplest implementation → refactor (if small) → P
 
 ## Build rules
 
-The build is strict on purpose: warnings are errors, all analyzers are on, and a `.csproj` can't switch the rules off. The rule files in the repo root (`Directory.Build.*`, `Directory.Packages.props`, `.editorconfig`, `.globalconfig`, `SonarLint.xml`, `BannedSymbols.txt`) are code-owned. Background: `docs/CSHARP_SETUP_TODO.md` sections 1–3.
+The build is strict on purpose: warnings are errors, all analyzers are on, and a `.csproj` can't switch the rules off. The rule files in the repo root (`Directory.Build.*`, `Directory.Packages.props`, `.editorconfig`, `.globalconfig`, `SonarLint.xml`, `BannedSymbols.txt`) are code-owned. Background: `docs/TECHNICAL_REFERENCE.md` sections 1–3.
 
 - Build quietly: `dotnet build -v q -clp:NoSummary -tl:off`
 - On an analyzer error, run the fixer before you edit by hand: `dotnet format style --diagnostics <ID>` or `dotnet format analyzers --diagnostics <ID>`. The fixes are deterministic and solution-wide.

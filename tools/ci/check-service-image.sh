@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Executable acceptance check for a service's Dockerfile (issue #93, docs/CSHARP_SETUP_TODO.md section 8):
+# Executable acceptance check for a service's Dockerfile (issue #93, docs/TECHNICAL_REFERENCE.md section 8):
 # the image builds with the repo root as context, and the container answers /health with 200.
 # Usage: tools/ci/check-service-image.sh [--build-only] <Service> [KEY=VALUE ...]
 #   e.g. tools/ci/check-service-image.sh BookingService

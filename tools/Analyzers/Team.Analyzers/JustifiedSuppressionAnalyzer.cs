@@ -32,7 +32,7 @@ public sealed class JustifiedSuppressionAnalyzer : DiagnosticAnalyzer
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "A pragma, a '#nullable disable' or a [SuppressMessage] switches a check off. Each one must name the GitHub issue that allows it, so every exception is traceable and reviewed.",
-        helpLinkUri: "https://github.com/EDB-Sport/fitlife/blob/develop/docs/CSHARP_SETUP_TODO.md#4-project-specific-roslyn-analyzers-toolsanalyzers",
+        helpLinkUri: "https://github.com/EDB-Sport/fitlife/blob/develop/docs/TECHNICAL_REFERENCE.md#4-project-specific-roslyn-analyzers-toolsanalyzers",
         customTags: Unsuppressible);
 
     private const string CommentFix = "'// #<issue>: <reason>' at the end of the same line";

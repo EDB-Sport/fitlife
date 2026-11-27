@@ -1,6 +1,6 @@
 # Production on Azure: Bicep + Azure Container Instances
 
-Production runs as one container group on Azure Container Instances (ACI), described in Bicep (`docs/TECHNICAL_REFERENCE.md` section 9a). It holds Booking, Membership and Identity (#371), NotificationService (#261) and the member portal, plus MongoDB, RabbitMQ and Vault (#23). Identity seeds the three demo accounts, one per role, so the public URL can be logged in to. Loki and Grafana join with #6, and the other services and UIs as they are released (#217).
+Production runs as one container group on Azure Container Instances (ACI), described in Bicep (`docs/TECHNICAL_REFERENCE.md` section 9a). It holds Booking, Membership and Identity (#371), NotificationService (#261) and the member portal, plus MongoDB, RabbitMQ and Vault (#23). Identity seeds the three demo accounts, one per role, so the public URL can be logged in to, and Booking seeds the demo class schedule (#386, see "Demo data" below). Loki and Grafana join with #6, and the other services and UIs as they are released (#217).
 
 ```
 internet --HTTPS 443--> caddy --:80--> nginx --/api/<context>/--> services       :5001-5003 --> mongodb  :27017
@@ -13,7 +13,7 @@ internet --HTTPS 443--> caddy --:80--> nginx --/api/<context>/--> services      
 |---|---|---|
 | `caddy` | 443 (public), 8081 | Let's Encrypt certificate for `edb-fitlife.switzerlandnorth.azurecontainer.io`, kept on the `caddy-data` file share. Only 443 is public: `http://` is not answered. |
 | `nginx` | 80 | The same template as compose: `deploy/compose/nginx/default.conf.template`, mounted as a secret volume. It limits log-in (`POST /api/identity/tokens`) per client address and answers 429 above it (`LOGIN_RATE_LIMIT`, `LOGIN_RATE_BURST` in `modules/containers.bicep`); the address is taken from Caddy's `X-Forwarded-For`, trusted only from 127.0.0.1 (#366). |
-| `booking-svc`, `membership-svc`, `identity-svc` | 5001, 5002, 5003 | One container per entry of `services` in `main.bicepparam`, with the settings of its block in `deploy/compose/services.yml` (`127.0.0.1` for the container names, `serviceSettings` in `modules/containers.bicep`). `identity-svc` also gets `Seed__DemoAccounts` and the three demo passwords, which are secure parameters of their own (`DEMO_MEDLEM_PASSWORD`, `DEMO_TRAENER_PASSWORD`, `DEMO_ADMIN_PASSWORD`), not the values of `.env.example`. |
+| `booking-svc`, `membership-svc`, `identity-svc` | 5001, 5002, 5003 | One container per entry of `services` in `main.bicepparam`, with the settings of its block in `deploy/compose/services.yml` (`127.0.0.1` for the container names, `serviceSettings` in `modules/containers.bicep`). `booking-svc` gets `Seed__Enabled`, as in compose. `identity-svc` also gets `Seed__DemoAccounts` and the three demo passwords, which are secure parameters of their own (`DEMO_MEDLEM_PASSWORD`, `DEMO_TRAENER_PASSWORD`, `DEMO_ADMIN_PASSWORD`), not the values of `.env.example`. |
 | `member-portal` | 5101 | The Blazor UI. Only in the group once it has a release (`includeMemberPortal`, set when `UI_IMAGE_TAG` is). Until then Nginx answers 502 on `/` (#198). |
 | `notification-svc` | 5004 | NotificationService: consumes `ReservationMade` from RabbitMQ and stores the notification in MongoDB. No route in Nginx. Same settings as compose; `Loki__Url` has nothing behind it until #6. Only in the group once it has a release (`includeNotificationService`, set when `NOTIFICATION_IMAGE_TAG` is). |
 | `mongodb` | 27017 | One database and one user per service, created by the compose init script `deploy/compose/mongodb/init/01-service-users.js`. Data on the `mongodb-data` file share. |
@@ -23,6 +23,12 @@ internet --HTTPS 443--> caddy --:80--> nginx --/api/<context>/--> services      
 Containers in a group share `localhost`, so each one listens on its own port (`ASPNETCORE_HTTP_PORTS`), and Nginx reaches them at `http://127.0.0.1:<port>`. The ports are set in `modules/containers.bicep`. A further service is one more entry in `services` (`main.bicepparam`), with its port in `servicePorts` and its settings in `serviceSettings`.
 
 Every container has `restartPolicy: Always` and a liveness and a readiness probe: `/health` for Nginx and the .NET containers, and a command for the others (Caddy's admin API, `mongosh` ping, `rabbitmq-diagnostics`, `vault status`).
+
+### Demo data
+
+Azure seeds the same demo data as compose, so the public URL isn't empty (decision on #217). Identity seeds the three demo accounts (`Seed__DemoAccounts`, #237). Booking seeds the demo class schedule (`Seed__Enabled`, #255): the centres "FitLife Center 1" to "6", three class types, and two class sessions per centre and day for the next 4 weeks, so `/hold` has class sessions to reserve. Booking's `/health` is unhealthy until the seed has finished.
+
+The seed runs every time `booking-svc` starts, so a redeploy (or a start with azure-power) refreshes it: that run tops the schedule up to 4 weeks from its own start and keeps what is stored, reservations included. The demo data is made up (FitLife is fictional), and nothing in it is a real person: the public URL is open to anyone.
 
 ### CPU and memory
 
@@ -47,7 +53,7 @@ Vault runs in dev mode here too, so its secrets live in memory only and are writ
 | `main.bicep` | Entry point (resource group scope). Outputs `publicUrl`. |
 | `modules/storage.bicep` | Storage account and Azure Files shares. |
 | `modules/containers.bicep` | The container group, probes and volumes. |
-| `topology.test.sh` | Offline check of the compiled template: containers, the one public port, probes, CPU and memory, secrets as `secureValue`, file shares, the scripts shared with compose, each service's port and settings against its compose block, when the member portal and NotificationService are in the group, and the demo passwords. |
+| `topology.test.sh` | Offline check of the compiled template: containers, the one public port, probes, CPU and memory, secrets as `secureValue`, file shares, the scripts shared with compose, each service's port and settings against its compose block, when the member portal and NotificationService are in the group, the demo passwords, and Booking's seed setting. |
 | `main.bicepparam` | Production values: region, DNS label, the services with their image names, and the member portal. Secrets and released versions come from environment variables. |
 | `caddy/Caddyfile` | Caddy's config, mounted as a secret volume. |
 | `budget.bicep` | The monthly cost alert on the subscription. Run once by a person. |

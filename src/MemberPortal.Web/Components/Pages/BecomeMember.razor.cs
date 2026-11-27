@@ -45,16 +45,18 @@ public partial class BecomeMember(IIdentityClient identityClient, IMembershipCli
         }
     }
 
+    // The input renders empty, so the value goes one way only: from the input to the form
+    private void SetPassword(string? password)
+    {
+        Fields.Password = password ?? string.Empty;
+    }
+
     private async Task BecomeMemberAsync()
     {
-        // The password is never written back into the page
-        string password = Fields.Password;
-        Fields.Password = string.Empty;
-
         string? accessToken = null;
         if (!IsLoggedIn)
         {
-            TokenResponse? token = await CreateAccountAndLogInAsync(password).ConfigureAwait(false);
+            TokenResponse? token = await CreateAccountAndLogInAsync(Fields.Password).ConfigureAwait(false);
             if (token is null)
             {
                 return;

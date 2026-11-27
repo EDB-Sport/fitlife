@@ -4,5 +4,130 @@
     "title": "NotificationService | v1",
     "version": "1.0.0"
   },
-  "paths": { }
+  "paths": {
+    "/notifications": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "The notifications a member has got, newest first. For staff: Træner and Admin",
+        "operationId": "ListNotifications",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "NotificationResponse": {
+        "required": [
+          "id",
+          "memberId",
+          "kind",
+          "text",
+          "occurredAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The notification, one per event."
+          },
+          "memberId": {
+            "type": "string",
+            "description": "The member it was sent to."
+          },
+          "kind": {
+            "type": "string",
+            "description": "The event it is about, by name, e.g. `ReservationMade`."
+          },
+          "text": {
+            "type": "string",
+            "description": "What the member was told."
+          },
+          "occurredAt": {
+            "type": "string",
+            "description": "When it was sent.",
+            "format": "date-time"
+          }
+        },
+        "description": "One notification in a member's delivery log."
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Notifications"
+    }
+  ]
 }

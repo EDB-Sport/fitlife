@@ -1,3 +1,5 @@
+using BookingService.Domain;
+
 namespace BookingService.Application;
 
 /// <summary>One class session as the class schedule shows it (#254).</summary>
@@ -23,4 +25,26 @@ public sealed record ClassSessionSummary(
     int DurationMinutes,
     int Capacity,
     int FreeSeats,
-    bool IsCancelled);
+    bool IsCancelled)
+{
+    /// <summary>The summary of a class session, with the names of its centre and class type.</summary>
+    /// <param name="classSession">The class session.</param>
+    /// <param name="centerName">The centre's name.</param>
+    /// <param name="classTypeName">The class type's name.</param>
+    public static ClassSessionSummary Of(ClassSession classSession, string centerName, string classTypeName)
+    {
+        ArgumentNullException.ThrowIfNull(classSession);
+        return new ClassSessionSummary(
+            classSession.Id,
+            classSession.CenterId,
+            centerName,
+            classSession.ClassTypeId,
+            classTypeName,
+            classSession.Details.Instructor.Name,
+            classSession.StartTime,
+            (int)classSession.Details.Duration.TotalMinutes,
+            classSession.Capacity.Value,
+            classSession.FreeSeats,
+            classSession.IsCancelled);
+    }
+}

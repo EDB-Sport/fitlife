@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Writes contracts/events/<routing key>.schema.json from the integration event records on every build (#491),
+    as the services' builds write contracts/openapi/. tools/ci/check-contracts.sh fails when the result differs
+    from the commit. The schema itself comes from FitLife.Messaging's EventSchema, which has the unit tests.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="$(RepoRoot)libs/FitLife.Messaging/FitLife.Messaging.csproj" />
+  </ItemGroup>
+
+  <Target Name="GenerateEventSchemas" AfterTargets="Build">
+    <Exec Command="&quot;$(DOTNET_HOST_PATH)&quot; &quot;$(TargetPath)&quot; &quot;$(RepoRoot)contracts/events&quot;" />
+  </Target>
+
+</Project>

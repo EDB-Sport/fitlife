@@ -29,6 +29,7 @@ public static class RepositoryServiceCollectionExtensions
         });
         services.AddScoped<IClassSessionRepository, ClassSessionRepository>();
         services.AddSingleton<IReferenceDataRepository, ReferenceDataRepository>();
+        services.AddSingleton<IReferenceDataWriter, ReferenceDataWriter>(); // only the demo-data seeder writes (#255)
         return services;
     }
 

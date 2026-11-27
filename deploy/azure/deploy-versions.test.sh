@@ -12,6 +12,8 @@
 #   2. a manual run (workflow_dispatch): the versions typed in; an empty ui_tag means the released member
 #      portal, so redeploying a service by hand doesn't drop a portal that is live
 #   3. a missing service version, latest or a typo fails the run, for the service and the member portal
+#   4. NotificationService (#261), chosen like the member portal: the typed version, else its newest
+#      notificationservice/v* release, left out while it has none, and released versions only
 set -uo pipefail
 
 ROOT=$(git rev-parse --show-toplevel)
@@ -38,7 +40,8 @@ if ! grep -q 'released_version' "$WORK/step.sh"; then
 fi
 
 # run_step <event> <service input> <ui input> <tag or +>...: runs the step in a fresh repo with the tags on
-# a commit each ('+' starts the next commit). Sets $status, and $service_tag / $ui_tag / $ui_env from what it wrote.
+# a commit each ('+' starts the next commit). Sets $status, and $service_tag / $ui_tag / $ui_env /
+# $notification_env from what it wrote. The NotificationService input is $INPUT_NOTIFICATION (default empty).
 run_step() {
   local event=$1 input_service=$2 input_ui=$3
   shift 3
@@ -57,11 +60,13 @@ run_step() {
   : >"$repo.out"
   (cd "$repo" && GITHUB_EVENT_NAME=$event INPUT_SERVICE_TAG=$input_service INPUT_UI_TAG=$input_ui \
     GITHUB_ENV="$repo.env" GITHUB_OUTPUT="$repo.out" SERVICE_TAG_PREFIX=bookingservice UI_TAG_PREFIX=memberportal \
+    INPUT_NOTIFICATION_TAG="${INPUT_NOTIFICATION:-}" NOTIFICATION_TAG_PREFIX=notificationservice \
     bash --noprofile --norc -eo pipefail "$WORK/step.sh" >"$repo.log" 2>&1)
   status=$?
   service_tag=$(sed -n 's/^service_tag=//p' "$repo.out")
   ui_tag=$(sed -n 's/^ui_tag=//p' "$repo.out")
   ui_env=$(grep '^UI_IMAGE_TAG=' "$repo.env" || true)
+  notification_env=$(grep '^NOTIFICATION_IMAGE_TAG=' "$repo.env" || true)
 }
 
 # expect_deploy <description> <service> <ui or empty> <run_step arguments...>
@@ -91,6 +96,21 @@ expect_refused() {
   fi
 }
 
+# expect_notification <description> <version or empty> <run_step arguments...>
+expect_notification() {
+  local description=$1 want=$2
+  shift 2
+  run_step "$@"
+  local want_env=""
+  [[ -n $want ]] && want_env="NOTIFICATION_IMAGE_TAG=$want"
+  if [[ $status -eq 0 && $notification_env == "$want_env" ]]; then
+    ok "$description"
+  else
+    fail "$description: expected '${want_env:-no NOTIFICATION_IMAGE_TAG}', got exit $status," \
+      "'${notification_env:-no NOTIFICATION_IMAGE_TAG}'"
+  fi
+}
+
 # 1. After a release.
 expect_deploy "release without a member portal release: the service, no member portal" 0.1.0 "" \
   workflow_run "" "" bookingservice/v0.1.0
@@ -113,6 +133,18 @@ expect_refused "manual run with service_tag latest is refused" workflow_dispatch
 expect_refused "manual run with ui_tag latest is refused" workflow_dispatch 0.1.0 latest bookingservice/v0.1.0
 expect_refused "manual run with ui_tag v0.3.0 (a typo for 0.3.0) is refused" \
   workflow_dispatch 0.1.0 v0.3.0 bookingservice/v0.1.0 memberportal/v0.3.0
+
+# 4. NotificationService.
+expect_notification "release without a notificationservice release: left out" "" \
+  workflow_run "" "" bookingservice/v0.1.0
+expect_notification "release with a notificationservice release: the newest tag in the history" 0.2.0 \
+  workflow_run "" "" bookingservice/v0.1.0 notificationservice/v0.1.0 + notificationservice/v0.2.0
+expect_notification "manual run, empty notification_tag: the released NotificationService" 0.2.0 \
+  workflow_dispatch 0.1.0 "" bookingservice/v0.1.0 notificationservice/v0.2.0
+INPUT_NOTIFICATION=0.3.0 expect_notification "manual run with notification_tag: the version typed in" 0.3.0 \
+  workflow_dispatch 0.1.0 "" bookingservice/v0.1.0 notificationservice/v0.2.0
+INPUT_NOTIFICATION=latest expect_refused "manual run with notification_tag latest is refused" \
+  workflow_dispatch 0.1.0 "" bookingservice/v0.1.0
 
 if [[ $failures -gt 0 ]]; then
   echo

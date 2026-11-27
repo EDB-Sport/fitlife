@@ -21,6 +21,7 @@ Replace `<Service>` with the service name from the context map, e.g. `Membership
 3. **Tests:** copy `tests/BookingService.Tests/` and `tests/BookingService.IntegrationTests/` to `tests/<Service>.Tests/` and `tests/<Service>.IntegrationTests/`, and update the `ProjectReference` and the namespaces.
    - `ApiDocumentationTests` (OpenAPI and Scalar return 404 in Production, 200 in Development), `HealthEndpointTests`, `StartupLogTests` and `LoggingConfigurationTests` come along. Only the service name in `StartupLogTests` changes.
    - Unit tests go in `*.Tests`. Anything with a web host, MongoDB or RabbitMQ goes in `*.IntegrationTests` (FITLIFE002).
+   - An internal HTTP client (one service calling another) gets a contract check in its tests: the stub records each answer, and a `[TearDown]` calls `OpenApiContracts.Missing("<provider>", ...)` from `tests/FitLife.Contracts.Testing`, as `MembershipClientTests` in Booking does (#522).
 4. **Solution:** add all three projects to `FitLife.slnx`.
 5. **Packages:** versions only in `Directory.Packages.props`, never `Version=` in a `.csproj` (NU1008).
 6. **Lock files:** restore with the SDK from `global.json` and commit the new `packages.lock.json` files.

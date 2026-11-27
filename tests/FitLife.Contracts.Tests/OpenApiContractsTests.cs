@@ -67,7 +67,7 @@ public sealed class OpenApiContractsTests
         FakeAnswer[] answers = [new(HttpMethod.Get, "/api/booking/class-sessions", HttpStatusCode.OK)];
 
         // Act
-        IReadOnlyList<string> missing = OpenApiContracts.Missing(Booking, answers, gatewayRoute: "api/booking");
+        IReadOnlyList<string> missing = OpenApiContracts.Missing(Booking, answers, gatewayRoute: "api/booking", notTheProvidersAnswers: []);
 
         // Assert
         Assert.That(missing, Is.Empty);
@@ -80,7 +80,7 @@ public sealed class OpenApiContractsTests
         FakeAnswer[] answers = [new(HttpMethod.Get, "/api/booking/class-schedule", HttpStatusCode.OK)];
 
         // Act
-        IReadOnlyList<string> missing = OpenApiContracts.Missing(Booking, answers, gatewayRoute: "api/booking");
+        IReadOnlyList<string> missing = OpenApiContracts.Missing(Booking, answers, gatewayRoute: "api/booking", notTheProvidersAnswers: []);
 
         // Assert
         Assert.That(missing, Has.Count.EqualTo(1));

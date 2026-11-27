@@ -31,8 +31,7 @@ stop_stack() { (cd "$compose_dir" && docker compose down -v); }
 # after the limit would get 429 (#556). So the .env CI creates gets a higher burst; production keeps .env.example's.
 ci_login_burst=30
 if [ ! -f "$compose_dir/.env" ]; then
-  cp "$compose_dir/.env.example" "$compose_dir/.env"
-  sed -i '/^LOGIN_RATE_BURST=/d' "$compose_dir/.env"
+  grep -v '^LOGIN_RATE_BURST=' "$compose_dir/.env.example" > "$compose_dir/.env"
   printf '\nLOGIN_RATE_BURST=%s\n' "$ci_login_burst" >> "$compose_dir/.env"
 fi
 

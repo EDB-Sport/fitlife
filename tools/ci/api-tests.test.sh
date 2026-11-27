@@ -135,6 +135,18 @@ logins_in_run=$(grep -ho 'identity/tokens' "$repo"/tests/postman/*/*.postman_col
 check "the CI stack's log-in burst covers every log-in of one run" bash -c '[ -n "$1" ] && [ "$1" -ge "$2" ]' _ "$burst" "$logins_in_run"
 check "the run with 11 log-ins still passes" [ "$status" -eq 0 ]
 
+# 6b. The repo's own collections: the burst the CI stack gets covers the log-ins they make in one run (#556)
+repo=$(fixture)
+for collection in "$here"/../../tests/postman/*/*.postman_collection.json; do
+  mkdir -p "$repo/tests/postman/$(basename "$(dirname "$collection")")"
+  cp "$collection" "$repo/tests/postman/$(basename "$(dirname "$collection")")/"
+done
+run "$repo"
+burst=$(sed -n 's/^LOGIN_RATE_BURST=//p' "$repo/deploy/compose/.env")
+repo_logins=$(grep -ho 'identity/tokens' "$here"/../../tests/postman/*/*.postman_collection.json | wc -l)
+check "the CI burst covers the log-ins of this repo's collections in one run ($repo_logins)" bash -c '[ -n "$1" ] && [ "$1" -ge "$2" ]' _ "$burst" "$repo_logins"
+check "this repo's collections pass with the CI burst" [ "$status" -eq 0 ]
+
 # 7. The repo's own collections assert status codes and bodies, never response times: a timing
 #    assertion against a mock server on the internet depends on the network, not on the code (#135)
 timed=$(grep -rlE 'responseTime' "$here/../../tests/postman" --include='*.postman_collection.json' || true)

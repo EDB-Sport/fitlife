@@ -96,6 +96,16 @@ for planted_case in summarize.test.sh:check ci-workflow.test.sh:expect image-sca
   check "${planted_case%%:*}: a failed case still fails the run" test "$status" != 0
 done
 
+# security-steps.test.sh:expect_trigger (PR #559 review): the trigger cases run before the tool check, so the planted
+# case goes there and the copy stops after it, without needing yq or docker.
+sed -e "s|\$(dirname \"\${BASH_SOURCE\[0\]}\")|$here|; s|\$(dirname \"\$0\")|$here|" \
+  -e '/^for tool in yq docker git/i\
+expect_trigger "planted case" test planted-value = want\
+[ "$failures" -eq 0 ]; exit' "$here/security-steps.test.sh" >"$tmp/security-steps.test.sh"
+run bash "$tmp/security-steps.test.sh"
+check "security-steps.test.sh: a failed trigger case shows the command it ran" has "      ran: test planted-value = want"
+check "security-steps.test.sh: a failed trigger case still fails the run" test "$status" != 0
+
 # The change is one shared helper: every tools/ci/*.test.sh sources it before it prints anything.
 for test in "$here"/*.test.sh; do
   out="no such line in lines 2-12 of $test"

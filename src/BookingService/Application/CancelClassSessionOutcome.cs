@@ -12,6 +12,9 @@ public enum CancelClassSessionOutcome
     /// <summary>The class session was cancelled before.</summary>
     ClassSessionAlreadyCancelled,
 
+    /// <summary>The class session has started, so it can't be cancelled (#538).</summary>
+    ClassSessionStarted,
+
     /// <summary>Another request saved the class session first.</summary>
     ChangedMeanwhile,
 }

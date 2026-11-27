@@ -238,7 +238,7 @@
             }
           },
           "409": {
-            "description": "The class session is already cancelled (code ClassSessionAlreadyCancelled), has started (code ClassSessionStarted), or another request changed it at the same time (code ChangedMeanwhile).",
+            "description": "The class session is already cancelled (code ClassSessionAlreadyCancelled), has started (code ClassSessionStarted), or another request changed it at the same time (code ConcurrentChange).",
             "content": {
               "application/problem+json": {
                 "schema": {

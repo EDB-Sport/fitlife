@@ -16,7 +16,6 @@ namespace BookingService.Api;
 [Route("class-sessions")]
 public sealed class ClassSessionsController : ControllerBase
 {
-    private const string ChangedMeanwhileTitle = "The class session changed at the same time. Try again.";
     private const string ClassSessionCancelledTitle = "The class session is cancelled.";
 
     private readonly IClassSessionRepository _repository;
@@ -68,8 +67,8 @@ public sealed class ClassSessionsController : ControllerBase
                 return ReservationProblems.Create(this, StatusCodes.Status503ServiceUnavailable, "Membership didn't answer. Try again.", result.Outcome.ToString());
             case ReserveSeatOutcome.ClassSessionNotFound:
                 return ReservationProblems.Create(this, StatusCodes.Status404NotFound, "No such class session.", result.Outcome.ToString());
-            case ReserveSeatOutcome.ChangedMeanwhile:
-                return ReservationProblems.Create(this, StatusCodes.Status409Conflict, ChangedMeanwhileTitle, result.Outcome.ToString());
+            case ReserveSeatOutcome.ConcurrentChange:
+                return ReservationProblems.Create(this, StatusCodes.Status409Conflict, ConcurrentChangeExceptionHandler.Title, result.Outcome.ToString());
             default:
                 throw new UnreachableException($"ReserveSeatOutcome.{result.Outcome} has no status code.");
         }
@@ -98,11 +97,7 @@ public sealed class ClassSessionsController : ControllerBase
             return TypedResults.Problem(statusCode: StatusCodes.Status404NotFound, title: "The member has no seat on this class session.");
         }
 
-        if (!await _repository.SaveAsync(classSession, cancellationToken).ConfigureAwait(false))
-        {
-            return TypedResults.Problem(statusCode: StatusCodes.Status409Conflict, title: ChangedMeanwhileTitle);
-        }
-
+        await _repository.SaveAsync(classSession, cancellationToken).ConfigureAwait(false);
         return TypedResults.NoContent();
     }
 
@@ -145,21 +140,12 @@ public sealed class ClassSessionsController : ControllerBase
                 throw new UnreachableException($"WaitlistResult.{result} has no status code.");
         }
 
-        if (!await _repository.SaveAsync(classSession, cancellationToken).ConfigureAwait(false))
-        {
-            return ChangedMeanwhile();
-        }
-
+        await _repository.SaveAsync(classSession, cancellationToken).ConfigureAwait(false);
         return StatusCode(StatusCodes.Status201Created, new WaitlistEntryResponse(id, request.MemberId));
     }
 
     private ObjectResult ClassSessionNotFound(Guid id)
     {
         return Problem(statusCode: StatusCodes.Status404NotFound, title: "No such class session.", detail: $"There is no class session {id}.");
-    }
-
-    private ObjectResult ChangedMeanwhile()
-    {
-        return Problem(statusCode: StatusCodes.Status409Conflict, title: ChangedMeanwhileTitle);
     }
 }

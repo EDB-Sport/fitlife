@@ -241,10 +241,10 @@ public sealed class ClassSessionSeederTests
             return Task.CompletedTask;
         }
 
-        public Task<bool> SaveAsync(ClassSession classSession, CancellationToken cancellationToken)
+        public Task SaveAsync(ClassSession classSession, CancellationToken cancellationToken)
         {
             _stored[classSession.Id] = classSession;
-            return Task.FromResult(true);
+            return Task.CompletedTask;
         }
     }
 

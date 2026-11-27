@@ -41,11 +41,12 @@ public sealed partial class WaitlistClosingJob : BackgroundService
                 continue;
             }
 
-            if (await repository.SaveAsync(classSession, cancellationToken).ConfigureAwait(false))
+            try
             {
+                await repository.SaveAsync(classSession, cancellationToken).ConfigureAwait(false);
                 LogClosed(classSession.Id);
             }
-            else
+            catch (ConcurrencyConflictException)
             {
                 LogLostRace(classSession.Id);
             }

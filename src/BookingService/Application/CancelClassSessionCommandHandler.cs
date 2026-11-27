@@ -4,7 +4,8 @@ namespace BookingService.Application;
 
 /// <summary>
 /// Handles <see cref="CancelClassSessionCommand"/> (#239): lets <see cref="ClassSession.Cancel"/> empty the reservations and the
-/// waitlist, and saves once. A class session that is already cancelled or has started (#538) is not saved.
+/// waitlist, and saves once. A class session that is already cancelled or has started (#538) is not saved. A refused save throws
+/// <see cref="ConcurrencyConflictException"/>, which the API answers with 409 <c>ConcurrentChange</c> (#245).
 /// </summary>
 public sealed class CancelClassSessionCommandHandler
 {
@@ -43,11 +44,7 @@ public sealed class CancelClassSessionCommandHandler
                 break;
         }
 
-        if (!await _classSessions.SaveAsync(classSession, cancellationToken).ConfigureAwait(false))
-        {
-            return CancelClassSessionOutcome.ChangedMeanwhile;
-        }
-
+        await _classSessions.SaveAsync(classSession, cancellationToken).ConfigureAwait(false);
         return CancelClassSessionOutcome.Cancelled;
     }
 }

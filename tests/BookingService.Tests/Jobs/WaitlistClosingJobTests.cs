@@ -324,17 +324,17 @@ public sealed class WaitlistClosingJobTests
             throw new NotSupportedException("The job adds nothing.");
         }
 
-        public Task<bool> SaveAsync(ClassSession classSession, CancellationToken cancellationToken)
+        public Task SaveAsync(ClassSession classSession, CancellationToken cancellationToken)
         {
             Saves++;
             if (Saves <= SavesToLose)
             {
-                return Task.FromResult(false);
+                return Task.FromException(new ConcurrencyConflictException());
             }
 
             Saved = classSession;
             _firstSuccessfulSave.TrySetResult();
-            return Task.FromResult(true);
+            return Task.CompletedTask;
         }
     }
 }

@@ -20,7 +20,7 @@ public sealed class ReserveSeatCommandHandlerTests
     [SetUp]
     public void EverySaveSucceeds()
     {
-        _classSessions.Setup(repository => repository.SaveAsync(It.IsAny<ClassSession>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _classSessions.Setup(repository => repository.SaveAsync(It.IsAny<ClassSession>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
     }
 
     [Test]
@@ -116,18 +116,51 @@ public sealed class ReserveSeatCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WhenAnotherRequestSavedFirst_SaysItChangedMeanwhile()
+    public async Task Handle_WhenTheSaveIsRefusedOnce_LoadsAgainAndReserves()
+    {
+        // Arrange
+        var memberId = Guid.NewGuid();
+        MembershipAnswers(MemberLookup.Found(memberId, isActive: true));
+        ClassSession stale = NewClassSession(Guid.NewGuid(), capacity: 2);
+        ClassSession fresh = NewClassSession(stale.Id, capacity: 2);
+        _classSessions.SetupSequence(repository => repository.GetByIdAsync(stale.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(stale)
+            .ReturnsAsync(fresh);
+        _classSessions.Setup(repository => repository.SaveAsync(stale, It.IsAny<CancellationToken>())).ThrowsAsync(new ConcurrencyConflictException());
+
+        // Act
+        ReserveSeatResult result = await Handler().Handle(Command(stale.Id), CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(new ReserveSeatResult(ReserveSeatOutcome.Answered, ReservationResult.Made, memberId)));
+            Assert.That(fresh.Reservations.Single().MemberId, Is.EqualTo(memberId));
+            _classSessions.Verify(repository => repository.SaveAsync(fresh, It.IsAny<CancellationToken>()), Times.Once);
+        });
+    }
+
+    [Test]
+    public async Task Handle_WhenTheSaveIsRefusedTwice_ReturnsConcurrentChange()
     {
         // Arrange
         MembershipAnswers(MemberLookup.Found(Guid.NewGuid(), isActive: true));
-        ClassSession classSession = Stored(capacity: 1);
-        _classSessions.Setup(repository => repository.SaveAsync(classSession, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        ClassSession first = NewClassSession(Guid.NewGuid(), capacity: 1);
+        ClassSession second = NewClassSession(first.Id, capacity: 1);
+        _classSessions.SetupSequence(repository => repository.GetByIdAsync(first.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(first)
+            .ReturnsAsync(second);
+        _classSessions.Setup(repository => repository.SaveAsync(It.IsAny<ClassSession>(), It.IsAny<CancellationToken>())).ThrowsAsync(new ConcurrencyConflictException());
 
         // Act
-        ReserveSeatResult result = await Handler().Handle(Command(classSession.Id), CancellationToken.None).ConfigureAwait(false);
+        ReserveSeatResult result = await Handler().Handle(Command(first.Id), CancellationToken.None).ConfigureAwait(false);
 
         // Assert
-        Assert.That(result.Outcome, Is.EqualTo(ReserveSeatOutcome.ChangedMeanwhile));
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Outcome, Is.EqualTo(ReserveSeatOutcome.ConcurrentChange));
+            _classSessions.Verify(repository => repository.SaveAsync(It.IsAny<ClassSession>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        });
     }
 
     private ReserveSeatCommand Command(Guid classSessionId)
@@ -142,9 +175,14 @@ public sealed class ReserveSeatCommandHandlerTests
 
     private ClassSession Stored(int capacity)
     {
-        var classSession = new ClassSession(Guid.NewGuid(), new Capacity(capacity), Now.AddDays(1), new ClassSessionDetails(Guid.NewGuid(), Guid.NewGuid(), new Instructor("Mette"), TimeSpan.FromMinutes(60)));
+        ClassSession classSession = NewClassSession(Guid.NewGuid(), capacity);
         _classSessions.Setup(repository => repository.GetByIdAsync(classSession.Id, It.IsAny<CancellationToken>())).ReturnsAsync(classSession);
         return classSession;
+    }
+
+    private static ClassSession NewClassSession(Guid id, int capacity)
+    {
+        return new ClassSession(id, new Capacity(capacity), Now.AddDays(1), new ClassSessionDetails(Guid.NewGuid(), Guid.NewGuid(), new Instructor("Mette"), TimeSpan.FromMinutes(60)));
     }
 
     private ReserveSeatCommandHandler Handler()

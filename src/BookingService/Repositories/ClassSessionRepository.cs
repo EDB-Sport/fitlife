@@ -5,8 +5,8 @@ using MongoDB.Driver;
 namespace BookingService.Repositories;
 
 /// <summary>
-/// Stores <see cref="ClassSession"/> aggregates in the <c>classSessions</c> collection. One instance per request: it remembers the
-/// version of each class session it read, so <see cref="SaveAsync"/> can refuse a save on a stale copy.
+/// Stores <see cref="ClassSession"/> aggregates in the <c>classSessions</c> collection. <see cref="SaveAsync"/> replaces a class
+/// session only when the stored version is the one it was read at, so a save on a stale copy is refused.
 /// </summary>
 public sealed class ClassSessionRepository : IClassSessionRepository
 {
@@ -17,7 +17,6 @@ public sealed class ClassSessionRepository : IClassSessionRepository
     internal static readonly TimeSpan DurationStoredBeforeInstructors = TimeSpan.FromMinutes(60);
 
     private readonly IMongoCollection<ClassSessionDocument> _collection;
-    private readonly Dictionary<Guid, int> _versions = [];
 
     /// <summary>Creates the repository on the service's own database.</summary>
     /// <param name="database">The Booking database.</param>
@@ -61,14 +60,14 @@ public sealed class ClassSessionRepository : IClassSessionRepository
     {
         ArgumentNullException.ThrowIfNull(classSession);
         await _collection.InsertOneAsync(Write(classSession, version: 1), cancellationToken: cancellationToken).ConfigureAwait(false);
-        _versions[classSession.Id] = 1;
+        classSession.Version = 1;
     }
 
     /// <inheritdoc />
-    public async Task<bool> SaveAsync(ClassSession classSession, CancellationToken cancellationToken)
+    public async Task SaveAsync(ClassSession classSession, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(classSession);
-        int version = _versions[classSession.Id];
+        int version = classSession.Version;
         ReplaceOneResult result = await _collection.ReplaceOneAsync(
                 candidate => candidate.Id == classSession.Id && candidate.Version == version,
                 Write(classSession, version + 1),
@@ -76,17 +75,14 @@ public sealed class ClassSessionRepository : IClassSessionRepository
             .ConfigureAwait(false);
         if (result.ModifiedCount == 0)
         {
-            return false;
+            throw new ConcurrencyConflictException($"Class session {classSession.Id} was saved by another request since version {version} was read.");
         }
 
-        _versions[classSession.Id] = version + 1;
-        return true;
+        classSession.Version = version + 1;
     }
 
-    private ClassSession Read(ClassSessionDocument document)
+    private static ClassSession Read(ClassSessionDocument document)
     {
-        _versions[document.Id] = document.Version;
-
         // A document stored before #252 has no instructor and no duration, which the domain rejects: read it with the defaults
         string instructorName = document.InstructorName;
         if (string.IsNullOrWhiteSpace(instructorName))
@@ -104,7 +100,10 @@ public sealed class ClassSessionRepository : IClassSessionRepository
             document.Id,
             new Capacity(document.Capacity),
             new DateTimeOffset(DateTime.SpecifyKind(document.StartTime, DateTimeKind.Utc)),
-            new ClassSessionDetails(document.CenterId, document.ClassTypeId, new Instructor(instructorName), duration));
+            new ClassSessionDetails(document.CenterId, document.ClassTypeId, new Instructor(instructorName), duration))
+        {
+            Version = document.Version,
+        };
         classSession.Restore(
             document.IsCancelled,
             document.Reservations.Select(ReadReservation),

@@ -35,6 +35,7 @@ try
     builder.Services.AddHealthChecks();
     builder.Services.AddControllers();
     builder.Services.AddProblemDetails();
+    builder.Services.AddExceptionHandler<ConcurrentChangeExceptionHandler>(); // a refused save is 409 (#245)
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddRepositories();
     builder.Services.AddScoped<GetClassSessionsQueryHandler>(); // the class schedule (#254)

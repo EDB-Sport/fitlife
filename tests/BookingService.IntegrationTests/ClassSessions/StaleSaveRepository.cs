@@ -21,8 +21,8 @@ internal sealed class StaleSaveRepository(IClassSessionRepository inner) : IClas
         return inner.AddAsync(classSession, cancellationToken);
     }
 
-    public Task<bool> SaveAsync(ClassSession classSession, CancellationToken cancellationToken)
+    public Task SaveAsync(ClassSession classSession, CancellationToken cancellationToken)
     {
-        return Task.FromResult(false);
+        return Task.FromException(new ConcurrencyConflictException());
     }
 }

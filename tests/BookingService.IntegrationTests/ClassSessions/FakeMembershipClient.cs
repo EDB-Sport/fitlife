@@ -8,6 +8,9 @@ internal sealed class FakeMembershipClient : IMembershipClient
     /// <summary>Gets or sets what Membership answers for every account.</summary>
     public MemberLookup Answer { get; set; } = MemberLookup.Found(Guid.NewGuid(), isActive: true);
 
+    /// <summary>Gets the answers for single accounts; every other account gets <see cref="Answer"/>.</summary>
+    public Dictionary<Guid, MemberLookup> AnswerByAccount { get; } = [];
+
     /// <summary>Gets the account id Membership was last asked about.</summary>
     public Guid? AskedAccountId { get; private set; }
 
@@ -19,6 +22,6 @@ internal sealed class FakeMembershipClient : IMembershipClient
     {
         AskedAccountId = accountId;
         AskedBearerToken = bearerToken;
-        return Task.FromResult(Answer);
+        return Task.FromResult(AnswerByAccount.GetValueOrDefault(accountId, Answer));
     }
 }

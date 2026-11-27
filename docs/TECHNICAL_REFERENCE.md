@@ -1,6 +1,6 @@
 # Technical reference: what is built, and why
 
-What the FitLife Digital proof of concept has on `develop`, and the reason for each part. It replaces the setup to-do list (`docs/legacy/CSHARP_SETUP_TODO.md`, history only) and keeps its section numbers, so a pointer to "section N" still means the same topic. Where a README or ADR already covers a detail, this file links to it instead of repeating it.
+What the FitLife Digital proof of concept has on `develop`, and the reason for each part. It replaces the setup to-do list (in `docs/legacy/`, history only) and keeps its section numbers, so a pointer to "section N" still means the same topic. Where a README or ADR already covers a detail, this file links to it instead of repeating it.
 
 Checked against `develop` on 27 November 2026 (#515). If the repo and this file disagree, the repo wins: fix this file in the same PR.
 
@@ -195,4 +195,4 @@ Which checks are required is set in the repository's rulesets, not in a file; `g
 - That names and structure make sense. TEAM008 and the Sonar limits keep code small and consistent, not clear.
 - That every group member can explain the code at the exam.
 
-The course mapping (section 12 of the old list) is not carried over: it stays in `docs/legacy/CSHARP_SETUP_TODO.md`, and course material is added by hand when needed.
+The course mapping (section 12 of the old list) is not carried over: it stays in the old list in `docs/legacy/`, and course material is added by hand when needed.

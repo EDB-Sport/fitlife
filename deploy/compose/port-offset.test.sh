@@ -58,7 +58,7 @@ fi
 if [[ ! -f $COMPOSE_DIR/ports.sh ]]; then
   fail "deploy/compose/ports.sh doesn't exist"
 else
-  at_zero=$(published PORT_OFFSET=0 2>&1) || true
+  at_zero=$(published PORT_OFFSET=0 2>/dev/null) || true
   if [[ $at_zero == "$before" ]]; then
     ok "PORT_OFFSET=0: every published port is what it is today"
   else
@@ -67,7 +67,7 @@ else
 
   # 3. Offset 100 shifts every port.
   wanted=$(awk -F= '{ print $1 "=" $2 + 100 }' <<<"$before")
-  at_hundred=$(published PORT_OFFSET=100 2>&1) || true
+  at_hundred=$(published PORT_OFFSET=100 2>/dev/null) || true
   if [[ $at_hundred == "$wanted" ]]; then
     ok "PORT_OFFSET=100: every published port is 100 higher"
   else
@@ -75,7 +75,7 @@ else
   fi
 
   # 4. A *_PORT set in the shell wins.
-  if grep -qx 'gateway/80=9999' <<<"$(published PORT_OFFSET=100 GATEWAY_PORT=9999 2>&1 || true)"; then
+  if grep -qx 'gateway/80=9999' <<<"$(published PORT_OFFSET=100 GATEWAY_PORT=9999 2>/dev/null || true)"; then
     ok "GATEWAY_PORT set in the shell wins over PORT_OFFSET"
   else
     fail "GATEWAY_PORT=9999 with PORT_OFFSET=100 doesn't publish the gateway on 9999"

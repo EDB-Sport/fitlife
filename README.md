@@ -23,7 +23,7 @@ Proof of concept for FitLife Digital: .NET 10 microservices with lightweight Bla
 issue → failing test → simplest implementation → refactor (if small) → PR into develop → CI → at least one signoff → merge
 ```
 
-- Branch from `develop`: `git flow feature start <issue>-<name>`, e.g. `feature/12-reserve-class-session`.
+- Branch from `develop`: `git switch -c feature/<issue>-<name> origin/develop --no-track`, e.g. `feature/12-reserve-class-session` (`docs/METHODOLOGY.md` §2.1).
 - Open the PR against `develop` with `Closes #<issue>`. Finish through the PR, not `git flow feature finish`.
 - Nobody pushes directly to `main` or `develop`.
 

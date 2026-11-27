@@ -157,7 +157,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
       }
     },
     "/class-sessions/{id}/cancellation": {
@@ -242,7 +247,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
       }
     },
     "/class-sessions/{id}/reservations": {
@@ -344,7 +354,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
       }
     },
     "/class-sessions/{id}/reservations/{memberId}": {
@@ -399,7 +414,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
       }
     },
     "/class-sessions/{id}/waitlist": {
@@ -477,7 +497,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
       }
     }
   },
@@ -707,6 +732,14 @@
           }
         },
         "description": "A member's place on the waitlist of a class session."
+      }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "description": "The token from POST /api/identity/tokens.",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
       }
     }
   },

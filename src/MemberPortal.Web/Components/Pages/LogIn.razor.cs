@@ -30,6 +30,12 @@ public partial class LogIn(IIdentityClient identityClient, NavigationManager nav
 
     private string? ErrorSentence { get; set; }
 
+    // The input renders empty, so the value goes one way only: from the input to the form
+    private void SetPassword(string? password)
+    {
+        Fields.Password = password ?? string.Empty;
+    }
+
     private async Task LogInAsync()
     {
         TokenResponse? token;

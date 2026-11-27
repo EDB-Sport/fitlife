@@ -14,6 +14,7 @@ namespace MemberPortal.Web.Tests;
 public sealed class MyMembershipClientTests
 {
     private const string MyMembership = """{"memberId":"0b6f5f7e-2f0c-4b8e-9a51-6d2f4c1e7a90","membershipType":"Standard","membershipStatus":"Paused","isActive":false,"startDate":"2026-11-03"}""";
+    private const string ActiveMembership = """{"memberId":"0b6f5f7e-2f0c-4b8e-9a51-6d2f4c1e7a90","membershipType":"Standard","membershipStatus":"Active","isActive":true,"startDate":"2026-11-03"}""";
 
     [Test]
     public async Task GetMyMembershipAsync_GetsFromMembershipThroughTheGateway()
@@ -106,6 +107,104 @@ public sealed class MyMembershipClientTests
     }
 
     [Test]
+    public async Task PayAsync_PostsToMembershipThroughTheGatewayWithoutABody()
+    {
+        // Arrange
+        using var gateway = new StubGateway(HttpStatusCode.OK, ActiveMembership);
+        using ServiceProvider services = Services(gateway);
+
+        // Act
+        await Pay(services).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(gateway.Method, Is.EqualTo(HttpMethod.Post));
+        Assert.That(gateway.Uri, Is.EqualTo(new Uri("https://gateway.test/api/membership/members/me/payment")));
+        Assert.That(gateway.HadBody, Is.False);
+    }
+
+    [Test]
+    public async Task PayAsync_On200_ReturnsTheMembershipFromTheAnswer()
+    {
+        // Arrange
+        using var gateway = new StubGateway(HttpStatusCode.OK, ActiveMembership);
+        using ServiceProvider services = Services(gateway);
+
+        // Act
+        PaymentAnswer answer = await Pay(services).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(answer, Is.EqualTo(new PaymentAnswer(
+            new MyMembershipResponse(new Guid("0b6f5f7e-2f0c-4b8e-9a51-6d2f4c1e7a90"), "Standard", "Active", IsActive: true, new DateOnly(2026, 11, 3)),
+            RejectionCode: null)));
+    }
+
+    [TestCase("ChargeDeclined")]
+    [TestCase("NothingIsOwed")]
+    public async Task PayAsync_On409_ReturnsTheCode(string code)
+    {
+        // Arrange
+        using var gateway = new StubGateway(HttpStatusCode.Conflict, $$"""{"title":"Rejected","status":409,"code":"{{code}}"}""");
+        using ServiceProvider services = Services(gateway);
+
+        // Act
+        PaymentAnswer answer = await Pay(services).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(answer, Is.EqualTo(new PaymentAnswer(Membership: null, code)));
+    }
+
+    [TestCase(HttpStatusCode.Conflict, """{"title":"Rejected","status":409}""")]
+    [TestCase(HttpStatusCode.Conflict, "not json")]
+    [TestCase(HttpStatusCode.NotFound, "")]
+    public async Task PayAsync_OnAnAnswerWithoutACode_ReturnsNoMembershipAndNoCode(HttpStatusCode status, string body)
+    {
+        // Arrange
+        using var gateway = new StubGateway(status, body);
+        using ServiceProvider services = Services(gateway);
+
+        // Act
+        PaymentAnswer answer = await Pay(services).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(answer, Is.EqualTo(new PaymentAnswer(Membership: null, RejectionCode: null)));
+    }
+
+    [TestCase(HttpStatusCode.InternalServerError, "{}")]
+    [TestCase(HttpStatusCode.OK, "not json")]
+    [TestCase(HttpStatusCode.OK, "null")]
+    public async Task PayAsync_OnAnErrorOrABodyThatIsNotAMembership_ThrowsMembershipUnavailable(HttpStatusCode status, string body)
+    {
+        // Arrange
+        using var gateway = new StubGateway(status, body);
+        using ServiceProvider services = Services(gateway);
+
+        // Act & Assert
+        await Assert.ThatAsync(() => Pay(services), Throws.TypeOf<MembershipUnavailableException>()).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task PayAsync_WhenTheGatewayCantBeReached_ThrowsMembershipUnavailable()
+    {
+        // Arrange
+        using var gateway = new StubGateway(new HttpRequestException("No connection could be made."));
+        using ServiceProvider services = Services(gateway);
+
+        // Act & Assert
+        await Assert.ThatAsync(() => Pay(services), Throws.TypeOf<MembershipUnavailableException>()).ConfigureAwait(false);
+    }
+
+    [Test]
+    public async Task PayAsync_WhenMembershipDoesNotAnswerInTime_ThrowsMembershipUnavailable()
+    {
+        // Arrange
+        using var gateway = new StubGateway(new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout."));
+        using ServiceProvider services = Services(gateway);
+
+        // Act & Assert
+        await Assert.ThatAsync(() => Pay(services), Throws.TypeOf<MembershipUnavailableException>()).ConfigureAwait(false);
+    }
+
+    [Test]
     public void MyMembershipResponse_HasTheFieldsOfMembershipsContract()
     {
         // Arrange
@@ -116,6 +215,11 @@ public sealed class MyMembershipClientTests
 
         // Assert
         Assert.That(fields, Is.EqualTo(contract));
+    }
+
+    private static Task<PaymentAnswer> Pay(ServiceProvider services)
+    {
+        return services.GetRequiredService<IMembershipClient>().PayAsync(CancellationToken.None);
     }
 
     private static Task<MyMembershipResponse?> GetMyMembership(ServiceProvider services)
@@ -181,11 +285,14 @@ public sealed class MyMembershipClientTests
 
         public string? Authorization { get; private set; }
 
+        public bool HadBody { get; private set; }
+
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Method = request.Method;
             Uri = request.RequestUri;
             Authorization = request.Headers.Authorization?.ToString();
+            HadBody = request.Content is not null;
             if (_failure is not null)
             {
                 throw _failure;

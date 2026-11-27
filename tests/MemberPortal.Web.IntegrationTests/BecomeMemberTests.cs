@@ -187,6 +187,11 @@ public sealed class BecomeMemberTests : IDisposable
             calls.Add("GET api/membership/members/me");
             return Task.FromResult<MyMembershipResponse?>(null);
         }
+
+        public Task<PaymentAnswer> PayAsync(CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException("Becoming a member pays nothing.");
+        }
     }
 
     private sealed class PortalFactory : WebApplicationFactory<Program>

@@ -9,7 +9,13 @@ internal sealed class FakeMembershipClient : IMembershipClient
 
     public MyMembershipResponse? MyMembership { get; set; }
 
+    public PaymentAnswer PaymentAnswer { get; set; } = new(Membership: null, RejectionCode: null);
+
+    public int PayCalls { get; private set; }
+
     public Exception? Failure { get; set; }
+
+    public Exception? PaymentFailure { get; set; }
 
     public int Calls { get; private set; }
 
@@ -36,5 +42,16 @@ internal sealed class FakeMembershipClient : IMembershipClient
         }
 
         return Task.FromResult(MyMembership);
+    }
+
+    public Task<PaymentAnswer> PayAsync(CancellationToken cancellationToken)
+    {
+        PayCalls++;
+        if (PaymentFailure is not null)
+        {
+            return Task.FromException<PaymentAnswer>(PaymentFailure);
+        }
+
+        return Task.FromResult(PaymentAnswer);
     }
 }

@@ -13,10 +13,9 @@ Proof of concept for FitLife Digital: .NET 10 microservices with lightweight Bla
 | [`GLOSSARY.md`](GLOSSARY.md) | The ubiquitous language. Names in code, tests and issues come from here. |
 | [`docs/domain/CONTEXT-MAP.md`](docs/domain/CONTEXT-MAP.md) | Bounded contexts and how they relate (a group decision) |
 | [`docs/architecture/deployment.md`](docs/architecture/deployment.md) | Where everything runs: the compose stack, the gateway, one database per service, and what travels between them |
-| [`docs/DDD_PLAN.md`](docs/DDD_PLAN.md) | The steps for getting to the domain model |
-| [`docs/CSHARP_SETUP_TODO.md`](docs/CSHARP_SETUP_TODO.md) | The technical setup to-do list |
+| [`docs/TECHNICAL_REFERENCE.md`](docs/TECHNICAL_REFERENCE.md) | What is built, and why: the build rules, tests, CI, deployment |
 | [`docs/adr/`](docs/adr/) | Architecture Decision Records |
-| [`docs/templates/`](docs/templates/) | Templates for the glossary, context map and per-service `CONTEXT.md` |
+| [`docs/templates/`](docs/templates/) | The template for a service's `CONTEXT.md` |
 
 ## Workflow in one line
 

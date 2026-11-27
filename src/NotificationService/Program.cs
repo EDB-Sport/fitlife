@@ -38,6 +38,14 @@ try
     builder.Services.AddScoped<IEventSubscriber<ReservationMade>, ReservationMadeSubscriber>();
     builder.Services.AddEventConsumer<ReservationMade>("notification");
 
+    // Booking's three other events (#222): one notification per member, stored under the key the event's schema names
+    builder.Services.AddScoped<IEventSubscriber<ReservationCancelled>, ReservationCancelledSubscriber>();
+    builder.Services.AddEventConsumer<ReservationCancelled>("notification");
+    builder.Services.AddScoped<IEventSubscriber<ClassSessionCancelled>, ClassSessionCancelledSubscriber>();
+    builder.Services.AddEventConsumer<ClassSessionCancelled>("notification");
+    builder.Services.AddScoped<IEventSubscriber<ClassSessionChanged>, ClassSessionChangedSubscriber>();
+    builder.Services.AddEventConsumer<ClassSessionChanged>("notification");
+
     WebApplication app = builder.Build();
 
     // First, so every log line of the request carries its X-Correlation-ID

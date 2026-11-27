@@ -18,6 +18,13 @@ public sealed class MembershipClient(HttpClient http) : IMembershipClient
     /// <summary>The configuration key of Membership's address.</summary>
     public const string BaseUrlConfigurationKey = "Membership:BaseUrl";
 
+    // A missing or null field is an answer Booking can't read, not a default value: no member Guid.Empty (#607)
+    private static readonly JsonSerializerOptions AnswerOptions = new(JsonSerializerDefaults.Web)
+    {
+        RespectNullableAnnotations = true,
+        RespectRequiredConstructorParameters = true,
+    };
+
     /// <inheritdoc />
     public async Task<MemberLookup> FindMemberAsync(Guid accountId, string bearerToken, CancellationToken cancellationToken)
     {
@@ -36,7 +43,7 @@ public sealed class MembershipClient(HttpClient http) : IMembershipClient
                 return MemberLookup.Unavailable;
             }
 
-            MemberResponse? member = await response.Content.ReadFromJsonAsync<MemberResponse>(cancellationToken).ConfigureAwait(false);
+            MemberResponse? member = await response.Content.ReadFromJsonAsync<MemberResponse>(AnswerOptions, cancellationToken).ConfigureAwait(false);
             if (member is null)
             {
                 return MemberLookup.Unavailable;

@@ -1,4 +1,4 @@
-# McpServer image (docs/CSHARP_SETUP_TODO.md section 8). Build from the repo root:
+# McpServer image (docs/TECHNICAL_REFERENCE.md section 8). Build from the repo root:
 #   docker build -f src/McpServer/Dockerfile .
 # A new service copies this file and replaces McpServer (docs/ADDING_A_SERVICE.md).
 

@@ -1,4 +1,4 @@
-# Whitespace and file format for every file (docs/CSHARP_SETUP_TODO.md section 5).
+# Whitespace and file format for every file (docs/TECHNICAL_REFERENCE.md section 5).
 # Code style rules (var, braces, naming, ...) are in .globalconfig, so analyzers read them in the build.
 # Code-owned: changes need a review from the maintainers.
 root = true

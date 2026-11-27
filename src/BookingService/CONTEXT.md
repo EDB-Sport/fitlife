@@ -1,7 +1,7 @@
 # Booking (`src/BookingService/`)
 
 > From `docs/templates/CONTEXT.md`. Keep it under about 80 lines, and update it in the same PR that changes the model.
-> **Status: invariants 1–8 modelled (#155–#162).** The context map (`docs/domain/CONTEXT-MAP.md`) is decided in ADR 007. The tactical model below is DDD_PLAN step 4; the rules come from the TO-BE-kontekst §8 (Booking). Each further invariant is its own issue.
+> **Status: invariants 1–8 modelled (#155–#162).** The context map (`docs/domain/CONTEXT-MAP.md`) is decided in ADR 007. The tactical model below follows METHODOLOGY section 11; the rules come from the TO-BE-kontekst §8 (Booking). Each further invariant is its own issue.
 
 ## Purpose
 
@@ -56,6 +56,7 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | 8 | A cancelled class session cancels every reservation and waitlist entry | `ClassSessionCancelTests.Cancel_RemovesEveryReservationAndWaitlistEntryAndNamesTheirMembers`, `ClassSessionCancelTests.Reserve_OnACancelledClassSession_IsRejected`, `ClassSessionCancelTests.Cancel_OnACancelledClassSession_RaisesNoSecondClassSessionCancelled`, `ClassSessionCancelTests.JoinWaitlist_OnACancelledClassSession_IsRejected` |
 | 9 | After a changed start, a member who already had a reservation cancels free: never a late cancellation | `ClassSessionChangeStartTests.ChangeStart_ThenAMemberWhoHadAReservationCancelsUnderTwoHoursBeforeStart_IsNotALateCancellation`, `ClassSessionChangeStartTests.ChangeStart_ThenAMemberWhoReservedAfterwardsCancelsUnderTwoHoursBeforeStart_IsALateCancellation` |
 | 10 | A class session that has started can't be reserved; a free seat can be taken until the start time (#312's safe default) | `ClassSessionStartedTests.Reserve_AfterTheClassSessionHasStarted_IsRejected`, `ClassSessionStartedTests.Reserve_JustBeforeStart_IsReserved` |
+| 11 | A class session that has started can't be cancelled or moved: from the start on, `Cancel` and `ChangeStart` change nothing and raise nothing (#538, #312's safe default) | `ClassSessionCancelTests.Cancel_AfterTheClassSessionHasStarted_IsRejectedAndKeepsTheReservations`, `ClassSessionCancelTests.Cancel_JustBeforeTheStart_Cancels`, `ClassSessionChangeStartTests.ChangeStart_AfterTheClassSessionHasStarted_IsRejected`, `ClassSessionChangeStartTests.ChangeStart_JustBeforeTheStart_Changes` |
 
 ## Commands, queries and events
 
@@ -68,9 +69,9 @@ The rows are in `GLOSSARY.md`; this is the part Booking uses.
 | Command | `ClassSession.JoinWaitlist(memberId, clock)` | Returns `WaitlistResult.Joined`, `ClassSessionCancelled`, `MemberAlreadyHasReservation`, `MemberAlreadyOnWaitlist`, `ClassSessionNotFull` or `WaitlistClosed` |
 | Command | `ClassSession.CancelReservation(memberId, clock)` | Returns `CancellationResult.Cancelled` or `NoReservation` |
 | Command | `ClassSession.CloseWaitlist(clock)` | Returns `WaitlistClosingResult.Closed` or `TooEarly`. `Jobs/WaitlistClosingJob` calls it once a minute on every class session with waitlist entries and saves the closed ones; a save that loses to another request is closed on the next run (#314). The job runs when `WaitlistClosing:Enabled` is true (compose sets it). Until it has run, `CancelReservation` still gives a freed seat to the first waitlist entry, up to a minute into the last 2 hours |
-| Command | `ClassSession.Cancel()` | Empties the reservations and the waitlist; `IsCancelled` becomes true. On a cancelled class session it changes nothing and raises no second `ClassSessionCancelled` |
-| Command | `Application/CancelClassSessionCommand` | `POST /class-sessions/{id}/cancellation` (#239), role Træner or Admin. The handler calls `ClassSession.Cancel()` and saves once: 204. Unknown class session: 404 `ClassSessionNotFound`; already cancelled: 409 `ClassSessionAlreadyCancelled`, without calling `Cancel()` again or saving. `ClassSessionCancelled` is not published yet (#242) |
-| Command | `ClassSession.ChangeStart(newStart, clock)` | Returns `ChangeStartResult.Changed`, `ClassSessionCancelled` or `StartNotInTheFuture`. Keeps the reservations and the waitlist; checks neither the 4 weeks nor the waitlist's closing time (#240). The endpoint is #241 |
+| Command | `ClassSession.Cancel(clock)` | Returns `CancelResult.Cancelled`: empties the reservations and the waitlist; `IsCancelled` becomes true. `AlreadyCancelled` on a cancelled class session and `ClassSessionStarted` from the start on (#538) change nothing and raise no `ClassSessionCancelled` |
+| Command | `Application/CancelClassSessionCommand` | `POST /class-sessions/{id}/cancellation` (#239), role Træner or Admin. The handler calls `ClassSession.Cancel()` and saves once: 204. Unknown class session: 404 `ClassSessionNotFound`; already cancelled: 409 `ClassSessionAlreadyCancelled`; started: 409 `ClassSessionStarted` (#538). Neither saves. `ClassSessionCancelled` is not published yet (#242) |
+| Command | `ClassSession.ChangeStart(newStart, clock)` | Returns `ChangeStartResult.Changed`, `ClassSessionCancelled`, `ClassSessionStarted` (from the start on, #538) or `StartNotInTheFuture`. Keeps the reservations and the waitlist; checks neither the 4 weeks nor the waitlist's closing time (#240). The endpoint is #241 |
 | Event | `ReservationCancelled` | Raised when a member gives up their seat. `IsLateCancellation` says whether it was a late cancellation |
 | Event | `ReservationMade` | Raised when the first waitlist entry gets the freed seat. Published later (#171 and after); the events wait in `ClassSession.DomainEvents` |
 | Event | `WaitlistEntryExpired` | Raised for each waitlist entry removed when the waitlist closes |

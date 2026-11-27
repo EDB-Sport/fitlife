@@ -35,6 +35,9 @@ public partial class BecomeMember(IIdentityClient identityClient, IMembershipCli
 
     private bool ShowLogInLink { get; set; }
 
+    // Joined, but the first fee isn't paid: the page says so instead of the form (#546)
+    private bool PaymentIsMissing { get; set; }
+
     /// <inheritdoc />
     protected override async Task OnInitializedAsync()
     {
@@ -110,6 +113,7 @@ public partial class BecomeMember(IIdentityClient identityClient, IMembershipCli
     }
 
     // Joins with the fresh token, or with the cookie's when accessToken is null. False, with the sentence set, when it failed
+    // or the first fee isn't paid
     private async Task<bool> JoinAsync(string? accessToken)
     {
         JoinMembershipAnswer answer;
@@ -134,6 +138,12 @@ public partial class BecomeMember(IIdentityClient identityClient, IMembershipCli
         if (answer == JoinMembershipAnswer.AlreadyAMember)
         {
             ErrorSentence = ErrorSentences.AlreadyAMember;
+            return false;
+        }
+
+        if (answer == JoinMembershipAnswer.PaymentMissing)
+        {
+            PaymentIsMissing = true;
             return false;
         }
 

@@ -11,12 +11,12 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 failures=0
 
-# Fake gh: `pr view` prints $FAKE_DIR/pr.json (or fails when there is none, as gh does for an unknown PR).
+# Fake gh: `pr view` prints $FAKE_DIR/pr.txt, what its --jq makes of the PR (or fails when there is none, as gh does).
 cat >"$work/gh" <<'FAKE'
 #!/usr/bin/env bash
 echo "gh $*" >>"$FAKE_DIR/calls"
-[ -f "$FAKE_DIR/pr.json" ] || { echo "GraphQL: Could not resolve to a PullRequest with the number of $3." >&2; exit 1; }
-cat "$FAKE_DIR/pr.json"
+[ -f "$FAKE_DIR/pr.txt" ] || { echo "GraphQL: Could not resolve to a PullRequest with the number of $3." >&2; exit 1; }
+cat "$FAKE_DIR/pr.txt"
 FAKE
 # Fake git: the caller's checkout is $FAKE_DIR/repo; `worktree add` makes the folder with the compose files.
 cat >"$work/git" <<'FAKE'
@@ -45,7 +45,7 @@ chmod +x "$work/gh" "$work/git" "$work/docker"
 new_case() {
   fx=$(mktemp -d "$work/case.XXXXXX")
   mkdir -p "$fx/repo"
-  printf '{"state":"%s","headRefName":"feature/42-x","headRefOid":"abc123"}\n' "${1:-OPEN}" >"$fx/pr.json"
+  printf '%s feature/42-x abc123\n' "${1:-OPEN}" >"$fx/pr.txt"
   : >"$fx/calls"
 }
 
@@ -98,7 +98,7 @@ check "an existing .env is kept" grep -qxF "GATEWAY_PORT=9090" "$fx/previews/fit
 check "the URL follows GATEWAY_PORT in .env" has "http://localhost:9090"
 
 new_case
-rm "$fx/pr.json"
+rm "$fx/pr.txt"
 run 42
 check "a PR that isn't found: non-zero exit" test "$status" != 0
 check "a PR that isn't found: one line" test "$(wc -l <<<"$out" | tr -d ' ')" = 1

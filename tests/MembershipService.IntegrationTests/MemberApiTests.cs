@@ -62,6 +62,20 @@ public sealed class MemberApiTests
     }
 
     [Test]
+    public async Task Join_WhenAccountIsAlreadyAMember_ReturnsConflictWithTheCode()
+    {
+        // Arrange
+        using HttpClient client = ClientFor(TestTokens.For(TestTokens.NewAccountId()));
+        using HttpResponseMessage first = await Join(client).ConfigureAwait(false);
+
+        // Act
+        using HttpResponseMessage second = await Join(client).ConfigureAwait(false);
+
+        // Assert
+        Assert.That((second.StatusCode, await CodeOf(second).ConfigureAwait(false)), Is.EqualTo((HttpStatusCode.Conflict, "AccountIsAlreadyAMember")));
+    }
+
+    [Test]
     public async Task Join_WithAToken_PointsAtTheLookupForTheAccount()
     {
         // Arrange
@@ -274,6 +288,23 @@ public sealed class MemberApiTests
     private static Task<HttpResponseMessage> Join(HttpClient client)
     {
         return client.PostAsync(new Uri("/members", UriKind.Relative), content: null);
+    }
+
+    // The problem details' code, or null when the answer isn't problem details or has no code
+    private static async Task<string?> CodeOf(HttpResponseMessage response)
+    {
+        if (!string.Equals(response.Content.Headers.ContentType?.MediaType, "application/problem+json", StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        using JsonDocument body = await Body(response).ConfigureAwait(false);
+        if (!body.RootElement.TryGetProperty("code", out JsonElement code))
+        {
+            return null;
+        }
+
+        return code.GetString();
     }
 
     private static async Task<JsonDocument> Body(HttpResponseMessage response)

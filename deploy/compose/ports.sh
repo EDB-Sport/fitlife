@@ -1,4 +1,5 @@
-# shellcheck shell=sh
+#!/bin/sh
+# Meant to be sourced (`. ./ports.sh`): run on its own it only prints the ports, since its exports end with it.
 # Shifts every host port the compose stack publishes by PORT_OFFSET (default 0), so a second stack runs next to
 # yours on one Docker host (#585). Compose can't add numbers, so source this before `docker compose`:
 #   cd deploy/compose && PORT_OFFSET=100 . ./ports.sh && docker compose -p fitlife-2 up -d --wait

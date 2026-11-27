@@ -41,7 +41,7 @@ public sealed class ApiDocumentationTests
     }
 
     [Test]
-    public async Task Get_OpenApiDocument_RequiresABearerTokenOnTheThreeMedlemEndpointsOnly()
+    public async Task Get_OpenApiDocument_RequiresABearerTokenOnEveryEndpointButTheClassSchedule()
     {
         // Arrange
         using var app = new WebApplicationFactory<Program>();
@@ -58,6 +58,8 @@ public sealed class ApiDocumentationTests
             Assert.That(RequiresBearer(paths?["/class-sessions/{id}/reservations"]?["post"]), Is.True, "POST reservation");
             Assert.That(RequiresBearer(paths?["/class-sessions/{id}/reservations/{memberId}"]?["delete"]), Is.True, "DELETE reservation");
             Assert.That(RequiresBearer(paths?["/class-sessions/{id}/waitlist"]?["post"]), Is.True, "POST waitlist");
+            Assert.That(RequiresBearer(paths?["/class-sessions"]?["post"]), Is.True, "POST class session");
+            Assert.That(RequiresBearer(paths?["/class-sessions/{id}/cancellation"]?["post"]), Is.True, "POST cancellation");
             Assert.That(paths?["/class-sessions"]?["get"], Is.Not.Null, "GET class schedule is in the document");
             Assert.That(RequiresBearer(paths?["/class-sessions"]?["get"]), Is.False, "GET class schedule");
         });

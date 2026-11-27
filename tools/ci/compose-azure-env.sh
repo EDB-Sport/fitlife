@@ -17,6 +17,7 @@ set -uo pipefail
 LOCAL_ONLY='
 *:Loki__Url Azure runs no Loki container, so there is no address to give (only notification-svc sets one)
 member-portal:Gateway__BaseUrl #599: a real gap, the portal in Azure has no gateway address yet
+membership-svc:PaymentProvider__BaseUrl #279: compose points it at the WireMock stand-in; Azure has no payment provider mock yet (#578)
 '
 
 root=$(cd "$(dirname "$0")/../.." && pwd)

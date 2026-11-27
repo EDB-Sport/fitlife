@@ -28,6 +28,8 @@
     <ProjectReference Include="$(RepoRoot)libs/FitLife.Authentication/FitLife.Authentication.csproj" />
     <ProjectReference Include="$(RepoRoot)libs/FitLife.Configuration/FitLife.Configuration.csproj" />
     <ProjectReference Include="$(RepoRoot)libs/FitLife.Correlation/FitLife.Correlation.csproj" />
+    <!-- Integration events to RabbitMQ (#192) -->
+    <ProjectReference Include="$(RepoRoot)libs/FitLife.Messaging/FitLife.Messaging.csproj" />
   </ItemGroup>
 
   <ItemGroup>

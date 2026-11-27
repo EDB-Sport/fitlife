@@ -4,8 +4,8 @@ using System.Text.Json;
 namespace MemberPortal.Web.Clients;
 
 /// <summary>
-/// Identity's <c>POST tokens</c>, reached through the gateway's route <c>api/identity</c>, over a typed client.
-/// A 401 is no token; every other failure becomes an <see cref="IdentityUnavailableException"/>.
+/// Identity's <c>POST accounts</c> and <c>POST tokens</c>, reached through the gateway's route <c>api/identity</c>, over a typed client.
+/// A 401 is no token, and a 400 or a 409 <c>EmailAlreadyTaken</c> is an answer about the account; every other failure becomes an <see cref="IdentityUnavailableException"/>.
 /// </summary>
 /// <param name="http">A client with the gateway's base address, from <c>IHttpClientFactory</c>.</param>
 public sealed class IdentityClient(HttpClient http) : IIdentityClient
@@ -14,6 +14,41 @@ public sealed class IdentityClient(HttpClient http) : IIdentityClient
     public const string BaseUrlConfigurationKey = "Gateway:BaseUrl";
 
     private const string TokensPath = "api/identity/tokens";
+
+    private const string AccountsPath = "api/identity/accounts";
+
+    private const string EmailAlreadyTakenCode = "EmailAlreadyTaken";
+
+    /// <inheritdoc />
+    public async Task<CreateAccountAnswer> CreateAccountAsync(CreateAccountRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using HttpResponseMessage response = await http.PostAsJsonAsync(new Uri(AccountsPath, UriKind.Relative), request, cancellationToken).ConfigureAwait(false);
+            switch (response.StatusCode)
+            {
+                case HttpStatusCode.BadRequest:
+                    return CreateAccountAnswer.Rejected;
+                case HttpStatusCode.Conflict when await HasCode(response, EmailAlreadyTakenCode, cancellationToken).ConfigureAwait(false):
+                    return CreateAccountAnswer.EmailAlreadyTaken;
+                default:
+                    response.EnsureSuccessStatusCode();
+                    return CreateAccountAnswer.Created;
+            }
+        }
+        catch (HttpRequestException exception)
+        {
+            throw new IdentityUnavailableException("Identity can't be reached, or answered an error.", exception);
+        }
+        catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new IdentityUnavailableException("Identity didn't answer in time.", exception);
+        }
+        catch (IOException exception)
+        {
+            throw new IdentityUnavailableException("The connection to Identity ended before the answer was read.", exception);
+        }
+    }
 
     /// <inheritdoc />
     public async Task<TokenResponse?> LogInAsync(LogInRequest request, CancellationToken cancellationToken)
@@ -51,5 +86,23 @@ public sealed class IdentityClient(HttpClient http) : IIdentityClient
         }
 
         return token ?? throw new IdentityUnavailableException("Identity's answer is empty.");
+    }
+
+    // Whether a problem answer carries this `code`. An answer that can't be read has none
+    private static async Task<bool> HasCode(HttpResponseMessage response, string code, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using JsonDocument problem = await JsonDocument.ParseAsync(
+                await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false), cancellationToken: cancellationToken).ConfigureAwait(false);
+            return problem.RootElement.ValueKind == JsonValueKind.Object
+                && problem.RootElement.TryGetProperty("code", out JsonElement value)
+                && value.ValueKind == JsonValueKind.String
+                && string.Equals(value.GetString(), code, StringComparison.Ordinal);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 }

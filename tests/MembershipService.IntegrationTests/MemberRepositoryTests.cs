@@ -106,6 +106,27 @@ public sealed class MemberRepositoryTests
     }
 
     [Test]
+    public async Task Save_APausedMembership_ReadsThePausePeriodBack()
+    {
+        // Arrange
+        IMembershipRepository memberships = _factory.Services.GetRequiredService<IMembershipRepository>();
+        var today = new DateOnly(2026, 11, 24);
+        var membership = Membership.Start(Guid.NewGuid(), today);
+        membership.MarkPaid();
+        await memberships.AddAsync(membership, CancellationToken.None).ConfigureAwait(false);
+        membership.Pause(new DateOnly(2026, 12, 1), new DateOnly(2026, 12, 31), today);
+
+        // Act
+        await memberships.SaveAsync(membership, CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Membership? found = await memberships.FindByMemberIdAsync(membership.MemberId, CancellationToken.None).ConfigureAwait(false);
+        Assert.That(found?.PausedFrom, Is.EqualTo(new DateOnly(2026, 12, 1)));
+        Assert.That(found?.PausedTo, Is.EqualTo(new DateOnly(2026, 12, 31)));
+        Assert.That(found?.StatusOn(new DateOnly(2026, 12, 15)), Is.EqualTo(MembershipStatus.Paused));
+    }
+
+    [Test]
     public async Task Remove_AMembership_IsNotFoundAgain()
     {
         // Arrange

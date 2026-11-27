@@ -1,4 +1,5 @@
 using System.Net;
+using MemberPortal.Web;
 using MemberPortal.Web.Clients;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -70,6 +71,24 @@ public sealed class BecomeMemberTests : IDisposable
     }
 
     [Test]
+    public async Task BecomeMember_WhenTheFirstFeeIsNotPaid_StaysOnThePageLoggedInWithTheSentence()
+    {
+        // Arrange
+        _factory.Membership.Answer = JoinMembershipAnswer.PaymentMissing;
+
+        // Act
+        using HttpResponseMessage response = await BecomeMemberAsync().ConfigureAwait(false);
+
+        // Assert
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.That(PortalForms.SetCookie(response, PortalForms.AuthenticationCookie), Is.Not.Null);
+        // Razor encodes å and ø, so the test reads the page as a browser shows it
+        string page = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
+        Assert.That(page, Does.Contain("Du er meldt ind, men betalingen mangler. Du kan ikke booke, før den er betalt."));
+        Assert.That(page, Does.Not.Contain("<form"));
+    }
+
+    [Test]
     public async Task BecomeMember_WhenItFails_NeverWritesThePasswordBackIntoThePage()
     {
         // Arrange
@@ -85,11 +104,39 @@ public sealed class BecomeMemberTests : IDisposable
         Assert.That(page, Does.Not.Contain(Password));
     }
 
-    private async Task<HttpResponseMessage> BecomeMemberAsync()
+    [Test]
+    public async Task BecomeMember_WithoutAName_ShowsTheSentenceAndNeverWritesThePasswordBackIntoThePage()
+    {
+        // Act
+        using HttpResponseMessage response = await BecomeMemberAsync(name: string.Empty).ConfigureAwait(false);
+
+        // Assert
+        // Razor encodes å and ø, so the test reads the page as a browser shows it
+        string page = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
+        Assert.That(page, Does.Contain("Skriv dit navn."));
+        Assert.That(page, Does.Not.Contain(Password));
+    }
+
+    [Test]
+    public async Task BecomeMember_WithAnEmailThatIsTaken_NeverWritesThePasswordBackIntoThePage()
+    {
+        // Arrange
+        _factory.Identity.CreateAccountAnswer = CreateAccountAnswer.EmailAlreadyTaken;
+
+        // Act
+        using HttpResponseMessage response = await BecomeMemberAsync().ConfigureAwait(false);
+
+        // Assert
+        string page = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
+        Assert.That(page, Does.Contain(ErrorSentences.EmailAlreadyTaken));
+        Assert.That(page, Does.Not.Contain(Password));
+    }
+
+    private async Task<HttpResponseMessage> BecomeMemberAsync(string name = "Mette Medlem")
     {
         string page = await _client.GetStringAsync(new Uri("/bliv-medlem", UriKind.Relative)).ConfigureAwait(false);
         Dictionary<string, string> fields = PortalForms.HiddenFields(page);
-        fields["Form.Name"] = "Mette Medlem";
+        fields["Form.Name"] = name;
         fields["Form.Email"] = "medlem@fitlife.test";
         fields["Form.Password"] = Password;
         using var form = new FormUrlEncodedContent(fields);
@@ -119,6 +166,8 @@ public sealed class BecomeMemberTests : IDisposable
     {
         public Exception? Failure { get; set; }
 
+        public JoinMembershipAnswer Answer { get; set; } = JoinMembershipAnswer.Joined;
+
         public string? AccessToken { get; private set; }
 
         public Task<JoinMembershipAnswer> JoinAsync(string? accessToken, CancellationToken cancellationToken)
@@ -130,7 +179,7 @@ public sealed class BecomeMemberTests : IDisposable
                 return Task.FromException<JoinMembershipAnswer>(Failure);
             }
 
-            return Task.FromResult(JoinMembershipAnswer.Joined);
+            return Task.FromResult(Answer);
         }
     }
 

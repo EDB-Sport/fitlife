@@ -1,8 +1,8 @@
-using MembershipService.Application;
 using System.Text;
 using FitLife.Contracts.Testing;
 using FitLife.Messaging;
 using FitLife.Messaging.Events;
+using MembershipService.Application;
 using MembershipService.Domain;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;

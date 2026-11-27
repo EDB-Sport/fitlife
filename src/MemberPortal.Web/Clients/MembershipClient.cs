@@ -19,6 +19,8 @@ public sealed class MembershipClient(HttpClient http) : IMembershipClient
 
     private const string PaymentPath = "api/membership/members/me/payment";
 
+    private const string PausePath = "api/membership/members/me/pause";
+
     // MembershipStatus.PaymentMissing in contracts/openapi/membershipservice.json
     private const string PaymentMissing = "PaymentMissing";
 
@@ -121,6 +123,57 @@ public sealed class MembershipClient(HttpClient http) : IMembershipClient
             MyMembershipResponse membership = await response.Content.ReadFromJsonAsync<MyMembershipResponse>(cancellationToken).ConfigureAwait(false)
                 ?? throw new MembershipUnavailableException("Membership answered no membership.");
             return new PaymentAnswer(membership, RejectionCode: null);
+        }
+        catch (JsonException exception)
+        {
+            throw new MembershipUnavailableException("Membership answered a body that isn't a membership.", exception);
+        }
+        catch (HttpRequestException exception)
+        {
+            throw new MembershipUnavailableException("Membership can't be reached, or answered an error.", exception);
+        }
+        catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            // HttpClient's timeout. The caller's own cancellation passes on untouched
+            throw new MembershipUnavailableException("Membership didn't answer in time.", exception);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<PauseAnswer> PauseAsync(PauseRequest request, CancellationToken cancellationToken)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Put, new Uri(PausePath, UriKind.Relative)) { Content = JsonContent.Create(request) };
+        return await SendPauseAsync(message, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<PauseAnswer> EndPauseAsync(CancellationToken cancellationToken)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Delete, new Uri(PausePath, UriKind.Relative));
+        return await SendPauseAsync(message, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Both pause calls answer the same way: 200 with the membership, 409 with a code, 400 or 404 without one
+    private async Task<PauseAnswer> SendPauseAsync(HttpRequestMessage message, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using HttpResponseMessage response = await http.SendAsync(message, cancellationToken).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.Conflict)
+            {
+                return new PauseAnswer(Membership: null, await RejectionCodeAsync(response, cancellationToken).ConfigureAwait(false));
+            }
+
+            if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.BadRequest)
+            {
+                // Not a member, or a date Membership couldn't read: no code, so the page shows the generic sentence
+                return new PauseAnswer(Membership: null, RejectionCode: null);
+            }
+
+            response.EnsureSuccessStatusCode();
+            MembershipPauseResponse membership = await response.Content.ReadFromJsonAsync<MembershipPauseResponse>(cancellationToken).ConfigureAwait(false)
+                ?? throw new MembershipUnavailableException("Membership answered no membership.");
+            return new PauseAnswer(membership, RejectionCode: null);
         }
         catch (JsonException exception)
         {

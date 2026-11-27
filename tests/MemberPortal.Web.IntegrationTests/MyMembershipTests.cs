@@ -8,7 +8,7 @@ using NUnit.Framework;
 
 namespace MemberPortal.Web.IntegrationTests;
 
-/// <summary><c>/mit-medlemskab</c> needs a log-in (#624), and "Betal nu" posts through the real pipeline (#535).</summary>
+/// <summary><c>/mit-medlemskab</c> needs a log-in (#624), and "Betal nu" (#535) and "Sæt på pause" (#211) post through the real pipeline.</summary>
 [TestFixture]
 [FixtureLifeCycle(LifeCycle.InstancePerTestCase)]
 public sealed class MyMembershipTests : IDisposable
@@ -59,6 +59,29 @@ public sealed class MyMembershipTests : IDisposable
         Assert.That(answer, Does.Contain("Din betaling er modtaget.").And.Contain("Aktiv").And.Not.Contain("Betal nu"));
     }
 
+    [Test]
+    public async Task MyMembership_SaetPaaPause_SendsTheTwoDaysAndShowsTheAnswer()
+    {
+        // Arrange
+        _factory.Membership.Status = "Active";
+        using HttpResponseMessage logIn = await LogInAsync().ConfigureAwait(false);
+        string page = await _client.GetStringAsync(new Uri("/mit-medlemskab", UriKind.Relative)).ConfigureAwait(false);
+        Dictionary<string, string> fields = PortalForms.HiddenFields(page);
+        fields["_handler"] = "pause";
+        fields["PauseFormValues.From"] = "2026-12-01";
+        fields["PauseFormValues.To"] = "2026-12-31";
+
+        // Act
+        using var form = new FormUrlEncodedContent(fields);
+        using HttpResponseMessage response = await _client.PostAsync(new Uri("/mit-medlemskab", UriKind.Relative), form).ConfigureAwait(false);
+
+        // Assert
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.That(_factory.Membership.PauseRequest, Is.EqualTo(new PauseRequest(new DateOnly(2026, 12, 1), new DateOnly(2026, 12, 31))));
+        string answer = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
+        Assert.That(answer, Does.Contain("Dit medlemskab er sat på pause.").And.Contain("Pause fra 01-12-2026 til 31-12-2026"));
+    }
+
     private async Task<HttpResponseMessage> LogInAsync()
     {
         string page = await _client.GetStringAsync(new Uri("/log-ind", UriKind.Relative)).ConfigureAwait(false);
@@ -82,10 +105,14 @@ public sealed class MyMembershipTests : IDisposable
         }
     }
 
-    /// <summary>A member with Betaling mangler, who becomes Aktiv when paying.</summary>
+    /// <summary>A member with Betaling mangler (or <see cref="Status"/>), who becomes Aktiv when paying and Pause when pausing.</summary>
     private sealed class FakeMembership : IMembershipClient
     {
+        public string Status { get; set; } = "PaymentMissing";
+
         public int PayCalls { get; private set; }
+
+        public PauseRequest? PauseRequest { get; private set; }
 
         public Task<JoinMembershipAnswer> JoinAsync(string? accessToken, CancellationToken cancellationToken)
         {
@@ -94,7 +121,7 @@ public sealed class MyMembershipTests : IDisposable
 
         public Task<MyMembershipResponse?> GetMyMembershipAsync(CancellationToken cancellationToken)
         {
-            return Task.FromResult<MyMembershipResponse?>(Membership("PaymentMissing"));
+            return Task.FromResult<MyMembershipResponse?>(Membership(Status));
         }
 
         public Task<PaymentAnswer> PayAsync(CancellationToken cancellationToken)
@@ -105,12 +132,14 @@ public sealed class MyMembershipTests : IDisposable
 
         public Task<PauseAnswer> PauseAsync(PauseRequest request, CancellationToken cancellationToken)
         {
-            throw new NotSupportedException("Paying pauses nothing.");
+            PauseRequest = request;
+            return Task.FromResult(new PauseAnswer(
+                new MembershipPauseResponse(Guid.Empty, "Standard", "Paused", IsActive: false, StartDate, request.From, request.To), RejectionCode: null));
         }
 
         public Task<PauseAnswer> EndPauseAsync(CancellationToken cancellationToken)
         {
-            throw new NotSupportedException("Paying ends no pause.");
+            throw new NotSupportedException("The tests here end no pause.");
         }
 
         private static MyMembershipResponse Membership(string status)

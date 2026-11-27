@@ -10,11 +10,14 @@ using NotificationService.Subscribers;
 namespace NotificationService.Tests;
 
 /// <summary>Notification confirms a cancelled reservation to the member (#222).</summary>
+[FixtureLifeCycle(LifeCycle.InstancePerTestCase)] // a fresh repository and logger for every test
 public sealed class ReservationCancelledSubscriberTests
 {
     private static readonly DateTimeOffset Start = new(2026, 12, 1, 18, 0, 0, TimeSpan.FromHours(1));
 
     private static readonly ReservationCancelled Early = new("reservation-1", "class-session-1", "member-1", Start, IsLateCancellation: false);
+
+    private static readonly string[] CorrelatedLine = ["Notification to member member-1: Din booking på holdet den 01.12.2026 kl. 18:00 er afmeldt. (correlation ID corr-1)"];
 
     private readonly InMemoryNotificationRepository _repository = new();
     private readonly CapturingLogger<ReservationCancelledSubscriber> _logger = new();
@@ -94,7 +97,7 @@ public sealed class ReservationCancelledSubscriberTests
         }
 
         // Assert
-        Assert.That(_logger.NotificationLines, Is.EqualTo(new[] { "Notification to member member-1: Din booking på holdet den 01.12.2026 kl. 18:00 er afmeldt. (correlation ID corr-1)" }));
+        Assert.That(_logger.NotificationLines, Is.EqualTo(CorrelatedLine));
     }
 
     private ReservationCancelledSubscriber Subscriber()

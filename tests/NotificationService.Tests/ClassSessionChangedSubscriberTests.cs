@@ -10,6 +10,7 @@ using NotificationService.Subscribers;
 namespace NotificationService.Tests;
 
 /// <summary>Notification tells everyone reserved on a class session about its new start (#222).</summary>
+[FixtureLifeCycle(LifeCycle.InstancePerTestCase)] // a fresh repository and logger for every test
 public sealed class ClassSessionChangedSubscriberTests
 {
     private static readonly ClassSessionChanged Moved = new(
@@ -17,6 +18,8 @@ public sealed class ClassSessionChangedSubscriberTests
         ["member-1", "member-2"],
         new DateTimeOffset(2026, 12, 1, 18, 0, 0, TimeSpan.FromHours(1)),
         new DateTimeOffset(2026, 12, 2, 19, 30, 0, TimeSpan.FromHours(1)));
+
+    private static readonly string[] CorrelatedLine = ["Notification to member member-1: Dit hold er flyttet til den 02.12.2026 kl. 19:30. Din booking gælder stadig, og du kan frit afmelde den. (correlation ID corr-1)"];
 
     private readonly InMemoryNotificationRepository _repository = new();
     private readonly CapturingLogger<ClassSessionChangedSubscriber> _logger = new();
@@ -112,7 +115,7 @@ public sealed class ClassSessionChangedSubscriberTests
         }
 
         // Assert
-        Assert.That(_logger.NotificationLines, Is.EqualTo(new[] { "Notification to member member-1: Dit hold er flyttet til den 02.12.2026 kl. 19:30. Din booking gælder stadig, og du kan frit afmelde den. (correlation ID corr-1)" }));
+        Assert.That(_logger.NotificationLines, Is.EqualTo(CorrelatedLine));
     }
 
     private ClassSessionChangedSubscriber Subscriber()

@@ -10,6 +10,7 @@ using NotificationService.Subscribers;
 namespace NotificationService.Tests;
 
 /// <summary>Notification tells everyone reserved or waitlisted on a cancelled class session (#222).</summary>
+[FixtureLifeCycle(LifeCycle.InstancePerTestCase)] // a fresh repository and logger for every test
 public sealed class ClassSessionCancelledSubscriberTests
 {
     private static readonly ClassSessionCancelled ForThreeMembers = new(
@@ -22,6 +23,12 @@ public sealed class ClassSessionCancelledSubscriberTests
         "class-session-cancelled:class-session-1:member-1",
         "class-session-cancelled:class-session-1:member-2",
         "class-session-cancelled:class-session-1:member-3",
+    ];
+
+    private static readonly string[] CorrelatedLines =
+    [
+        "Notification to member member-1: Dit hold den 01.12.2026 kl. 18:00 er aflyst. Din booking eller ventelisteplads er fjernet. (correlation ID corr-1)",
+        "Notification to member member-2: Dit hold den 01.12.2026 kl. 18:00 er aflyst. Din booking eller ventelisteplads er fjernet. (correlation ID corr-1)",
     ];
 
     private readonly InMemoryNotificationRepository _repository = new();
@@ -124,11 +131,7 @@ public sealed class ClassSessionCancelledSubscriberTests
         }
 
         // Assert
-        Assert.That(_logger.NotificationLines, Is.EquivalentTo(new[]
-        {
-            "Notification to member member-1: Dit hold den 01.12.2026 kl. 18:00 er aflyst. Din booking eller ventelisteplads er fjernet. (correlation ID corr-1)",
-            "Notification to member member-2: Dit hold den 01.12.2026 kl. 18:00 er aflyst. Din booking eller ventelisteplads er fjernet. (correlation ID corr-1)",
-        }));
+        Assert.That(_logger.NotificationLines, Is.EquivalentTo(CorrelatedLines));
     }
 
     private ClassSessionCancelledSubscriber Subscriber()

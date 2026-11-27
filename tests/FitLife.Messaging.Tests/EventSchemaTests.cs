@@ -80,6 +80,9 @@ public sealed class EventSchemaTests
         Assert.That(schemas, Is.EqualTo(new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [ReservationMade.RoutingKey] = EventSchema.Generate<ReservationMade>(),
+            [MembershipPaused.RoutingKey] = EventSchema.Generate<MembershipPaused>(),
+            [MembershipCancelled.RoutingKey] = EventSchema.Generate<MembershipCancelled>(),
+            [PaymentFailed.RoutingKey] = EventSchema.Generate<PaymentFailed>(),
         }));
     }
 
@@ -95,6 +98,21 @@ public sealed class EventSchemaTests
 
         // Assert
         Assert.That(schemas, Has.Count.EqualTo(records));
+    }
+
+    [TestCase("membership-paused")]
+    [TestCase("membership-cancelled")]
+    [TestCase("payment-failed")]
+    public void GenerateAll_TheMembershipEvent_IsEquivalentToTheCommittedSchema(string routingKey)
+    {
+        // Arrange
+        var committed = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "contracts", "events", routingKey + ".schema.json")));
+
+        // Act
+        var generated = JsonNode.Parse(EventSchema.GenerateAll()[routingKey]);
+
+        // Assert
+        Assert.That(JsonNode.DeepEquals(generated, committed), Is.True, generated?.ToJsonString());
     }
 
     private static JsonNode Parse(string json)

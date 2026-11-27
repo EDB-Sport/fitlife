@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Mutation testing on the C# code a PR changes (issue #53, docs/CSHARP_SETUP_TODO.md section 10 job 6).
+# Mutation testing on the C# code a PR changes (issue #53, docs/TECHNICAL_REFERENCE.md section 10, the mutation job).
 # Runs the dotnet-stryker pinned in dotnet-tools.json. stryker-config.json (code-owned) holds the solution,
 # the reporters and the break threshold: a mutation score below it exits non-zero.
 #

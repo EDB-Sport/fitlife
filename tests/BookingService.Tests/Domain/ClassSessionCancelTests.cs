@@ -26,7 +26,7 @@ public sealed class ClassSessionCancelTests
         classSession.JoinWaitlist(waitingMemberId, _clock);
 
         // Act
-        classSession.Cancel();
+        classSession.Cancel(_clock);
 
         // Assert
         var classSessionCancelled = (ClassSessionCancelled)classSession.DomainEvents[^1];
@@ -40,12 +40,56 @@ public sealed class ClassSessionCancelTests
         });
     }
 
+    [TestCase(0)] // exactly at the start
+    [TestCase(30)] // while it runs
+    public void Cancel_AfterTheClassSessionHasStarted_IsRejectedAndKeepsTheReservations(int minutesAfterStart)
+    {
+        // Arrange: #538, the start is the cut-off as in #312
+        var clock = new FakeTimeProvider(Now); // its own: the fixture's clock is shared between tests
+        ClassSession classSession = ClassSessionWithCapacity(1);
+        var memberId = Guid.NewGuid();
+        classSession.Reserve(memberId, clock);
+        int eventsBefore = classSession.DomainEvents.Count;
+        clock.SetUtcNow(classSession.StartTime.AddMinutes(minutesAfterStart));
+
+        // Act
+        CancelResult result = classSession.Cancel(clock);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(CancelResult.ClassSessionStarted));
+            Assert.That(classSession.IsCancelled, Is.False);
+            Assert.That(classSession.Reservations.Select(reservation => reservation.MemberId), Is.EqualTo(new[] { memberId }));
+            Assert.That(classSession.DomainEvents, Has.Count.EqualTo(eventsBefore));
+        });
+    }
+
+    [Test]
+    public void Cancel_JustBeforeTheStart_Cancels()
+    {
+        // Arrange: a clock of its own, because the fixture's clock is shared between tests
+        var clock = new FakeTimeProvider(Now);
+        ClassSession classSession = ClassSessionWithCapacity(1);
+        clock.SetUtcNow(classSession.StartTime.AddTicks(-1));
+
+        // Act
+        CancelResult result = classSession.Cancel(clock);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(CancelResult.Cancelled));
+            Assert.That(classSession.IsCancelled, Is.True);
+        });
+    }
+
     [Test]
     public void Reserve_OnACancelledClassSession_IsRejected()
     {
         // Arrange
         ClassSession classSession = ClassSessionWithCapacity(1);
-        classSession.Cancel();
+        classSession.Cancel(_clock);
 
         // Act
         ReservationResult result = classSession.Reserve(Guid.NewGuid(), _clock);
@@ -64,10 +108,10 @@ public sealed class ClassSessionCancelTests
         // Arrange
         ClassSession classSession = ClassSessionWithCapacity(1);
         classSession.Reserve(Guid.NewGuid(), _clock);
-        classSession.Cancel();
+        classSession.Cancel(_clock);
 
         // Act
-        classSession.Cancel();
+        classSession.Cancel(_clock);
 
         // Assert
         Assert.That(classSession.DomainEvents.OfType<ClassSessionCancelled>().Count(), Is.EqualTo(1));
@@ -78,7 +122,7 @@ public sealed class ClassSessionCancelTests
     {
         // Arrange
         ClassSession classSession = ClassSessionWithCapacity(1);
-        classSession.Cancel();
+        classSession.Cancel(_clock);
 
         // Act
         WaitlistResult result = classSession.JoinWaitlist(Guid.NewGuid(), _clock);

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Fails when a service's OpenAPI contract breaks its contract at the service's last release tag (issue #91,
-# docs/CSHARP_SETUP_TODO.md section 8). Compares contracts/openapi/<service>.json in the working tree with the
+# docs/TECHNICAL_REFERENCE.md section 8). Compares contracts/openapi/<service>.json in the working tree with the
 # same file at the newest <service>/vX.Y.Z tag. A service with no tag yet (before its first release) is skipped.
 # Usage: tools/ci/oasdiff-breaking.sh [<service> ...]   (from the repo root; no arguments = every contract)
 # Exit code 0 = no breaking change, 1 = at least one (or oasdiff could not run: only a break says "breaks its contract"). The release gate (#94) reuses it per service.

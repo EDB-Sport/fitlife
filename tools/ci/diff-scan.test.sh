@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests for tools/ci/diff-scan.sh (issue #5, docs/CSHARP_SETUP_TODO.md section 10).
+# Tests for tools/ci/diff-scan.sh (issue #5, docs/TECHNICAL_REFERENCE.md section 10).
 # Each case builds a throwaway git repo: a base commit, then a head commit with the change.
 # Usage: tools/ci/diff-scan.test.sh   (exit code 0 = all cases pass)
 . "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"

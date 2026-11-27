@@ -93,7 +93,7 @@ for job in restore build format test contract build-rules; do
   block=$(job_block "$job")
   expect "$job needs plan" grep -qE '^    needs: (plan|\[plan, build\])( #.*)?$' <<<"$block"
   expect "$job runs unless the plan says skip, also when the plan failed or was skipped" \
-    grep -qF "!cancelled() && needs.plan.outputs.dotnet != 'skip'" <<<"$block"
+    bash -c 'grep -E "^    if: " <<<"$1" | grep -F "!cancelled() && " | grep -qF "needs.plan.outputs.dotnet != '"'skip'"'"' _ "$block"
 done
 for job in format test contract; do
   expect "$job still runs only after a green build (issue #134)" \

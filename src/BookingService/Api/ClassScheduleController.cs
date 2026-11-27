@@ -2,6 +2,7 @@ using System.Diagnostics;
 using BookingService.Application;
 using FitLife.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BookingService.Api;
@@ -84,6 +85,50 @@ public sealed class ClassScheduleController : ControllerBase
             default:
                 throw new UnreachableException($"ScheduleClassSessionOutcome.{result.Outcome} has no status code.");
         }
+    }
+
+    /// <summary>
+    /// Cancels a class session (#239): its reservations and waitlist entries are removed, the class schedule shows it as cancelled
+    /// and nobody can reserve a seat on it. The members are not told yet (#242, #222).
+    /// </summary>
+    /// <param name="id">The class session.</param>
+    /// <param name="cancelClassSession">Cancels and saves the class session.</param>
+    /// <param name="cancellationToken">Stops the request.</param>
+    /// <response code="403">The token has neither the role Træner nor Admin.</response>
+    /// <response code="404">No such class session (code ClassSessionNotFound).</response>
+    /// <response code="409">The class session is already cancelled (code ClassSessionAlreadyCancelled), or another request changed it at the same time (code ChangedMeanwhile).</response>
+    [HttpPost("{id:guid}/cancellation")]
+    [Authorize(Roles = FitLifeRoles.Traener + "," + FitLifeRoles.Admin)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+    public async Task<Results<NoContent, ProblemHttpResult>> PostCancellation(Guid id, [FromServices] CancelClassSessionCommandHandler cancelClassSession, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(cancelClassSession);
+        CancelClassSessionOutcome outcome = await cancelClassSession.Handle(new CancelClassSessionCommand(id), cancellationToken).ConfigureAwait(false);
+        switch (outcome)
+        {
+            case CancelClassSessionOutcome.Cancelled:
+                return TypedResults.NoContent();
+            case CancelClassSessionOutcome.ClassSessionNotFound:
+                return CancellationProblem(StatusCodes.Status404NotFound, "No such class session.", outcome);
+            case CancelClassSessionOutcome.ClassSessionAlreadyCancelled:
+                return CancellationProblem(StatusCodes.Status409Conflict, "The class session is already cancelled.", outcome);
+            case CancelClassSessionOutcome.ChangedMeanwhile:
+                return CancellationProblem(StatusCodes.Status409Conflict, "The class session changed at the same time. Try again.", outcome);
+            default:
+                throw new UnreachableException($"CancelClassSessionOutcome.{outcome} has no status code.");
+        }
+    }
+
+    private static ProblemHttpResult CancellationProblem(int status, string title, CancelClassSessionOutcome outcome)
+    {
+        return TypedResults.Problem(
+            statusCode: status,
+            title: title,
+            extensions: new Dictionary<string, object?>(StringComparer.Ordinal) { [ReservationProblems.CodeExtension] = outcome.ToString() });
     }
 
     private static ClassSessionResponse ToResponse(ClassSessionSummary summary)

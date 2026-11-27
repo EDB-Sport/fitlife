@@ -72,7 +72,10 @@ red='[{"name":"tdd-check","state":"SUCCESS","link":"https://example.test/1"},
       {"name":"CI","state":"PENDING","link":"https://example.test/3"}]'
 
 run "$green"
-[ "$out" = "all checks green" ] && [ "$code" -eq 0 ]; ok=$?; expect "all green: prints 'all checks green' and exits 0" "$ok"
+[ "$out" = "all checks green" ] && [ "$code" -eq 0 ]
+# The status of the test above is what expect checks, as on every other expect line.
+# shellcheck disable=SC2319
+expect "all green: prints 'all checks green' and exits 0" $?
 grep -q -- "--watch" "$tmp/log" && grep -q -- "-R EDB-Sport/fitlife" "$tmp/log"; expect "all green: waits with --watch and passes -R" $?
 case $out in *NOISE*) false ;; esac; expect "all green: the --watch output is discarded" $?
 

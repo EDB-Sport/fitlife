@@ -294,8 +294,8 @@ marked() { # marked <repo>: the fixture's runner also leaves suite-ran behind, s
   git -C "$1" add -A && git -C "$1" commit --quiet --amend --no-edit
   echo "$1"
 }
-ran() { if [ -f "$2/suite-ran" ]; then echo "PASS  $1"; else echo "FAIL  $1"; failures=$((failures + 1)); fi; }
-not_ran() { if [ -f "$2/suite-ran" ]; then echo "FAIL  $1"; failures=$((failures + 1)); else echo "PASS  $1"; fi; }
+ran() { if [ -f "$2/suite-ran" ]; then echo "PASS  $1"; else echo "FAIL  $1: the suite didn't run (no $2/suite-ran)"; failures=$((failures + 1)); fi; }
+not_ran() { if [ -f "$2/suite-ran" ]; then echo "FAIL  $1: the suite ran ($2/suite-ran exists)"; failures=$((failures + 1)); else echo "PASS  $1"; fi; }
 
 # A refactor PR without the label fails a full run, so a pass here can only be the reused result.
 repo=$(marked "$(refactor_pr)")
@@ -382,7 +382,7 @@ git -C "$repo" add -A && git -C "$repo" commit --quiet --amend --no-edit
 if [ "$(worktrees_left "$repo")" -eq 1 ]; then echo "PASS  an interrupted check leaves no worktree"; else echo "FAIL  an interrupted check leaves no worktree"; git -C "$repo" worktree list | sed 's/^/      /'; failures=$((failures + 1)); fi
 repo=$(feature_pr)
 expect "a finished check leaves no worktree" pass "$repo"
-if [ "$(worktrees_left "$repo")" -eq 1 ]; then echo "PASS  a finished check leaves no worktree (list)"; else echo "FAIL  a finished check leaves no worktree (list)"; failures=$((failures + 1)); fi
+if [ "$(worktrees_left "$repo")" -eq 1 ]; then echo "PASS  a finished check leaves no worktree (list)"; else echo "FAIL  a finished check leaves no worktree (list)"; git -C "$repo" worktree list | sed 's/^/      /'; failures=$((failures + 1)); fi
 
 # 5. The workflow (finding 1 and 3)
 wf() { grep -qE "$2" "$workflow" && echo "PASS  $1" || { echo "FAIL  $1: '$2' not in $workflow"; failures=$((failures + 1)); }; }
@@ -400,10 +400,14 @@ api_workflow="$here/../../.github/workflows/api-tests.yml"
 if grep -qF "cancel-in-progress: \${{ github.event_name == 'pull_request' }}" "$api_workflow"; then
   echo "PASS  api-tests.yml cancels in-progress runs for pull requests only (issue #136)"
 else
-  echo "FAIL  api-tests.yml cancels in-progress runs for pull requests only (issue #136)"; failures=$((failures + 1))
+  echo "FAIL  api-tests.yml cancels in-progress runs for pull requests only (issue #136)"
+  test_report_tail cancel-in-progress "$(grep -F 'cancel-in-progress' "$api_workflow")"
+  failures=$((failures + 1))
 fi
 if grep -qF 'pull_request.base.sha' "$workflow"; then
-  echo "FAIL  workflow no longer uses pull_request.base.sha"; failures=$((failures + 1))
+  echo "FAIL  workflow no longer uses pull_request.base.sha"
+  test_report_tail "$(basename "$workflow")" "$(grep -nF 'pull_request.base.sha' "$workflow")"
+  failures=$((failures + 1))
 else
   echo "PASS  workflow no longer uses pull_request.base.sha"
 fi

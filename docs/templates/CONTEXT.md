@@ -1,6 +1,6 @@
 # <Context name> (`src/<Service>/`)
 
-> **Template.** Copy it to `src/<Service>/CONTEXT.md`, one for each bounded context, and fill it in during step 4 of `DDD_PLAN.md`.
+> **Template.** Copy it to `src/<Service>/CONTEXT.md`, one for each bounded context, and fill it in when the context's tactical model is made (METHODOLOGY section 11).
 > Keep it short, under about 80 lines. People and agents read it before every task in this folder.
 > **Point your agent at it.** In Claude Code, for example, put `@CONTEXT.md` in a `CLAUDE.md` in the same folder, which loads only when the agent works there. Other tools have an equivalent. Whether those shim files are committed is a group decision (`METHODOLOGY.md` section 9).
 > Update this file in the same PR that changes the model.

@@ -44,11 +44,11 @@ Rules:
 - **Nobody pushes directly to `main` or `develop`.** Both are protected branches. Changes go in by PR with green CI and at least one signoff (section 3).
 - **Each service has its own version,** using Semantic Versioning (MAJOR.MINOR.PATCH). It lives in the service's `.csproj`, and each service is tagged `<service>/vX.Y.Z`, e.g. `bookingservice/v1.3.0`. The Blazor UIs are versioned the same way. A service that hasn't changed keeps its version.
 - **Releases:** create `release/x.y.z` from `develop`. Here `x.y.z` numbers the release as a whole. On the branch, raise the version of every service that changed since its last tag. Then open a PR to `main` and merge it. CI tags the merge commit `vx.y.z` plus one `<service>/vX.Y.Z` tag per released service, and pushes the images. Finally merge the release branch back into `develop`.
-- **Deploys:** every release on `main` is deployed to Azure by the deploy workflow, after one group member approves it on the `production` environment (`CSHARP_SETUP_TODO.md` section 9a). Nobody deploys by hand or changes Azure in the portal.
+- **Deploys:** every release on `main` is deployed to Azure by the deploy workflow, after one group member approves it on the `production` environment (`TECHNICAL_REFERENCE.md` section 9a). Nobody deploys by hand or changes Azure in the portal.
 - **Hotfixes:** create `hotfix/<service>-<x.y.z>` from `main` and raise that service's PATCH number. Merge into `main`, where CI tags and deploys it like a release, then merge into `develop` so the fix isn't lost.
-- **CI checks the versions** before a release or hotfix can merge: every changed service has a higher version, a hotfix raises only PATCH, and a breaking API change raises MAJOR (`CSHARP_SETUP_TODO.md` section 9).
+- **CI checks the versions** before a release or hotfix can merge: every changed service has a higher version, a hotfix raises only PATCH, and a breaking API change raises MAJOR (`TECHNICAL_REFERENCE.md` section 9).
 - **Merge with merge commits, not squash.** That way the network graph shows feature, release and hotfix branches, as `git flow ... finish` would.
-- **The `git flow` CLI:** use it to start branches (`git flow feature start ...`). Finish through a PR instead of `git flow ... finish`, because finish merges and pushes locally, and branch protection blocks that.
+- **Starting a branch:** `git switch -c feature/<issue>-<name> origin/develop --no-track`, as in the §2.2 block (a release or hotfix branch the same way, from `origin/develop` or `origin/main`). Don't use `git flow feature start`: it fails in a fresh clone ("Not a gitflow-enabled repo", #480). Finish through a PR instead of `git flow ... finish`, because finish merges and pushes locally, and branch protection blocks that.
 - **Delete** feature, release and hotfix branches after they are merged.
 - **Keep feature branches short-lived** to avoid large conflicts between parallel agents.
 - **Merge `develop` (or the base) into a feature branch only** when GitHub shows a conflict, or when a fix on `develop` is needed for green CI, which includes stale CI (section 3). Don't merge it in just to be up to date.
@@ -164,9 +164,9 @@ We use one shared language for the domain, in code, tests, issues and conversati
 - Keep a **glossary** in the repo (e.g. `GLOSSARY.md`): one line per term, with its meaning and the name to use in code.
 - New domain concepts are added to the glossary in the same PR that introduces them.
 - Point your agents at the glossary. Without it, every fresh context invents its own names for the same concepts.
-- The glossary is DDD's ubiquitous language. The full template, with the context, kind and "avoid" columns, is `templates/GLOSSARY.md`. How it fits with bounded contexts is described in section 11.
+- The glossary is DDD's ubiquitous language. The full format, with the context, kind and "avoid" columns, is the table header in `GLOSSARY.md`. How it fits with bounded contexts is described in section 11.
 
-Each term also gets its schema.org type, because the IT-arkitektur course requires entity names from schema.org (`CSHARP_SETUP_TODO.md`, TEAM008). Example rows, in the template's format:
+Each term also gets its schema.org type, because the IT-arkitektur course requires entity names from schema.org (`TECHNICAL_REFERENCE.md`, TEAM008). Example rows, in the template's format:
 
 | Term | Meaning | In code | schema.org | Context | Kind | Avoid |
 |---|---|---|---|---|---|---|
@@ -175,7 +175,7 @@ Each term also gets its schema.org type, because the IT-arkitektur course requir
 
 ## 7. CI: Newman on GitHub Ubuntu runners
 
-API tests are Postman collections run by **Newman** (Postman's command-line runner) in GitHub Actions on `ubuntu-latest`, on every push and pull request. There are four kinds, in `tests/postman/` (layout in `CSHARP_SETUP_TODO.md` section 6):
+API tests are Postman collections run by **Newman** (Postman's command-line runner) in GitHub Actions on `ubuntu-latest`, on every push and pull request. There are four kinds, in `tests/postman/` (layout in `TECHNICAL_REFERENCE.md` section 6):
 
 | Kind | Folder | Runs against |
 |---|---|---|
@@ -251,7 +251,7 @@ These apply only if your setup has the part in question. Ignore what doesn't app
 | Small releases | One small issue per PR. Versioned releases from `develop` to `main` via Git Flow (section 2.1). |
 | Continuous integration | CI on every push and PR (section 7). Merge often. |
 | Simple design / YAGNI | Section 5. |
-| Coding standards | Enforced by linters and formatters in CI where possible, not only written rules. Setup: `CSHARP_SETUP_TODO.md`. |
+| Coding standards | Enforced by linters and formatters in CI where possible, not only written rules. Setup: `TECHNICAL_REFERENCE.md`. |
 | Refactoring | Explicit refactoring issues (section 8). |
 | System metaphor | Shared glossary (section 6), used as DDD's ubiquitous language with bounded contexts (section 11). |
 | On-site customer | Questions about requirements are collected and settled with the group or teacher, not guessed by an agent. |
@@ -261,7 +261,7 @@ These apply only if your setup has the part in question. Ignore what doesn't app
 Background and reasoning: `notes/xp_practices_for_agentic_code.md`.
 ## 11. Domain-driven design
 
-We cut the system into services, and name things, with domain-driven design (DDD), as taught in IT-arkitektur M4. The steps for getting there are in `DDD_PLAN.md`. The templates are in `templates/`.
+We cut the system into services, and name things, with domain-driven design (DDD), as taught in IT-arkitektur M4. The model lives in the files of section 11.1. The template for a context's `CONTEXT.md` is in `templates/`.
 
 DDD matters more with agents, not less. A fresh agent context has no memory of the domain, so it invents names, merges concepts, and puts business rules in controllers. The model has to be written down where the agent reads it, and checked where the agent can't skip it.
 

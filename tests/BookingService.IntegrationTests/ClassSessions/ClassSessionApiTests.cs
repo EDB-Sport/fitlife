@@ -46,7 +46,7 @@ public sealed class ClassSessionApiTests
         using BookingApiFactory factory = Factory();
         var centerId = Guid.NewGuid();
         ClassSession cancelled = ClassSessionAt(centerId, capacity: 2, Now.AddDays(1));
-        cancelled.Cancel();
+        cancelled.Cancel(new FakeTimeProvider(Now));
         await factory.AddAsync(cancelled).ConfigureAwait(false);
         using HttpClient client = factory.CreateClient();
 
@@ -282,7 +282,7 @@ public sealed class ClassSessionApiTests
         // Arrange
         using BookingApiFactory factory = Factory();
         ClassSession classSession = ClassSessionAt(Guid.NewGuid(), capacity: 1, Now.AddDays(1));
-        classSession.Cancel();
+        classSession.Cancel(new FakeTimeProvider(Now));
         await factory.AddAsync(classSession).ConfigureAwait(false);
         using HttpClient client = factory.CreateClient();
 
@@ -316,7 +316,7 @@ public sealed class ClassSessionApiTests
         // Arrange
         using BookingApiFactory factory = Factory();
         ClassSession classSession = ClassSessionAt(Guid.NewGuid(), capacity: 1, Now.AddDays(1));
-        classSession.Cancel();
+        classSession.Cancel(new FakeTimeProvider(Now));
         await factory.AddAsync(classSession).ConfigureAwait(false);
         using HttpClient client = factory.CreateClient();
 

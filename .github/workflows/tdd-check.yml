@@ -1,6 +1,6 @@
 # Checks that a PR's tests depend on its change, or, for a PR labelled refactor, that the tests are
 # unchanged and green. Logic, rules and limits: tools/ci/tdd-check.sh.
-# Make "tdd-check" a required check on develop and main (docs/CSHARP_SETUP_TODO.md section 6, issue #5).
+# Make "tdd-check" a required check on develop and main (docs/TECHNICAL_REFERENCE.md section 6, issue #5).
 name: tdd-check
 
 on:

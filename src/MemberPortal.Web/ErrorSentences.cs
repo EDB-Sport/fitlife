@@ -20,4 +20,7 @@ public static class ErrorSentences
 
     /// <summary>Membership's 409 on joining: the account is already a member.</summary>
     public const string AlreadyAMember = "Du er allerede medlem.";
+
+    /// <summary>Membership's 201 with <c>PaymentMissing</c>: the person is a member, but the first fee isn't paid (#546).</summary>
+    public const string JoinedButPaymentMissing = "Du er meldt ind, men betalingen mangler. Du kan ikke booke, før den er betalt.";
 }

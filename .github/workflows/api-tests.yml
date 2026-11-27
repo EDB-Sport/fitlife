@@ -1,8 +1,8 @@
 # API, integration, end-to-end and mock-server tests with Newman against the compose stack (issue #22).
 # The logic is in tools/ci/api-tests.sh, which runs the same way locally.
 #
-# A workflow of its own until ci.yml (#5, PR #52) is on develop: then this job moves into ci.yml as job 10
-# (docs/CSHARP_SETUP_TODO.md section 10) and this file is deleted.
+# It stays a workflow of its own: the group has not decided to move the job into ci.yml, and doing so
+# is a separate change that must keep the required check name (#283).
 # Make "api-tests" a required check on develop and main (repo ruleset, done by hand).
 name: api-tests
 

@@ -89,6 +89,12 @@ case $out in *"Build noise"*) false ;; *) true ;; esac; expect "lines that are n
 case $out in *"all checks green"*) false ;; *) true ;; esac; expect "a failure never prints 'all checks green'" $?
 ran "dotnet format" && ran "contracts" && ran "dotnet test"; expect "later checks still run after a failure" $?
 
+# A failing log far larger than a pipe buffer must still give its first error lines and let later checks run (no SIGPIPE under pipefail).
+for i in $(seq 1 4000); do echo "Big$i.cs($i,1): error CS1002: ; expected"; done >"$tmp/d/build.out"
+run src/Booking/Foo.cs --
+[ "$code" -eq 1 ] && printf '%s\n' "$out" | grep -q 'Big1.cs(1,1): error CS1002' && ran "dotnet test"
+expect "a large failing log still shows its first error lines and later checks still run" $?
+
 printf 'Failed Foo.Tests.Bar [5 ms]\n  Error Message: boom\n' >"$tmp/d/test.out"
 touch "$tmp/d/test.fail"
 rm -f "$tmp/d/build.fail" "$tmp/d/build.out"

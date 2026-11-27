@@ -52,7 +52,43 @@ docker compose down -v
 docker compose up -d --wait --build
 ```
 
+Rebuild and restart one service only, here Booking:
+
+```bash
+docker compose up -d --wait --build booking-svc
+```
+
 `tools/ci/api-tests.sh` does the same with `API_TESTS_BUILD=1 tools/ci/api-tests.sh`. Without the switch it reuses the images it has, as before. CI starts on a fresh runner with no images, so it builds them either way (#284).
+
+## Run one service from your IDE
+
+Run one service from your IDE or with `dotnet watch`, against the rest of the stack in compose (#525). Every service has a launch profile named `stack`. It runs on the port below and reaches MongoDB (27018), Vault (8200), RabbitMQ (5672), Loki (3100) and the gateway (8080) on your machine. The gateway still runs in compose. You point it at your service with that service's `*_URL` variable, and the other services stay in compose.
+
+| Service in compose | Project | Port of the `stack` profile | Gateway variable |
+|---|---|---|---|
+| `booking-svc` | `src/BookingService` | 5080 | `BOOKING_URL` |
+| `identity-svc` | `src/IdentityService` | 5003 | `IDENTITY_URL` |
+| `mcp-server` | `src/McpServer` | 5005 | `MCP_SERVER_URL` |
+| `member-portal` | `src/MemberPortal.Web` | 5066 | `MEMBER_PORTAL_URL` |
+| `membership-svc` | `src/MembershipService` | 5082 | `MEMBERSHIP_URL` |
+| `notification-svc` | `src/NotificationService` | 5083 | `NOTIFICATION_URL` |
+
+Booking, here. From this folder, with the stack up:
+
+1. Stop the service in compose: `docker compose stop booking-svc`
+2. Point the gateway at your machine: `BOOKING_URL=http://host.docker.internal:5080 docker compose up -d --wait --no-deps gateway`
+3. Run the service. The profile has no Vault token (it's in your `.env`), so pass it in. From the repo root: `Vault__Token=$(sed -n 's/^VAULT_DEV_ROOT_TOKEN=//p' deploy/compose/.env) dotnet watch --project src/BookingService --launch-profile stack`. In an IDE, pick the profile `stack` and add `Vault__Token` to its environment variables there (not in the committed file). McpServer and MemberPortal.Web read no Vault and need no token.
+
+Requests through http://localhost:8080/api/booking/ now reach your service. Go back to the service in compose:
+
+```bash
+docker compose up -d --wait --no-deps gateway booking-svc
+```
+
+Without `BOOKING_URL` in the shell, the gateway gets its default `http://booking-svc:8080` again. Every `*_URL` in `services.yml` defaults to the service in compose, so `docker compose up` without them runs the stack as before.
+
+- Booking's profile asks Membership through the gateway (`http://localhost:8080/api/membership/`), since `membership-svc` has no port on your machine.
+- **Linux:** `host.docker.internal` works only with Docker Desktop. With Docker Engine, use the address of the stack's network gateway instead (`docker network inspect fitlife_default -f '{{(index .IPAM.Config 0).Gateway}}'`), and let the service listen there: `dotnet watch --project src/BookingService --launch-profile stack -- --urls http://0.0.0.0:5080`.
 
 ## Local builds: base images
 

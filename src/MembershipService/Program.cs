@@ -41,6 +41,8 @@ try
     builder.Services.AddOptions<MembershipFeeSettings>().BindConfiguration(MembershipFeeSettings.Section);
     builder.Services.AddPaymentProvider();
     builder.Services.AddScoped<JoinMembershipHandler>();
+    builder.Services.AddScoped<PauseMembershipHandler>();
+    builder.Services.AddScoped<EndPauseHandler>();
     builder.Services.AddScoped<PayMembershipHandler>();
 
     WebApplication app = builder.Build();

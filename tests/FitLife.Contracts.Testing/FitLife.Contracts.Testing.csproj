@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Test helper, not a test project: validates JSON against the event schemas in contracts/events/ (#92).
+    Test helper, not a test project: validates JSON against the event schemas in contracts/events/ (#92), and checks a
+    consumer's fake against the provider's OpenAPI contract in contracts/openapi/ (#522).
     Producer tests (the publishing service) and consumer tests (the consuming service) reference it,
     so both sides test against exactly the same file (docs/CSHARP_SETUP_TODO.md section 6).
   -->
@@ -17,6 +18,8 @@
   <ItemGroup>
     <!-- The schemas, copied next to every test assembly that references this project -->
     <Content Include="$(RepoRoot)contracts/events/*.schema.json" Link="contracts/events/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The OpenAPI contracts, for the check that a consumer's fake answers only with what the provider has (#522) -->
+    <Content Include="$(RepoRoot)contracts/openapi/*.json" Link="contracts/openapi/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

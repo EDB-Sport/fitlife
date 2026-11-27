@@ -27,7 +27,7 @@ This table is a reference, not a second spec. When an issue and the table disagr
 | `GET /reservations/mine` (planned) | BookingService | – | yes | – | – | [#265](https://github.com/EDB-Sport/fitlife/issues/265) |
 | `POST /class-sessions` | BookingService | – | – | yes | yes | [#238](https://github.com/EDB-Sport/fitlife/issues/238) |
 | `POST /class-sessions/{id}/cancellation` | BookingService | – | – | yes | yes | [#239](https://github.com/EDB-Sport/fitlife/issues/239) |
-| `PUT /class-sessions/{id}/start` (planned) | BookingService | – | – | yes | yes | [#241](https://github.com/EDB-Sport/fitlife/issues/241) |
+| `PUT /class-sessions/{id}/start` | BookingService | – | – | yes | yes | [#241](https://github.com/EDB-Sport/fitlife/issues/241) |
 | `POST /members` | MembershipService | – | yes | yes | yes | [#170](https://github.com/EDB-Sport/fitlife/issues/170), any role in [#368](https://github.com/EDB-Sport/fitlife/issues/368) |
 | `GET /members/me` | MembershipService | – | yes | yes | yes | [#247](https://github.com/EDB-Sport/fitlife/issues/247), any role in [#368](https://github.com/EDB-Sport/fitlife/issues/368) |
 | `GET /members/by-account/{accountId}` | MembershipService | – | yes | yes | yes | [#170](https://github.com/EDB-Sport/fitlife/issues/170), any role in [#368](https://github.com/EDB-Sport/fitlife/issues/368) |

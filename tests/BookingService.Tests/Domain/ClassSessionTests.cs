@@ -304,9 +304,9 @@ public sealed class ClassSessionTests
     }
 
     [Test]
-    public void JoinWaitlist_ExactlyTwoHoursBeforeStart_IsJoined()
+    public void JoinWaitlist_ExactlyTwoHoursBeforeStart_IsRejected()
     {
-        // Arrange
+        // Arrange: the waitlist closes at exactly 2 hours, the instant CloseWaitlist may run (#314)
         ClassSession classSession = ClassSessionStartingAt(Now.AddHours(2));
         classSession.Reserve(Guid.NewGuid(), _clock);
 
@@ -314,7 +314,7 @@ public sealed class ClassSessionTests
         WaitlistResult result = classSession.JoinWaitlist(Guid.NewGuid(), _clock);
 
         // Assert
-        Assert.That(result, Is.EqualTo(WaitlistResult.Joined));
+        Assert.That(result, Is.EqualTo(WaitlistResult.WaitlistClosed));
     }
 
     [Test]

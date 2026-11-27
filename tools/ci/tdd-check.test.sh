@@ -4,6 +4,7 @@
 # The fixture's test suite is a stand-in for `dotnet test`: every `// needs: <word>` line in
 # tests/ must appear somewhere under src/ or libs/, so a test "fails on base" when its word isn't there yet.
 # Usage: tools/ci/tdd-check.test.sh   (exit code 0 = all cases pass)
+. "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -407,6 +408,4 @@ else
   echo "PASS  workflow no longer uses pull_request.base.sha"
 fi
 
-echo
-if (( failures == 0 )); then echo "All tdd-check tests pass."; else echo "$failures tdd-check test(s) failed."; fi
 exit $(( failures > 0 ))

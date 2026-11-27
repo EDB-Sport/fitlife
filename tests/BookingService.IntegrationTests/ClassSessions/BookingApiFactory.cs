@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using BookingService.Application;
 using BookingService.Domain;
 using BookingService.Repositories;
+using BookingService.Seed;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -40,6 +41,12 @@ internal sealed class BookingApiFactory : WebApplicationFactory<Program>
     }
 
     public FakeTimeProvider Clock { get; }
+
+    /// <summary>Waits until the demo data is loaded: the seed runs after start-up, in the background (#255).</summary>
+    public Task SeedFinishedAsync()
+    {
+        return Services.GetRequiredService<ClassSessionSeedStatus>().Finished;
+    }
 
     /// <summary>Gets what Membership answers; a client from <c>CreateClient()</c> carries a Medlem token (#260).</summary>
     public FakeMembershipClient Membership { get; } = new();

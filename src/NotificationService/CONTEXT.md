@@ -33,18 +33,21 @@ Plain types, no `*.Domain` layer yet (METHODOLOGY 11.2 rule 8): the only rule so
 
 | Kind | Name | Notes |
 |---|---|---|
-| Event (consumed) | `ReservationMade` | Queue `notification.reservation-made`. Logs one line with the member id and the correlation ID |
+| Event (consumed) | `ReservationMade` | Queue `notification.reservation-made`. Logs one line with the member id and the correlation ID, and stores the notification with its kind (`ReservationMade`) and time |
+| Query | `GET /notifications?memberId={id}` | The delivery log: a member's notifications, newest first. Træner and Admin only (docs/domain/ACCESS.md). Through the gateway at `/api/notification/notifications` |
 
 ## Talks to
 
 | Other context / system | How | Pattern | Why |
 |---|---|---|---|
 | Booking | RabbitMQ events (`libs/FitLife.Messaging`) | Customer–Supplier | A reservation must not wait for a message to be sent |
+| Identity | The token, checked with `libs/FitLife.Authentication` | Conformist | Every service checks the same token (CONTEXT-MAP section 4) |
 | Messaging channels (SMS, e-mail, push) | Log only, in the PoC | ACL | External formats stay outside our model |
 
 ## Rules for this folder
 
 - Other services are reached over HTTP or RabbitMQ events only, never by a `ProjectReference` (FITLIFE001). Events come in through `libs/FitLife.Messaging`, never RabbitMQ.Client directly.
 - MongoDB only in `NotificationService.Repositories` (TEAM001).
-- `/health` stays mapped. `docker compose up --wait` and the Azure probes use it.
+- `/health` stays mapped and open (`AllowAnonymous()`). `docker compose up --wait` and the Azure probes use it.
+- Every other endpoint needs a token (`AddFitLifeAuthorization()`); the delivery log needs Træner or Admin.
 - The OpenAPI document and Scalar are mapped in Development only (course rule #7). `ApiDocumentationTests` checks it.

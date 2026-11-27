@@ -2,6 +2,8 @@
 # Tests tools/dev/check.sh with a stubbed dotnet (issue #603): silent on green, one FAIL block per failed check.
 # Usage: tools/dev/check.test.sh   (from the repo root, or anywhere in the repo; exit 0 = pass)
 # Never calls the real dotnet: DOTNET, CHECK_CONTRACTS and CHECK_SCRIPT_TESTS point at stubs.
+# Every expect line checks the status of the test before it, so a $? after [ ] is meant here.
+# shellcheck disable=SC2319
 set -uo pipefail
 
 cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)" || exit 2
@@ -60,8 +62,6 @@ ran() { grep -q -- "$1" "$tmp/log"; }
 
 run src/Booking/Foo.cs --
 [ "$out" = "all checks green" ] && [ "$code" -eq 0 ]
-# The status of the test above is what expect checks, as on every other expect line.
-# shellcheck disable=SC2319
 expect "all green: prints only 'all checks green' and exits 0" $?
 [ ! -s "$tmp/err" ]; expect "all green: nothing on stderr" $?
 order=$(awk '$1 == "dotnet" { print $2; next } { print $1 }' "$tmp/log" | tr '\n' ' ')

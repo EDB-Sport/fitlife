@@ -60,6 +60,12 @@ fixture unquoted-tools
 printf '#!/usr/bin/env bash\nrm -rf $1/build\n' > "$work/unquoted-tools/tools/ci/bad.sh"
 expect "an unquoted variable in a tools script fails" 1 "SC2086" unquoted-tools
 
+fixture rules
+printf '#!/usr/bin/env bash\nset -uo pipefail\necho ok\n' > "$work/rules/tools/ci/mode.sh"
+chmod 644 "$work/rules/tools/ci/mode.sh"
+git -C "$work/rules" add -- tools/ci/mode.sh
+expect "a tracked script with mode 100644 fails the script rules" 1 "tools/ci/mode.sh:1: .*100755" rules
+
 fixture reasoned
 printf '#!/usr/bin/env bash\n# word splitting is wanted here\n# shellcheck disable=SC2086\nrm -rf $1/build\n' > "$work/reasoned/deploy/ok.sh"
 expect "a script with a single disable passes" 0 "static-check: ok" reasoned

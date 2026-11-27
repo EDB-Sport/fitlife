@@ -1,4 +1,4 @@
-# CI on every PR and on every push to develop and main (issue #5, docs/CSHARP_SETUP_TODO.md section 10).
+# CI on every PR and on every push to develop and main (issue #5, docs/TECHNICAL_REFERENCE.md section 10).
 # Pushes to other branches get CI through their PR, so a PR head has one run, not a push run
 # plus a PR run with diff-scan skipped (GitHub reports a skipped job as passing).
 # Every job here is meant to be a required check on develop and main, by its job name (section 9).

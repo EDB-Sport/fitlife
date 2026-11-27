@@ -6,7 +6,7 @@
   <Import Project="$(_FitLifeRootBuildTargets)" Condition="'$(_FitLifeRootBuildTargets)' != ''" />
 
   <!--
-    Unit-test projects stay unit tests (docs/CSHARP_SETUP_TODO.md section 6).
+    Unit-test projects stay unit tests (docs/TECHNICAL_REFERENCE.md section 6).
     A test that uses a real database or a real web host is an integration test and belongs in *.IntegrationTests.
   -->
   <Target Name="FitLifeCheckUnitTestIsolation" BeforeTargets="BeforeBuild" Condition="'$(IsUnitTestProject)' == 'true'">
@@ -16,6 +16,6 @@
     </ItemGroup>
     <Error Code="FITLIFE002"
       Condition="'@(_FitLifeIntegrationOnlyPackage)' != ''"
-      Text="$(MSBuildProjectName) is a unit-test project but references @(_FitLifeIntegrationOnlyPackage). Move those tests to tests/$(MSBuildProjectName.Replace('.Tests', '.IntegrationTests'))/ (docs/CSHARP_SETUP_TODO.md section 6)." />
+      Text="$(MSBuildProjectName) is a unit-test project but references @(_FitLifeIntegrationOnlyPackage). Move those tests to tests/$(MSBuildProjectName.Replace('.Tests', '.IntegrationTests'))/ (docs/TECHNICAL_REFERENCE.md section 6)." />
   </Target>
 </Project>

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# What a merge to main releases (issue #95, docs/CSHARP_SETUP_TODO.md section 9, METHODOLOGY section 2.1).
+# What a merge to main releases (issue #95, docs/TECHNICAL_REFERENCE.md section 9, METHODOLOGY section 2.1).
 # Every service whose .csproj version has no <prefix>/vX.Y.Z tag yet is released: a git tag and the Docker Hub
 # images X.Y.Z, X.Y, X and latest. A service whose version is already tagged is skipped, so a re-run is safe.
 # A release/x.y.z merge also gets the tag vx.y.z for the release as a whole; a hotfix gets only its service tag.

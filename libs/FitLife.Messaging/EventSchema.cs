@@ -62,6 +62,12 @@ public static class EventSchema
         return new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [ReservationMade.RoutingKey] = Generate<ReservationMade>(),
+            [ReservationCancelled.RoutingKey] = Generate<ReservationCancelled>(),
+            [ClassSessionCancelled.RoutingKey] = Generate<ClassSessionCancelled>(),
+            [ClassSessionChanged.RoutingKey] = Generate<ClassSessionChanged>(),
+            [MembershipPaused.RoutingKey] = Generate<MembershipPaused>(),
+            [MembershipCancelled.RoutingKey] = Generate<MembershipCancelled>(),
+            [PaymentFailed.RoutingKey] = Generate<PaymentFailed>(),
         };
     }
 
@@ -87,7 +93,12 @@ public static class EventSchema
         var described = new JsonObject { ["description"] = DescriptionOf(property) };
         MoveInto(described, generated);
         MinLengthAttribute? minLength = property.GetCustomAttributes(typeof(MinLengthAttribute), inherit: false).OfType<MinLengthAttribute>().FirstOrDefault();
-        if (minLength is not null)
+        if (minLength is not null && described["items"] is JsonObject items)
+        {
+            // On a list of ids, each id has the minimum length; the list itself may be empty (#231)
+            items["minLength"] = minLength.Length;
+        }
+        else if (minLength is not null)
         {
             described["minLength"] = minLength.Length;
         }

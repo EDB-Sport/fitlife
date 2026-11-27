@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Reflection;
 using FitLife.Correlation;
+using MemberPortal.Web.Authentication;
+using MemberPortal.Web.Clients;
 using MemberPortal.Web.Components;
 using NLog;
 using NLog.Web;
@@ -18,6 +20,10 @@ try
 
     builder.Services.AddHealthChecks();
 
+    // Log-in with a token from Identity, kept in the authentication cookie (#206, ADR 003)
+    builder.Services.AddPortalAuthentication();
+    builder.Services.AddIdentityClient();
+
     WebApplication app = builder.Build();
 
     // First, so every log line of the request carries its X-Correlation-ID
@@ -32,9 +38,14 @@ try
 
     app.UseHttpsRedirection();
 
+    // UseAntiforgery stays after UseAuthentication and UseAuthorization
+    app.UseAuthentication();
+    app.UseAuthorization();
     app.UseAntiforgery();
 
     app.MapHealthChecks("/health");
+
+    app.MapLogOut();
 
     app.MapStaticAssets();
     app.MapRazorComponents<App>()

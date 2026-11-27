@@ -386,6 +386,7 @@ public sealed class ClassSessionApiTests
         // Arrange
         using BookingApiFactory factory = Factory(seed: true);
         using HttpClient client = factory.CreateClient();
+        await factory.SeedFinishedAsync().ConfigureAwait(false);
 
         // Act
         ClassSessionResponse[]? classSessions = await client.GetFromJsonAsync<ClassSessionResponse[]>(new Uri("/class-sessions", UriKind.Relative)).ConfigureAwait(false);

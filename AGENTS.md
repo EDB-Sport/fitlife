@@ -6,6 +6,8 @@ This repo is built by a group where everyone uses their own agent setup. The sha
 
 Follow `docs/PR_RULES.md`. CI fails a PR whose description doesn't follow the template.
 
+**Writing the PR body:** `tools/dev/pr-body.sh <issue> > body.md` prints the template filled in for that issue; edit it, then `gh pr create --base develop --body-file body.md` (#523).
+
 **Before a review:** run `tools/dev/review-ready.sh <pr>` (5 seconds; on WSL `GH=gh.exe tools/dev/review-ready.sh <pr>`). It checks required checks, conflicts, broken stacks and stale CI (a draft PR can still be reviewed, #470). Not ready means no review.
 
 **A red CI run:** run `gh run view <run id>` first. Its ANNOTATIONS name each failing check and its first error; the run's summary page in the browser adds a hint. Only then use `gh run view --log-failed`, which can be very long (#132).

@@ -106,7 +106,7 @@ check "a service changed since the delivered image is planned, even when a later
 
 # One service's image is missing while the others are current
 deliver "$(git -C "$repo" rev-parse HEAD)"
-sed -i '/membershipservice/d' "$delivered"
+grep -v membershipservice "$delivered" >"$delivered.tmp" && mv "$delivered.tmp" "$delivered" # not sed -i: GNU and BSD differ (#87)
 out=$(cd "$repo" && DELIVERED_FILE="$delivered" DELIVERED_REVISION="$repo/lookup.sh" DOCKERHUB_NAMESPACE=example tools/ci/develop-plan.sh 2>&1)
 status=$?
 check "a service without an image is planned" "image example/membershipservice:"

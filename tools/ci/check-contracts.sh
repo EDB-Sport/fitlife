@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fails when a committed contract is stale (issues #90 and #491, docs/CSHARP_SETUP_TODO.md section 8).
+# Fails when a committed contract is stale (issues #90 and #491, docs/TECHNICAL_REFERENCE.md section 8).
 # The build regenerates contracts/openapi/<service>.json and, through tools/EventSchemaGenerator,
 # contracts/events/<routing key>.schema.json; any difference from the commit means an API or an
 # integration event record changed without its contract. Usage: tools/ci/check-contracts.sh   (from the repo root)

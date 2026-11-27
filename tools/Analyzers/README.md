@@ -1,6 +1,6 @@
 # TEAM analyzers
 
-The project's own Roslyn rules (`docs/CSHARP_SETUP_TODO.md` section 4). Each rule is a compiler error with a message in the form "Found X. Do Y in Z.", so an agent reads the fix along with the error.
+The project's own Roslyn rules (`docs/TECHNICAL_REFERENCE.md` section 4). Each rule is a compiler error with a message in the form "Found X. Do Y in Z.", so an agent reads the fix along with the error.
 
 | Folder | What |
 |---|---|

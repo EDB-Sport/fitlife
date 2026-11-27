@@ -1,4 +1,4 @@
-# HTTPS in front of Nginx, as a sidecar in the container group (docs/CSHARP_SETUP_TODO.md section 9a).
+# HTTPS in front of Nginx, as a sidecar in the container group (docs/TECHNICAL_REFERENCE.md section 9a).
 # {$NAME} is an environment variable, set by deploy/azure/modules/containers.bicep.
 {
 	# Only port 443 is public. Nginx has port 80 inside the group, so Caddy's plain-HTTP

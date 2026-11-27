@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Static checks (#273): actionlint on .github/workflows/ and shellcheck on tools/**/*.sh and deploy/**/*.sh.
+# script-rules.sh (#563) adds what shellcheck misses: bash 4 forms (declare -A, mapfile, ${x^^}, &>>), the 100755 mode and pipefail.
 # Both tools run from their official images, pinned by tag and digest as in security.yml. Change tag and digest together.
 # The gate is warnings and errors (-S warning) plus the unquoted-expansion rules SC2086, SC2046, SC2068 and SC2048,
 # which it rates only as info. Its other style notes (SC2016, SC2329, ...) are not gated.
@@ -9,7 +10,8 @@ set -uo pipefail
 ACTIONLINT_IMAGE=rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
 SHELLCHECK_IMAGE=koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d
 
-root=${1:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel)} || exit 2
+here=$(cd "$(dirname "$0")" && pwd)
+root=${1:-$(git -C "$here" rev-parse --show-toplevel)} || exit 2
 cd "$root" || exit 2
 
 status=0
@@ -33,6 +35,14 @@ fi
 if [ "$shellcheck_status" -ne 0 ]; then
   status=1
   echo "::error title=static-check::shellcheck found problems in tools/ or deploy/ scripts"
+fi
+echo "::endgroup::"
+
+# The bash 4 forms, the executable bit and pipefail, which shellcheck does not flag (script-rules.sh, #563)
+echo "::group::script rules"
+if ! "$here/script-rules.sh" "$root"; then
+  status=1
+  echo "::error title=static-check::script-rules found problems in tools/ or deploy/ scripts"
 fi
 echo "::endgroup::"
 

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PaymentFailed",
+  "description": "Betaling fejlet: a membership fee was not paid, so the membership has Betaling mangler. Published by Membership, consumed by Notification (docs/domain/CONTEXT-MAP.md section 5). The message carries the correlation ID in its X-Correlation-ID header, not in the body.",
+  "type": "object",
+  "properties": {
+    "memberId": {
+      "description": "The member whose fee was not paid (MemberId). Consumers use it with failedAt to handle the same event only once.",
+      "type": "string",
+      "minLength": 1
+    },
+    "failedAt": {
+      "description": "When the charge failed, ISO 8601 with an offset.",
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "memberId",
+    "failedAt"
+  ],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "memberId": "6741f0c2a9e1b3d4c5f6071a",
+      "failedAt": "2026-11-24T09:00:00+00:00"
+    }
+  ]
+}

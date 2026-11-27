@@ -1,4 +1,4 @@
-# Humans own the rule files (docs/CSHARP_SETUP_TODO.md section 1).
+# Humans own the rule files (docs/TECHNICAL_REFERENCE.md section 1).
 # Add new rule files here as they are created.
 /.github/                     @EDB-Sport/edb-team
 /global.json                  @EDB-Sport/edb-team

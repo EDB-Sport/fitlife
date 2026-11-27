@@ -51,7 +51,7 @@ At most two subdomains are core: "hvis alt er core, er intet core" [M4.01 p. 5].
 
 ## 3. Bounded contexts
 
-One context = one service in `src/<Service>/` = one database. Each context gets its own `src/<Service>/CONTEXT.md` (DDD_PLAN step 3). Phase: NOW = the first phase; NEXT and LATER = later phases (from the TO-BE context document). The PoC starts with `BookingService`; each further service gets its own issue.
+One context = one service in `src/<Service>/` = one database. Each context gets its own `src/<Service>/CONTEXT.md` (METHODOLOGY section 11.1). Phase: NOW = the first phase; NEXT and LATER = later phases (from the TO-BE context document). The PoC starts with `BookingService`; each further service gets its own issue.
 
 | Context | Service | Subdomain(s) | Owns data about | Key terms (see `GLOSSARY.md`) | Phase |
 |---|---|---|---|---|---|
@@ -79,7 +79,7 @@ Patterns [M4.01 p. 10]: Customer–Supplier, Open Host Service, Anticorruption L
 |---|---|---|---|---|
 | Finance system and payment provider | Membership | ACL | REST + callback. A Postman Mock Server in the PoC [PB p. 9] | External systems outside FitLife Digital. Their names and data model stay outside ours |
 | Identity | All services | Open Host Service | JWT with roles as claims [M10.03]. How it works: [ADR 009](../adr/009-log-in-and-roles.md). Which role may call what: [`ACCESS.md`](ACCESS.md) | Every service checks the same token in the same way |
-| Membership | Booking; Access (NEXT) | Open Host Service | REST, when a reservation is made or a door asks: the caller sends the account id from the token, and the answer is the `MemberId` and whether the membership is active | Several contexts need the same answer. Synchronous, so nobody books on a membership that just ended (group choice, DDD_PLAN step 7) |
+| Membership | Booking; Access (NEXT) | Open Host Service | REST, when a reservation is made or a door asks: the caller sends the account id from the token, and the answer is the `MemberId` and whether the membership is active | Several contexts need the same answer. Synchronous, so nobody books on a membership that just ended (group choice, step 7 of the DDD plan) |
 | Membership | Booking | Customer–Supplier | Events: `MembershipPaused`, `MembershipCancelled` | Booking cancels future reservations without Membership knowing what a reservation is |
 | Booking | Notification | Customer–Supplier | Events | A reservation must not wait for a message to be sent. Notification follows what Booking publishes |
 | Membership | Notification | Customer–Supplier | Events | Same reason |
@@ -132,7 +132,7 @@ Each event gets a JSON Schema in `contracts/events/` and is tested against it in
 | `MembershipCancelled` | MedlemskabOpsagt | Membership | Booking, Notification | Booking cancels reservations after the last training day | `contracts/events/membership-cancelled.schema.json` |
 | `PaymentFailed` | BetalingFejlet | Membership | Notification | Tells the member | `contracts/events/payment-failed.schema.json` |
 
-`SeatReleased` (PladsFrigivet) stays inside Booking: moving the first member off the waitlist is Booking's own rule, so it is not a contract between contexts. Training's events are added when Training is modelled (DDD_PLAN step 4).
+`SeatReleased` (PladsFrigivet) stays inside Booking: moving the first member off the waitlist is Booking's own rule, so it is not a contract between contexts. Training's events are added when Training is modelled (its tactical model, METHODOLOGY section 11).
 
 ## 6. Decisions
 

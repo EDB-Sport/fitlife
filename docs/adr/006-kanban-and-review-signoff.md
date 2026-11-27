@@ -33,4 +33,4 @@ The other XP practices are kept: test-first, small releases, continuous integrat
 
 - Easier: finished work merges as soon as it is reviewed and green, without waiting for a sprint boundary. Every PR has an independent reviewer, which also gives the report real review comments as evidence.
 - Harder: no sprint velocity or burndown to report. Progress is shown by the board, the milestones and cycle time from issue to merge instead. Reviews can become a bottleneck, so a PR waiting for signoff blocks its author's next PR in the same area.
-- Must do: describe this in the Agil udvikling report as a deliberate adaptation of Scrum and XP, with this ADR as the reasoning. Collect the evidence listed in `docs/CSHARP_SETUP_TODO.md` section 12: board screenshots, a PR with real review comments, and a PR blocked by a failing check.
+- Must do: describe this in the Agil udvikling report as a deliberate adaptation of Scrum and XP, with this ADR as the reasoning. Collect the evidence the report asks for: board screenshots, a PR with real review comments, and a PR blocked by a failing check.

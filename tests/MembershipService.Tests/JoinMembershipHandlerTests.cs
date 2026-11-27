@@ -1,5 +1,10 @@
+using System.Text;
+using FitLife.Contracts.Testing;
+using FitLife.Messaging;
+using FitLife.Messaging.Events;
 using MembershipService.Application;
 using MembershipService.Domain;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 
@@ -13,10 +18,16 @@ public sealed class JoinMembershipHandlerTests
     private readonly InMemoryMemberships _memberships = new();
     private readonly StubPaymentProvider _payments = new();
     private readonly FakeTimeProvider _clock = new(new DateTimeOffset(2026, 11, 24, 9, 0, 0, TimeSpan.Zero));
+    private readonly RecordingEventPublisher _events = new();
 
     private JoinMembershipHandler Handler()
     {
-        return new JoinMembershipHandler(_members, _memberships, _payments, Options.Create(new MembershipFeeSettings { MonthlyFeeDkk = 350m }), _clock);
+        return new JoinMembershipHandler(
+            _members,
+            _memberships,
+            new MembershipFee(_payments, Options.Create(new MembershipFeeSettings { MonthlyFeeDkk = 350m })),
+            _clock,
+            new MembershipEventPublisher(_events, NullLogger<MembershipEventPublisher>.Instance));
     }
 
     [Test]
@@ -179,6 +190,63 @@ public sealed class JoinMembershipHandlerTests
         // Assert
         await Assert.ThatAsync(act, Throws.InstanceOf<OperationCanceledException>()).ConfigureAwait(false);
         Assert.That(_payments.Charges, Is.Empty);
+    }
+
+    [Test]
+    public async Task HandleAsync_WhenTheChargeFails_PublishesPaymentFailed()
+    {
+        // Arrange: #251, after the membership is stored with Betaling mangler
+        _payments.Paid = false;
+        JoinMembershipHandler handler = Handler();
+
+        // Act
+        JoinResult result = await handler.HandleAsync(new JoinMembershipCommand("account-1"), CancellationToken.None);
+
+        // Assert
+        Assert.That(_events.Published, Is.EqualTo(new object[] { new PaymentFailed(result.Member?.Id.ToString() ?? "", _clock.GetUtcNow()) }));
+    }
+
+    [Test]
+    public async Task HandleAsync_WhenTheChargeFails_PublishesAnEventThatMatchesTheSchema()
+    {
+        // Arrange
+        _payments.Paid = false;
+        await Handler().HandleAsync(new JoinMembershipCommand("account-1"), CancellationToken.None);
+        var published = (PaymentFailed)_events.Published.Single();
+
+        // Act
+        IReadOnlyList<string> errors = EventSchemas.Validate(PaymentFailed.RoutingKey, Encoding.UTF8.GetString(EventJson.Serialize(published)));
+
+        // Assert
+        Assert.That(errors, Is.Empty);
+    }
+
+    [Test]
+    public async Task HandleAsync_WhenTheChargeIsAccepted_PublishesNothing()
+    {
+        // Act
+        await Handler().HandleAsync(new JoinMembershipCommand("account-1"), CancellationToken.None);
+
+        // Assert
+        Assert.That(_events.Published, Is.Empty);
+    }
+
+    [Test]
+    public async Task HandleAsync_WhenPublishingThrows_TheMembershipIsStillStored()
+    {
+        // Arrange: RabbitMQ can't be reached; the join is kept and the member gets the same answer (#192's safe default)
+        _payments.Paid = false;
+        _events.Failure = new InvalidOperationException("RabbitMQ is down.");
+
+        // Act
+        JoinResult result = await Handler().HandleAsync(new JoinMembershipCommand("account-1"), CancellationToken.None);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Joined, Is.True);
+            Assert.That(_memberships.Stored.Single().Status, Is.EqualTo(MembershipStatus.PaymentMissing));
+        });
     }
 
     private sealed class StubPaymentProvider : IPaymentProvider

@@ -112,6 +112,10 @@ services:
       # Database membership, user membership-svc (infrastructure.yml, SERVICE_DATABASES)
       MongoDb__Host: mongodb
       MongoDb__Port: "27017"
+      # Publishes MembershipPaused and PaymentFailed (#251). RabbitMq:Username and RabbitMq:Password are in the same Vault
+      # secret. Nothing connects until the first publish, and a failed publish is only logged, so no depends_on
+      RabbitMq__HostName: rabbitmq
+      RabbitMq__Port: "5672"
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
       interval: 5s

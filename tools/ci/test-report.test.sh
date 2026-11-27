@@ -73,6 +73,29 @@ run "$tmp/nested.test.sh"
 check "a *.test.sh run by another test prints raw lines, for that test to check" has "inner: PASS  one"
 check "a *.test.sh run by another test has no summary line of its own" lacks "inner: 2 cases"
 
+# A FAIL line shows what the case got (issue #477): test_report_got prints the command a failed case ran, with its
+# arguments expanded, and test_report_tail the last lines of what it captured.
+fake got.test.sh 'out=$(printf "line %s\\n" $(seq 1 25)); if test "$out" = want; then echo "PASS  x"; else echo "FAIL  x"; test_report_got test "the value" = want; test_report_tail out "$out"; exit 1; fi'
+run "$tmp/got.test.sh"
+check "test_report_got prints the failed command with its arguments expanded" has "      ran: test the\\ value = want"
+check "test_report_tail prints the last line the case captured" has "      out: line 25"
+check "test_report_tail prints the last 20 lines only" lacks "out: line 5"
+check "a case with test_report_got still counts as one failed case" test "$(tail -1 <<<"$out")" = "1 cases, 1 failed"
+
+# planted <script> <helper>: a copy of a tools/ci/*.test.sh with one case that fails on purpose. Its FAIL line has to
+# show what the case got, so a red run needs no re-run to see the cause (#477). The case goes above the last line, the exit.
+planted() {
+  sed -e "s|\$(dirname \"\${BASH_SOURCE\[0\]}\")|$here|; s|\$(dirname \"\$0\")|$here|" \
+    -e "\$i\\
+$2 \"planted case\" test planted-value = want" "$here/$1" >"$tmp/$1"
+  run bash "$tmp/$1"
+}
+for planted_case in summarize.test.sh:check ci-workflow.test.sh:expect image-scan.test.sh:check; do
+  planted "${planted_case%%:*}" "${planted_case##*:}"
+  check "${planted_case%%:*}: a failed case shows the command it ran" has "      ran: test planted-value = want"
+  check "${planted_case%%:*}: a failed case still fails the run" test "$status" != 0
+done
+
 # The change is one shared helper: every tools/ci/*.test.sh sources it before it prints anything.
 for test in "$here"/*.test.sh; do
   out="no such line in lines 2-12 of $test"

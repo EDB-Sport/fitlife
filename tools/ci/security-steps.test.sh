@@ -30,6 +30,7 @@ expect_trigger() {
     echo "PASS  $description"
   else
     echo "FAIL  $description"
+    test_report_got "$@"
     failures=$((failures + 1))
   fi
 }

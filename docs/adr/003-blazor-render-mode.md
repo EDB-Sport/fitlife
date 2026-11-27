@@ -6,7 +6,7 @@
 
 ## Context
 
-The project description asks for a user interface that demonstrates the implemented microservices. The stack is a Blazor Web App (`docs/CSHARP_SETUP_TODO.md` section 0), which can render on the server (static or Interactive Server) or run in the browser (WebAssembly). The UIs must log in through IdentityService with a JWT, call the services through the Nginx gateway, and stay thin: business rules belong in the services (section 6a). Every UI gets its own container, as the services do.
+The project description asks for a user interface that demonstrates the implemented microservices. The stack is a Blazor Web App (`docs/TECHNICAL_REFERENCE.md` section 0), which can render on the server (static or Interactive Server) or run in the browser (WebAssembly). The UIs must log in through IdentityService with a JWT, call the services through the Nginx gateway, and stay thin: business rules belong in the services (section 6a). Every UI gets its own container, as the services do.
 
 ## Decision
 

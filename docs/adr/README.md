@@ -2,7 +2,7 @@
 
 One file per decision, numbered `NNN-short-title.md`, copied from [`000-template.md`](000-template.md). An ADR is added in the PR that makes the decision.
 
-Planned first ADRs (`../CSHARP_SETUP_TODO.md`, suggested order step 1):
+Planned first ADRs (step 1 of the setup plan, now history in `../legacy/`):
 
 | ADR | Decision |
 |---|---|

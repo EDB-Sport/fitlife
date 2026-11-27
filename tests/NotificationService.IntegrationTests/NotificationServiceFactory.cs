@@ -21,6 +21,17 @@ public sealed class NotificationServiceFactory(ILoggerProvider? logs = null) : W
             .Consuming.WaitAsync(TimeSpan.FromSeconds(30));
     }
 
+    /// <summary>The <c>Consuming</c> task of every <see cref="RabbitMqEventConsumer{TEvent}"/> the host runs, one per event (#647).</summary>
+    /// <returns>One task per consumer; it completes when that consumer's queue is bound.</returns>
+    public IReadOnlyList<Task> Consumers()
+    {
+        return Services.GetServices<IHostedService>()
+            .Where(service => service.GetType().IsGenericType && service.GetType().GetGenericTypeDefinition() == typeof(RabbitMqEventConsumer<>))
+            .Select(consumer => consumer.GetType().GetProperty(nameof(RabbitMqEventConsumer<ReservationMade>.Consuming))?.GetValue(consumer) as Task
+                ?? throw new InvalidOperationException($"{consumer.GetType()} has no Consuming task."))
+            .ToList();
+    }
+
     /// <inheritdoc />
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {

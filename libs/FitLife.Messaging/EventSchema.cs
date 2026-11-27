@@ -62,6 +62,9 @@ public static class EventSchema
         return new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [ReservationMade.RoutingKey] = Generate<ReservationMade>(),
+            [MembershipPaused.RoutingKey] = Generate<MembershipPaused>(),
+            [MembershipCancelled.RoutingKey] = Generate<MembershipCancelled>(),
+            [PaymentFailed.RoutingKey] = Generate<PaymentFailed>(),
         };
     }
 

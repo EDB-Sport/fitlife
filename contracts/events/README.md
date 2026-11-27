@@ -10,6 +10,17 @@ One JSON Schema per RabbitMQ event that crosses a context boundary (`docs/domain
 
 Tests: `tests/FitLife.Contracts.Tests` checks each schema against a sample in the test. Producer and consumer tests validate with `EventSchemas.Validate` from `tests/FitLife.Contracts.Testing`.
 
+## Handled only once on
+
+A consumer can get the same message twice (a redelivery, a replay). These fields tell a second copy from a new event (#231):
+
+| Event | Handled once on |
+|---|---|
+| `reservation-made` | `reservationId` |
+| `membership-paused` | `memberId` + `from` |
+| `membership-cancelled` | `memberId`: a membership is cancelled once |
+| `payment-failed` | `memberId` + `failedAt` |
+
 ## Generated, don't edit by hand (#491)
 
 Each schema is generated from its integration event record in `libs/FitLife.Messaging/Events/`, the record the publisher sends and the consumer reads. Change the record, then regenerate:

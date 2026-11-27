@@ -53,7 +53,7 @@ Vault runs in dev mode here too, so its secrets live in memory only and are writ
 | `main.bicep` | Entry point (resource group scope). Outputs `publicUrl`. |
 | `modules/storage.bicep` | Storage account and Azure Files shares. |
 | `modules/containers.bicep` | The container group, probes and volumes. |
-| `topology.test.sh` | Offline check of the compiled template: containers, the one public port, probes, CPU and memory, secrets as `secureValue`, file shares, the scripts shared with compose, each service's port and settings against its compose block, when the member portal and NotificationService are in the group, the demo passwords, and Booking's seed setting. |
+| `topology.test.sh` | Offline check of the compiled template: containers, the one public port, probes, CPU and memory, secrets as `secureValue`, file shares, the scripts shared with compose, each service's port and settings against its compose block, when the member portal and NotificationService are in the group, the demo passwords, Booking's seed setting, and the member portal's gateway address. |
 | `main.bicepparam` | Production values: region, DNS label, the services with their image names, and the member portal. Secrets and released versions come from environment variables. |
 | `caddy/Caddyfile` | Caddy's config, mounted as a secret volume. |
 | `budget.bicep` | The monthly cost alert on the subscription. Run once by a person. |

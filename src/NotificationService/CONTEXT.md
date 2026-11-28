@@ -54,6 +54,6 @@ Plain types, no `*.Domain` layer yet (METHODOLOGY 11.2 rule 8): the only rule so
 
 - Other services are reached over HTTP or RabbitMQ events only, never by a `ProjectReference` (FITLIFE001). Events come in through `libs/FitLife.Messaging`, never RabbitMQ.Client directly.
 - MongoDB only in `NotificationService.Repositories` (TEAM001).
-- `/health` stays mapped and open (`AllowAnonymous()`). `docker compose up --wait` and the Azure probes use it.
+- `/health` stays mapped and open (`AllowAnonymous()`): every check, what `docker compose up --wait` and the readiness probe use. `/health/live` runs no dependency checks and serves the liveness probe, so a RabbitMQ outage doesn't restart the container (#303).
 - Every other endpoint needs a token (`AddFitLifeAuthorization()`); the delivery log needs Træner or Admin.
 - The OpenAPI document and Scalar are mapped in Development only (course rule #7). `ApiDocumentationTests` checks it.

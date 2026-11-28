@@ -7,6 +7,9 @@ namespace FitLife.Messaging;
 /// <summary>Registers RabbitMQ messaging in a service's <c>Program.cs</c>.</summary>
 public static class MessagingServiceCollectionExtensions
 {
+    /// <summary>The tag of the checks that belong in the readiness probe, not the liveness probe (#303).</summary>
+    private static readonly string[] ReadyTags = ["ready"];
+
     /// <summary>The connection, from the <c>RabbitMq</c> configuration section. Needed by the publisher and the consumers.</summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">The service's configuration.</param>
@@ -46,8 +49,9 @@ public static class MessagingServiceCollectionExtensions
             queuePrefix));
         services.AddHostedService(provider => provider.GetRequiredService<RabbitMqEventConsumer<TEvent>>());
 
-        // Part of the service's /health: unhealthy until the queue is bound (#258), and while the channel is closed (#302)
-        services.AddHealthChecks().AddCheck<RabbitMqConsumerHealthCheck<TEvent>>("rabbitmq-" + TEvent.RoutingKey);
+        // Part of the service's /health: unhealthy until the queue is bound (#258), and while the channel is closed (#302).
+        // Tagged ready, not live: a RabbitMQ outage is a reason to stop sending traffic, never to restart the container (#303)
+        services.AddHealthChecks().AddCheck<RabbitMqConsumerHealthCheck<TEvent>>("rabbitmq-" + TEvent.RoutingKey, tags: ReadyTags);
         return services;
     }
 }

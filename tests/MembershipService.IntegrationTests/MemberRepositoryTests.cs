@@ -127,6 +127,27 @@ public sealed class MemberRepositoryTests
     }
 
     [Test]
+    public async Task Save_ACancelledMembership_ReadsTheLastTrainingDayBack()
+    {
+        // Arrange
+        IMembershipRepository memberships = _factory.Services.GetRequiredService<IMembershipRepository>();
+        var today = new DateOnly(2026, 11, 24);
+        var membership = Membership.Start(Guid.NewGuid(), today);
+        membership.MarkPaid();
+        await memberships.AddAsync(membership, CancellationToken.None).ConfigureAwait(false);
+        membership.Cancel(today);
+
+        // Act
+        await memberships.SaveAsync(membership, CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Membership? found = await memberships.FindByMemberIdAsync(membership.MemberId, CancellationToken.None).ConfigureAwait(false);
+        Assert.That(found?.LastTrainingDay, Is.EqualTo(new DateOnly(2026, 12, 31)));
+        Assert.That(found?.StatusOn(new DateOnly(2026, 12, 31)), Is.EqualTo(MembershipStatus.Cancelled));
+        Assert.That(found?.StatusOn(new DateOnly(2027, 1, 1)), Is.EqualTo(MembershipStatus.Ended));
+    }
+
+    [Test]
     public async Task Remove_AMembership_IsNotFoundAgain()
     {
         // Arrange

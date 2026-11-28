@@ -22,8 +22,8 @@ public sealed class Membership
     public MembershipType Type { get; }
 
     /// <summary>
-    /// The stored status: <see cref="MembershipStatus.Active"/> or <see cref="MembershipStatus.PaymentMissing"/>. It doesn't
-    /// look at the pause period; the status on a given day is <see cref="StatusOn"/>.
+    /// The stored status: <see cref="MembershipStatus.Active"/>, <see cref="MembershipStatus.PaymentMissing"/> or
+    /// <see cref="MembershipStatus.Cancelled"/>. It doesn't look at the dates; the status on a given day is <see cref="StatusOn"/>.
     /// </summary>
     public MembershipStatus Status { get; private set; }
 
@@ -35,6 +35,9 @@ public sealed class Membership
 
     /// <summary>The last day of the pause period; null without one.</summary>
     public DateOnly? PausedTo { get; private set; }
+
+    /// <summary>The last day the membership gives access, after the member cancelled it (UC8); null when it isn't cancelled.</summary>
+    public DateOnly? LastTrainingDay { get; private set; }
 
     /// <summary>Whether the stored status is <see cref="MembershipStatus.Active"/>. A pause period isn't counted: use <see cref="IsActiveOn"/>.</summary>
     public bool IsActive => Status == MembershipStatus.Active;
@@ -58,13 +61,19 @@ public sealed class Membership
     }
 
     /// <summary>
-    /// Where the membership is on a day: Pause from <see cref="PausedFrom"/> to <see cref="PausedTo"/>, both included, when the
-    /// stored status is Aktiv, else the stored status (TO-BE-kontekst §8). No background job: the dates decide.
+    /// Where the membership is on a day: Afsluttet after the <see cref="LastTrainingDay"/> of a cancelled membership; Pause from
+    /// <see cref="PausedFrom"/> to <see cref="PausedTo"/>, both included, when the stored status is Aktiv; else the stored status
+    /// (TO-BE-kontekst §8). A cancelled membership is Opsagt inside a pause period too. No background job: the dates decide.
     /// </summary>
     /// <param name="day">The day.</param>
     /// <returns>The status on that day.</returns>
     public MembershipStatus StatusOn(DateOnly day)
     {
+        if (Status == MembershipStatus.Cancelled && day > LastTrainingDay)
+        {
+            return MembershipStatus.Ended;
+        }
+
         if (Status != MembershipStatus.Active)
         {
             return Status;
@@ -143,6 +152,26 @@ public sealed class Membership
     }
 
     /// <summary>
+    /// The member cancels the membership with one month's notice from the first day of the coming month (TO-BE-kontekst §8,
+    /// UC8): the last training day is the last day of the month after <paramref name="today"/>'s month, and the membership is
+    /// Opsagt until then. Aktiv, Pause and Betaling mangler can all be cancelled.
+    /// </summary>
+    /// <param name="today">Today.</param>
+    /// <returns><see cref="CancelResult.Cancelled"/>, or <see cref="CancelResult.MembershipAlreadyCancelled"/>.</returns>
+    public CancelResult Cancel(DateOnly today)
+    {
+        if (StatusOn(today) is MembershipStatus.Cancelled or MembershipStatus.Ended)
+        {
+            return CancelResult.MembershipAlreadyCancelled;
+        }
+
+        // The first day of today's month plus two months, minus one day: the year changes by itself (Dec, Jan)
+        LastTrainingDay = new DateOnly(today.Year, today.Month, 1).AddMonths(2).AddDays(-1);
+        Status = MembershipStatus.Cancelled;
+        return CancelResult.Cancelled;
+    }
+
+    /// <summary>
     /// The member paid the missing fee: Betaling mangler becomes Aktiv (TO-BE-kontekst §8, UC18). Any other status owes nothing,
     /// and nothing changes.
     /// </summary>
@@ -158,7 +187,10 @@ public sealed class Membership
         return PaymentResult.Paid;
     }
 
-    /// <summary>Rebuilds a stored membership. A stored pause period is given back with <see cref="RestorePausePeriod"/>.</summary>
+    /// <summary>
+    /// Rebuilds a stored membership. A stored pause period is given back with <see cref="RestorePausePeriod"/>, a stored last
+    /// training day with <see cref="RestoreLastTrainingDay"/>.
+    /// </summary>
     /// <param name="id">The membership id.</param>
     /// <param name="memberId">The member id.</param>
     /// <param name="type">The kind of membership.</param>
@@ -180,5 +212,15 @@ public sealed class Membership
     {
         PausedFrom = pausedFrom;
         PausedTo = pausedTo;
+    }
+
+    /// <summary>
+    /// Gives a restored membership back its stored last training day, without the rules of <see cref="Cancel"/>: they were
+    /// checked when it was stored. Only the repository calls it, while it rebuilds a membership.
+    /// </summary>
+    /// <param name="lastTrainingDay">The stored last training day, or null.</param>
+    internal void RestoreLastTrainingDay(DateOnly? lastTrainingDay)
+    {
+        LastTrainingDay = lastTrainingDay;
     }
 }

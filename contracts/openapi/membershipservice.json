@@ -213,6 +213,40 @@
           }
         }
       }
+    },
+    "/members/me/cancellation": {
+      "post": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Cancels the membership of the account in the token with one month's notice: it gives access until the last day of the next month",
+        "operationId": "CancelMyMembership",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MembershipCancellationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -306,6 +340,20 @@
         },
         "description": "A member and whether the membership gives access and the right to book."
       },
+      "MembershipCancellationResponse": {
+        "required": [
+          "lastTrainingDay"
+        ],
+        "type": "object",
+        "properties": {
+          "lastTrainingDay": {
+            "type": "string",
+            "description": "The last day of the month after the month the member cancelled in.",
+            "format": "date"
+          }
+        },
+        "description": "The answer to a cancellation (UC8): the last day the membership gives access."
+      },
       "MembershipPauseResponse": {
         "required": [
           "memberId",
@@ -363,9 +411,11 @@
         "enum": [
           "Active",
           "PaymentMissing",
-          "Paused"
+          "Paused",
+          "Cancelled",
+          "Ended"
         ],
-        "description": "Medlemskabets tilstand: where a membership is in its life (TO-BE-kontekst §8). Only MembershipStatus.Active\ngives access and the right to book. The other states (Opsagt, Afsluttet) come with their issues."
+        "description": "Medlemskabets tilstand: where a membership is in its life (TO-BE-kontekst §8). Only MembershipStatus.Active\ngives access and the right to book."
       },
       "MembershipType": {
         "enum": [
@@ -379,7 +429,8 @@
           "membershipType",
           "membershipStatus",
           "isActive",
-          "startDate"
+          "startDate",
+          "lastTrainingDay"
         ],
         "type": "object",
         "properties": {
@@ -403,6 +454,14 @@
           "startDate": {
             "type": "string",
             "description": "The day the membership started.",
+            "format": "date"
+          },
+          "lastTrainingDay": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The last day the membership gives access after the member cancelled it, or null (UC8).",
             "format": "date"
           }
         },

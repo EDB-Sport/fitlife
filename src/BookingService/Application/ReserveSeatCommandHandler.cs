@@ -4,22 +4,25 @@ namespace BookingService.Application;
 
 /// <summary>
 /// Handles <see cref="ReserveSeatCommand"/> (#260): asks Membership who the member is and whether the membership is active, then
-/// lets <see cref="ClassSession.Reserve"/> decide, and saves once, only when the seat was given. No booking rule lives here.
+/// lets <see cref="ClassSession.Reserve"/> decide, and saves once, only when the seat was given; then publishes ReservationMade (#192). No booking rule lives here.
 /// </summary>
 public sealed class ReserveSeatCommandHandler
 {
     private readonly IMembershipClient _membership;
     private readonly IClassSessionRepository _classSessions;
+    private readonly BookingEventPublisher _events;
     private readonly TimeProvider _clock;
 
     /// <summary>Creates the handler.</summary>
     /// <param name="membership">Who the member behind an account is.</param>
     /// <param name="classSessions">Where class sessions are stored.</param>
+    /// <param name="events">Publishes ReservationMade after the save (#192).</param>
     /// <param name="clock">Tells the time now.</param>
-    public ReserveSeatCommandHandler(IMembershipClient membership, IClassSessionRepository classSessions, TimeProvider clock)
+    public ReserveSeatCommandHandler(IMembershipClient membership, IClassSessionRepository classSessions, BookingEventPublisher events, TimeProvider clock)
     {
         _membership = membership;
         _classSessions = classSessions;
+        _events = events;
         _clock = clock;
     }
 
@@ -48,9 +51,14 @@ public sealed class ReserveSeatCommandHandler
         }
 
         ReservationResult reservation = classSession.Reserve(member.MemberId, _clock);
-        if (reservation == ReservationResult.Made && !await _classSessions.SaveAsync(classSession, cancellationToken).ConfigureAwait(false))
+        if (reservation == ReservationResult.Made)
         {
-            return Stopped(ReserveSeatOutcome.ChangedMeanwhile, member.MemberId);
+            if (!await _classSessions.SaveAsync(classSession, cancellationToken).ConfigureAwait(false))
+            {
+                return Stopped(ReserveSeatOutcome.ChangedMeanwhile, member.MemberId);
+            }
+
+            await _events.PublishReservationMadeAsync(classSession, member.MemberId).ConfigureAwait(false);
         }
 
         return new ReserveSeatResult(ReserveSeatOutcome.Answered, reservation, member.MemberId);

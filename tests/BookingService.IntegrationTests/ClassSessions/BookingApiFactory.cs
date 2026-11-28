@@ -4,6 +4,7 @@ using BookingService.Application;
 using BookingService.Domain;
 using BookingService.Repositories;
 using BookingService.Seed;
+using FitLife.Messaging;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -51,6 +52,9 @@ internal sealed class BookingApiFactory : WebApplicationFactory<Program>
     /// <summary>Gets what Membership answers; a client from <c>CreateClient()</c> carries a Medlem token (#260).</summary>
     public FakeMembershipClient Membership { get; } = new();
 
+    /// <summary>What Booking published (#192): no RabbitMQ in these tests.</summary>
+    public RecordingEventPublisher Events { get; } = new();
+
     /// <summary>Stores a class session through the service's own repository.</summary>
     public async Task AddAsync(ClassSession classSession)
     {
@@ -75,6 +79,7 @@ internal sealed class BookingApiFactory : WebApplicationFactory<Program>
         {
             services.Replace(ServiceDescriptor.Singleton<TimeProvider>(Clock));
             services.Replace(ServiceDescriptor.Singleton<IMembershipClient>(Membership));
+            services.Replace(ServiceDescriptor.Singleton<IEventPublisher>(Events));
             if (_everySaveIsStale)
             {
                 services.Replace(ServiceDescriptor.Scoped<IClassSessionRepository>(provider =>

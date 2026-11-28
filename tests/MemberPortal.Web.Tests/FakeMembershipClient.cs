@@ -2,10 +2,12 @@ using MemberPortal.Web.Clients;
 
 namespace MemberPortal.Web.Tests;
 
-/// <summary>Membership in front of the portal's pages: answers one <see cref="JoinMembershipAnswer"/> or throws, and counts the calls.</summary>
+/// <summary>Membership in front of the portal's pages: answers one <see cref="JoinMembershipAnswer"/> and one membership, or throws, and counts the calls.</summary>
 internal sealed class FakeMembershipClient : IMembershipClient
 {
     public JoinMembershipAnswer Answer { get; set; } = JoinMembershipAnswer.Joined;
+
+    public MyMembershipResponse? MyMembership { get; set; }
 
     public Exception? Failure { get; set; }
 
@@ -23,5 +25,16 @@ internal sealed class FakeMembershipClient : IMembershipClient
         }
 
         return Task.FromResult(Answer);
+    }
+
+    public Task<MyMembershipResponse?> GetMyMembershipAsync(CancellationToken cancellationToken)
+    {
+        Calls++;
+        if (Failure is not null)
+        {
+            return Task.FromException<MyMembershipResponse?>(Failure);
+        }
+
+        return Task.FromResult(MyMembership);
     }
 }

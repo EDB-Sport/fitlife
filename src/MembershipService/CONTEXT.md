@@ -45,7 +45,7 @@ Words from other contexts that we do **not** use here: *user* or *login* (that i
 | Event published | `MembershipPaused` (`contracts/events/membership-paused.schema.json`) | After a pause is saved: `memberId`, `from`, `to` (#251). Not for a rejected pause or a pause ended early |
 | Event published | `PaymentFailed` (`contracts/events/payment-failed.schema.json`) | After a join is saved with `PaymentMissing` because the first charge didn't go through: `memberId`, `failedAt` (#251). Not for a declined `POST /members/me/payment`, which saves nothing |
 
-Both are published after the save, through `Application/MembershipEventPublisher` and `libs/FitLife.Messaging`, without the request's token. A failed publish is logged and the change is kept, so the member's answer is the same; there is no outbox, so that event is lost (#192's safe default). `MembershipCancelled` is not published yet: `POST /members/me/cancellation` saves and answers, and the event follows in #251's second PR.
+Both are published after the save, through `Application/MembershipEventPublisher` and `libs/FitLife.Messaging`, without the request's token. A failed publish is logged and the change is kept, so the member's answer is the same; there is no outbox, so that event is lost (#192's safe default). `MembershipCancelled` is not published yet: `POST /members/me/cancellation` saves and answers, and the event follows in #649.
 
 ## Talks to
 

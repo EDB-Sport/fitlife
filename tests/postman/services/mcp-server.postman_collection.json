@@ -1,0 +1,204 @@
+{
+ "info": {
+  "_postman_id": "0fdaa6de-b7c5-4864-949b-3f8948cf845c",
+  "name": "FitLife MCP server",
+  "description": "API tests of the MCP server through the gateway (#630): an AI assistant gets the tool list and the class schedule over /mcp, and a wrong call is refused. Needs only baseUrl from an environment in tests/postman/environments/. No token: list_class_sessions needs no login. Creates nothing, so nothing is removed.",
+  "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+ },
+ "item": [
+  {
+   "name": "Tool list",
+   "event": [
+    {
+     "listen": "test",
+     "script": {
+      "type": "text/javascript",
+      "exec": [
+       "pm.test(\"Status is 200\", function () {",
+       "    pm.response.to.have.status(200);",
+       "});",
+       "// The server answers as Server-Sent Events: the JSON-RPC answer is the data: line",
+       "const dataLine = pm.response.text().split(\"\\n\").find(line => line.startsWith(\"data:\"));",
+       "const answer = dataLine ? JSON.parse(dataLine.slice(\"data:\".length)) : {};",
+       "pm.test(\"Lists list_class_sessions\", function () {",
+       "    pm.expect(answer.result.tools.map(tool => tool.name)).to.include(\"list_class_sessions\");",
+       "});"
+      ]
+     }
+    }
+   ],
+   "request": {
+    "method": "POST",
+    "header": [
+     {
+      "key": "Content-Type",
+      "value": "application/json"
+     },
+     {
+      "key": "Accept",
+      "value": "application/json, text/event-stream"
+     }
+    ],
+    "url": {
+     "raw": "{{baseUrl}}/mcp",
+     "host": [
+      "{{baseUrl}}"
+     ],
+     "path": [
+      "mcp"
+     ]
+    },
+    "body": {
+     "mode": "raw",
+     "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 1,\n  \"method\": \"tools/list\"\n}"
+    }
+   }
+  },
+  {
+   "name": "Class schedule",
+   "event": [
+    {
+     "listen": "test",
+     "script": {
+      "type": "text/javascript",
+      "exec": [
+       "pm.test(\"Status is 200\", function () {",
+       "    pm.response.to.have.status(200);",
+       "});",
+       "// The server answers as Server-Sent Events: the JSON-RPC answer is the data: line",
+       "const dataLine = pm.response.text().split(\"\\n\").find(line => line.startsWith(\"data:\"));",
+       "const answer = dataLine ? JSON.parse(dataLine.slice(\"data:\".length)) : {};",
+       "pm.test(\"Is not a tool error\", function () {",
+       "    pm.expect(answer.result.isError).to.not.equal(true);",
+       "});",
+       "pm.test(\"Has the demo class sessions, each with id and freeSeats\", function () {",
+       "    const sessions = JSON.parse(answer.result.content[0].text);",
+       "    pm.expect(sessions).to.be.an(\"array\").that.is.not.empty;",
+       "    sessions.forEach(session => {",
+       "        pm.expect(session).to.have.property(\"id\");",
+       "        pm.expect(session).to.have.property(\"freeSeats\");",
+       "    });",
+       "});"
+      ]
+     }
+    }
+   ],
+   "request": {
+    "method": "POST",
+    "header": [
+     {
+      "key": "Content-Type",
+      "value": "application/json"
+     },
+     {
+      "key": "Accept",
+      "value": "application/json, text/event-stream"
+     }
+    ],
+    "url": {
+     "raw": "{{baseUrl}}/mcp",
+     "host": [
+      "{{baseUrl}}"
+     ],
+     "path": [
+      "mcp"
+     ]
+    },
+    "body": {
+     "mode": "raw",
+     "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 2,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"list_class_sessions\",\n    \"arguments\": {}\n  }\n}"
+    }
+   }
+  },
+  {
+   "name": "Unknown tool",
+   "event": [
+    {
+     "listen": "test",
+     "script": {
+      "type": "text/javascript",
+      "exec": [
+       "pm.test(\"Status is 200\", function () {",
+       "    pm.response.to.have.status(200);",
+       "});",
+       "// The server answers as Server-Sent Events: the JSON-RPC answer is the data: line",
+       "const dataLine = pm.response.text().split(\"\\n\").find(line => line.startsWith(\"data:\"));",
+       "const answer = dataLine ? JSON.parse(dataLine.slice(\"data:\".length)) : {};",
+       "pm.test(\"Is a JSON-RPC error with code -32602 (invalid params)\", function () {",
+       "    pm.expect(answer.error.code).to.equal(-32602);",
+       "});"
+      ]
+     }
+    }
+   ],
+   "request": {
+    "method": "POST",
+    "header": [
+     {
+      "key": "Content-Type",
+      "value": "application/json"
+     },
+     {
+      "key": "Accept",
+      "value": "application/json, text/event-stream"
+     }
+    ],
+    "url": {
+     "raw": "{{baseUrl}}/mcp",
+     "host": [
+      "{{baseUrl}}"
+     ],
+     "path": [
+      "mcp"
+     ]
+    },
+    "body": {
+     "mode": "raw",
+     "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 3,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"no_such_tool\",\n    \"arguments\": {}\n  }\n}"
+    }
+   }
+  },
+  {
+   "name": "Tool list: without text/event-stream",
+   "event": [
+    {
+     "listen": "test",
+     "script": {
+      "type": "text/javascript",
+      "exec": [
+       "pm.test(\"Status is 406\", function () {",
+       "    pm.response.to.have.status(406);",
+       "});"
+      ]
+     }
+    }
+   ],
+   "request": {
+    "method": "POST",
+    "header": [
+     {
+      "key": "Content-Type",
+      "value": "application/json"
+     },
+     {
+      "key": "Accept",
+      "value": "application/json"
+     }
+    ],
+    "url": {
+     "raw": "{{baseUrl}}/mcp",
+     "host": [
+      "{{baseUrl}}"
+     ],
+     "path": [
+      "mcp"
+     ]
+    },
+    "body": {
+     "mode": "raw",
+     "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 4,\n  \"method\": \"tools/list\"\n}"
+    }
+   }
+  }
+ ]
+}

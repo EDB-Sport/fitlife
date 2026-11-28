@@ -46,4 +46,15 @@ expect "the job is still called deploy-check" test -n "$job_block"
 expect "the job sets no name:, which would rename the required check" \
   bash -c '! grep -qE "^    name:" <<<"$1"' _ "$job_block"
 
+# The acceptance scripts under deploy/ guard develop (#483): the job runs deploy-check.sh, which runs every
+# deploy/**/*.test.sh it finds, so a new deploy/compose/*.test.sh needs no workflow change.
+script="$root/tools/ci/deploy-check.sh"
+expect "the job runs tools/ci/deploy-check.sh" grep -qE 'run: .*tools/ci/deploy-check\.sh' <<<"$job_block"
+expect "deploy-check.sh finds every deploy/**/*.test.sh, with no list to keep up to date" \
+  grep -qF "find deploy -type f -name '*.test.sh'" "$script"
+expect "deploy-check.sh runs each acceptance script it found and fails when one fails" \
+  bash -c 'grep -qE "^  if BICEP=.* bash \"\\\$check\"; then$" "$1" && grep -qF "fail \"\$check failed" "$1"' _ "$script"
+expect "deploy/compose has acceptance scripts for it to run" \
+  test -n "$(git -C "$root" ls-files 'deploy/compose/*.test.sh')"
+
 exit $((failures > 0))

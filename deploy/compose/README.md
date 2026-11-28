@@ -24,7 +24,7 @@ docker compose up -d --wait
 
 `--wait` returns when every container's healthcheck passes. Then:
 
-| What | Where |
+| What | Where (port + `PORT_OFFSET` when `ports.sh` is sourced, "Two stacks side by side") |
 |---|---|
 | Gateway | http://localhost:8080 (`/health`, `/api/<context>/...`) |
 | Member portal | http://localhost:8080/ through the gateway (the `member-portal` container, #204) |
@@ -115,7 +115,14 @@ A floating tag (`aspnet:10.0-alpine`, as in `src/MemberPortal.Web/Dockerfile`) d
 
 One group on its own: `docker compose -f infrastructure.yml up -d --wait`.
 
-Two stacks side by side (two worktrees, say): give each its own project name and ports, e.g. `docker compose -p fitlife-6 up -d --wait` with other `*_PORT` values in that folder's `.env`.
+Two stacks side by side (two worktrees, a PR preview): give the second its own project name and shift its ports with `PORT_OFFSET` (#585). Compose can't add numbers, so source `ports.sh` first; it exports every `*_PORT` above as its default + `PORT_OFFSET` and prints the ports:
+
+```bash
+cd deploy/compose
+PORT_OFFSET=100 . ./ports.sh && docker compose -p fitlife-2 up -d --wait
+```
+
+The gateway is then on http://localhost:8180, MongoDB on 28018, and so on. A `*_PORT` already set in your shell wins; `.env`'s `*_PORT` lines are not used while `ports.sh` is sourced. Stop it with `docker compose -p fitlife-2 down` in the same shell. Without `ports.sh` nothing changes (offset 0), as in CI. A Postman run against the second stack needs `--env-var baseUrl=http://localhost:$GATEWAY_PORT`. Inside the stack the containers reach each other on their container ports, so the offset changes only what your machine sees. `port-offset.test.sh` checks that every published port moves.
 
 ## Passwords
 

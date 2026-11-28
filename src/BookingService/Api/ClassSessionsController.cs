@@ -39,7 +39,7 @@ public sealed class ClassSessionsController : ControllerBase
     /// <response code="409">The class session rejected the reservation; code is the reason, e.g. ClassSessionFull or TooFarAhead.</response>
     /// <response code="503">Membership didn't answer (code MembershipUnavailable).</response>
     [HttpPost("{id:guid}/reservations")]
-    [Authorize(Roles = FitLifeRoles.Medlem)]
+    [Authorize(Policy = FitLifePolicies.Medlem)]
     [ProducesResponseType<ReservationResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
@@ -78,13 +78,15 @@ public sealed class ClassSessionsController : ControllerBase
     /// <summary>Cancels the member's reservation. When someone is on the waitlist, the first waitlist entry gets the seat.</summary>
     /// <param name="id">The class session.</param>
     /// <param name="memberId">The member who gives up the seat.</param>
+    /// <param name="events">Publishes ReservationMade for a seat from the waitlist (#192).</param>
     /// <param name="cancellationToken">Stops the request.</param>
     /// <response code="404">No such class session, or the member has no seat on it.</response>
     [HttpDelete("{id:guid}/reservations/{memberId:guid}")]
+    [Authorize(Policy = FitLifePolicies.Medlem)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
-    public async Task<Results<NoContent, ProblemHttpResult>> DeleteReservation(Guid id, Guid memberId, CancellationToken cancellationToken)
+    public async Task<Results<NoContent, ProblemHttpResult>> DeleteReservation(Guid id, Guid memberId, [FromServices] BookingEventPublisher events, CancellationToken cancellationToken)
     {
         ClassSession? classSession = await _repository.GetByIdAsync(id, cancellationToken).ConfigureAwait(false);
         if (classSession is null)
@@ -102,6 +104,7 @@ public sealed class ClassSessionsController : ControllerBase
             return TypedResults.Problem(statusCode: StatusCodes.Status409Conflict, title: ChangedMeanwhileTitle);
         }
 
+        await events.PublishReservationsMadeAsync(classSession).ConfigureAwait(false); // the seat the first waitlist entry got (#192)
         return TypedResults.NoContent();
     }
 
@@ -111,6 +114,7 @@ public sealed class ClassSessionsController : ControllerBase
     /// <param name="cancellationToken">Stops the request.</param>
     /// <response code="409">A seat is free, the waitlist has closed, the class session is cancelled, or the member already has a place.</response>
     [HttpPost("{id:guid}/waitlist")]
+    [Authorize(Policy = FitLifePolicies.Medlem)]
     [Consumes("application/json")]
     [ProducesResponseType<WaitlistEntryResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]

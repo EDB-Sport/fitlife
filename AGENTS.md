@@ -14,6 +14,8 @@ Follow `docs/PR_RULES.md`. CI fails a PR whose description doesn't follow the te
 
 **A red CI run:** run `gh run view <run id>` first. Its ANNOTATIONS name each failing check and its first error; the run's summary page in the browser adds a hint. Only then use `gh run view --log-failed`, which can be very long (#132).
 
+**Before every push:** run `tools/dev/check.sh` (restore, build, format, contracts, test, and the `*.test.sh` when you touched `tools/` or `.github/`; `--all` forces them, `--skip <name>` leaves one out). It prints `all checks green` or one FAIL block per failed check. Push once per fix round, not once per fix (#603).
+
 **Waiting for a PR's checks:** `tools/dev/wait-ci.sh <pr>` waits, prints `all checks green` on success, and otherwise prints only the checks that are not green (#377).
 
 ## Test and CI logs

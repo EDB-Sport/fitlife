@@ -90,6 +90,10 @@ services:
       MongoDb__Port: "27017"
       Seed__Enabled: "true" # the demo class schedule, loaded once into an empty database (#171)
       WaitlistClosing__Enabled: "true" # closes each waitlist 2 hours before start, once a minute (#314)
+      # Publishes ReservationMade after the save (#192). RabbitMq:Username and RabbitMq:Password are in the same Vault
+      # secret. Nothing connects until the first publish, and a failed publish is only logged, so no depends_on
+      RabbitMq__HostName: rabbitmq
+      RabbitMq__Port: "5672"
       Membership__BaseUrl: http://membership-svc:8080 # who the member behind an account is (#256)
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
@@ -112,6 +116,10 @@ services:
       # Database membership, user membership-svc (infrastructure.yml, SERVICE_DATABASES)
       MongoDb__Host: mongodb
       MongoDb__Port: "27017"
+      # Publishes MembershipPaused and PaymentFailed (#251). RabbitMq:Username and RabbitMq:Password are in the same Vault
+      # secret. Nothing connects until the first publish, and a failed publish is only logged, so no depends_on
+      RabbitMq__HostName: rabbitmq
+      RabbitMq__Port: "5672"
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
       interval: 5s

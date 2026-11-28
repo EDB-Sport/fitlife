@@ -15,4 +15,10 @@ public interface IMembershipClient
     /// </returns>
     /// <exception cref="MembershipUnavailableException">Membership answered another error, a body that isn't a member, or nothing.</exception>
     Task<JoinMembershipAnswer> JoinAsync(string? accessToken, CancellationToken cancellationToken);
+
+    /// <summary>The membership of the account in the cookie's token, with <c>GET api/membership/members/me</c>.</summary>
+    /// <param name="cancellationToken">Stops the request.</param>
+    /// <returns>The membership, or <see langword="null"/> on a 404: the account has not joined.</returns>
+    /// <exception cref="MembershipUnavailableException">Membership answered another error, a body that isn't a membership, or nothing.</exception>
+    Task<MyMembershipResponse?> GetMyMembershipAsync(CancellationToken cancellationToken);
 }

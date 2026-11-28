@@ -154,7 +154,8 @@ public sealed class ClassSession
 
     /// <summary>
     /// Cancels the member's reservation. Less than 2 hours before start it is a late cancellation, unless the seat came from the
-    /// waitlist. When someone is on the waitlist, the first waitlist entry gets the seat.
+    /// waitlist. When someone is on the waitlist and it is still open, the first waitlist entry gets the seat; from 2 hours before
+    /// start the seat stays free and the waitlist expires (#610).
     /// </summary>
     /// <param name="memberId">The member who gives up the seat.</param>
     /// <param name="clock">Tells the time now.</param>
@@ -176,7 +177,13 @@ public sealed class ClassSession
         _reservations.RemoveAt(index);
         _domainEvents.Add(new ReservationCancelled(Id, memberId, isLateCancellation));
 
-        if (_waitlist.Count > 0)
+        // From 2 hours before start the waitlist is closed (invariant 6), also when the closing job hasn't run: the seat stays
+        // free for anyone to reserve, and what is left of the waitlist expires as CloseWaitlist would expire it (#610)
+        if (StartTime - clock.GetUtcNow() <= WhenTheWaitlistClosesBeforeStart)
+        {
+            CloseWaitlist(clock);
+        }
+        else if (_waitlist.Count > 0)
         {
             WaitlistEntry firstWaitlistEntry = _waitlist[0];
             _waitlist.RemoveAt(0);

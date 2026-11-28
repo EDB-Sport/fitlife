@@ -9,6 +9,7 @@ set -uo pipefail
 # Sourced libraries: nobody runs them, so they have no executable bit and need no pipefail.
 libraries=(
   "tools/ci/code-lines.sh"   # sourced by tdd-check.sh and mutation.sh
+  "tools/ci/changes.sh"      # sourced by release-gate.sh and develop-plan.sh
   "tools/ci/services.sh"     # sourced by release-gate.sh and release-plan.sh
   "tools/ci/test-report.sh"  # sourced by every tools/ci/*.test.sh
 )

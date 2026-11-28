@@ -145,6 +145,18 @@ expect 1 "every failure is reported, not just the first" 'mongo:9'
 fresh; compose 'mongo:8.0.38'
 expect 0 "a compose file under deploy/ is read once: one reference, not two" 'image-versions: 1 image reference\(s\) checked'
 
+fresh; compose 'albertarnason/bookingservice:develop' compose.develop.yml
+expect 0 "the :develop tag passes in compose.develop.yml (#340)"
+
+fresh; compose 'albertarnason/bookingservice:develop' services.yml
+expect 1 ":develop fails in any other compose file" 'services.yml:3.*develop'
+
+fresh; compose 'albertarnason/bookingservice:sha-1a2b3c4' compose.develop.yml
+expect 1 "only :develop is allowed in compose.develop.yml, not another floating tag" 'sha-1a2b3c4'
+
+fresh; compose 'mongo:8' compose.develop.yml
+expect 1 "compose.develop.yml may not float a third-party image" 'mongo:8'
+
 # The real tree passes (the issue: today's develop passes, or the PR fixes what it finds).
 if out=$("$check" 2>&1); then
   echo "PASS  the repository passes"

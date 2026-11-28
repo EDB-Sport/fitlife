@@ -66,11 +66,13 @@ else
   ok "README.md scopes the rebuild claim to base images"
 fi
 
-# 6. Step (a) says it is not usable on develop until #340 lands (the bullet for (a) only).
-if tr '\n' ' ' <"$README" | grep -qE '\(a\)[^;]*#340[^;]*until'; then
-  ok "README.md says step (a) waits for #340"
+# 6. Step (a) is the override that #340 delivers: its bullet names compose.develop.yml and #340, and no longer says it
+#    waits for #340 (until #340 landed, it said "not usable on develop until it lands").
+bullet_a=$(grep -E '^- \*\*\(a\)\*\*' "$README" || true)
+if grep -qF 'compose.develop.yml' <<<"$bullet_a" && grep -qF '#340' <<<"$bullet_a" && ! grep -qiE 'not usable|until' <<<"$bullet_a"; then
+  ok "README.md says step (a) is compose.develop.yml (#340), usable now"
 else
-  fail "README.md doesn't say step (a) is unavailable until #340 lands"
+  fail "README.md's step (a) must name compose.develop.yml and #340, and must not say it waits for #340"
 fi
 
 # 7. The script is executable in git (mode 100755), like the other deploy/compose checks, so its usage line works.

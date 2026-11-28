@@ -131,7 +131,7 @@ The branching rules, merging with merge commits and the release steps are in [ME
 - **On merge to `main`** (`release.yml`, `tools/ci/release-plan.sh`): for each service with an untagged version, the image is built, scanned by Trivy, pushed to Docker Hub as `X.Y.Z`, `X.Y`, `X` and `latest` (`docker/metadata-action`), and the commit is tagged `<service>/vX.Y.Z` plus `vx.y.z`. Then `deploy.yml` runs (section 9a).
 - **Continuous Delivery into Azure:** a human decides by merging the release PR and approving the deploy; the pipeline does the rest.
 - Not planned: **CI setting `AssemblyVersion`/`FileVersion`, and `kzrnm/get-net-sdk-project-versions-action`**. The SDK derives both from `<Version>`, and `release.yml` reads the version with `tools/ci/release-plan.sh`.
-- Not built: **`:develop` images on every push to `develop`** (#340).
+- **On push to `develop`** (`develop-images.yml`, `tools/ci/develop-plan.sh`): each service whose `:develop` image is missing or older than its source is built, scanned by Trivy and pushed to Docker Hub as `:develop` and `:sha-<short>`. `deploy/compose/compose.develop.yml` runs those images instead of building them (#340).
 
 ## 9a. Production on Azure: Bicep + Azure Container Instances
 

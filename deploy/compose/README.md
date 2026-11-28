@@ -60,6 +60,16 @@ docker compose up -d --wait --build booking-svc
 
 `tools/ci/api-tests.sh` does the same with `API_TESTS_BUILD=1 tools/ci/api-tests.sh`. Without the switch it reuses the images it has, as before. CI starts on a fresh runner with no images, so it builds them either way (#284).
 
+### Pull the images of `develop` instead of building them
+
+Every merge into `develop` builds, scans and pushes the images of the services that need one to Docker Hub as `albertarnason/<service>:develop` and `:sha-<short>` (`.github/workflows/develop-images.yml`, #340). `compose.develop.yml` makes the stack run them instead of building, which is much faster than a first build (most of that time is downloading base images):
+
+```bash
+docker compose -f compose.yaml -f compose.develop.yml up -d --wait
+```
+
+`pull_policy: always` pulls the newest `:develop` on every `up`. To run one service from your own code, leave the override out and build from source (`docker compose up -d --wait --build`). `:develop` is a moving tag, allowed only in `compose.develop.yml` (`tools/ci/image-versions.sh`); the other compose files, CI and the api-tests build the PR's code from source. A run delivers every service whose `:develop` image is missing or older than its source (it compares with the image's revision label, not with the previous push), so a skipped or failed run is made up by the next one. The released versions (`X.Y.Z`, `latest`) are still the release's alone.
+
 ## Run one service from your IDE
 
 Run one service from your IDE or with `dotnet watch`, against the rest of the stack in compose (#525). Every service has a launch profile named `stack`. It runs on the port below and reaches MongoDB (27018), Vault (8200), RabbitMQ (5672), Loki (3100) and the gateway (8080) on your machine. The gateway still runs in compose. You point it at your service with that service's `*_URL` variable, and the other services stay in compose.
@@ -94,7 +104,7 @@ Without `BOOKING_URL` in the shell, the gateway gets its default `http://booking
 
 A local build uses the base images already on your machine. The cheapest source comes first:
 
-- **(a)** pull the published `:develop` images from Docker Hub instead of building (#340, not usable on `develop` until it lands);
+- **(a)** pull the published `:develop` images from Docker Hub instead of building (`compose.develop.yml`, #340; see "Pull the images of `develop` instead of building them" above);
 - **(b)** build with the base images in your local cache. This is what `docker compose up --build` does, and the compose files never force a pull (no `--pull`, no `pull: true`);
 - **(c)** download the base images from MCR (`mcr.microsoft.com`) only as a last resort.
 

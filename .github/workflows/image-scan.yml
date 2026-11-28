@@ -68,3 +68,4 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
+          version: v0.76.2 # the Trivy binary; the action's default is v0.70.0, and Dependabot bumps only the action (#526)

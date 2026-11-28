@@ -6,4 +6,5 @@ namespace MemberPortal.Web.Clients;
 /// <param name="MembershipStatus">Medlemskabets tilstand, by name, e.g. <c>Active</c>.</param>
 /// <param name="IsActive">Whether the member may book and enter.</param>
 /// <param name="StartDate">The day the membership started.</param>
-public sealed record MyMembershipResponse(Guid MemberId, string MembershipType, string MembershipStatus, bool IsActive, DateOnly StartDate);
+/// <param name="LastTrainingDay">The last day the membership gives access after the member cancelled it, or null.</param>
+public sealed record MyMembershipResponse(Guid MemberId, string MembershipType, string MembershipStatus, bool IsActive, DateOnly StartDate, DateOnly? LastTrainingDay = null);

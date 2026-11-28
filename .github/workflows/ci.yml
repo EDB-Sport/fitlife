@@ -27,7 +27,36 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
+  # A PR that changes only Markdown the build doesn't read skips the .NET jobs (#568); they report as skipped, which a
+  # required check counts as passing. It fails open: the .NET jobs run unless the plan printed skip, so a failed plan,
+  # and a push run (plan skipped), run every job. The run list is in tools/ci/dotnet-plan.sh.
+  plan:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      dotnet: ${{ steps.plan.outputs.dotnet }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the diff needs the base commit
+          filter: blob:none # commits and trees only: the diff needs no file contents
+          persist-credentials: false
+      - name: Run the .NET jobs unless only Markdown changed
+        id: plan
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -o pipefail
+          dotnet=$(git diff --name-only "$BASE_SHA...$HEAD_SHA" | tools/ci/dotnet-plan.sh) || dotnet=run
+          echo ".NET jobs: $dotnet"
+          echo "dotnet=$dotnet" >> "$GITHUB_OUTPUT"
+
   restore:
+    needs: plan
+    if: ${{ !cancelled() && needs.plan.outputs.dotnet != 'skip' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -39,6 +68,8 @@ jobs:
         run: dotnet restore --locked-mode
 
   build:
+    needs: plan
+    if: ${{ !cancelled() && needs.plan.outputs.dotnet != 'skip' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -52,7 +83,8 @@ jobs:
 
   format:
     # After build, so one compile error fails build only and is shown once (issue #134)
-    needs: build
+    needs: [plan, build]
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.plan.outputs.dotnet != 'skip' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -66,7 +98,8 @@ jobs:
 
   test:
     # After build, so one compile error fails build only and is shown once (issue #134)
-    needs: build
+    needs: [plan, build]
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.plan.outputs.dotnet != 'skip' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -93,7 +126,8 @@ jobs:
   # The committed OpenAPI contracts match the code (issue #90, section 8): every API change shows in the PR diff.
   # Then no contract breaks the one at its service's last <service>/vX.Y.Z tag (issue #91).
   contract:
-    needs: build # one compile error fails build only (#322)
+    needs: [plan, build] # one compile error fails build only (#322)
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.plan.outputs.dotnet != 'skip' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -137,6 +171,8 @@ jobs:
   # The executable acceptance check for the build rules (#3): builds throwaway projects and
   # checks that each rule in Directory.Build.* still fails the build (issue #54).
   build-rules:
+    needs: plan
+    if: ${{ !cancelled() && needs.plan.outputs.dotnet != 'skip' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

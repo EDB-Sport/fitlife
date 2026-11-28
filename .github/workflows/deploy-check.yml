@@ -2,14 +2,22 @@
 # Compose config, nginx -t on the rendered gateway template, no :latest images, gcx lint of the Grafana
 # files, az bicep build/lint, and the acceptance checks deploy/**/*.test.sh (#77). The logic is in tools/ci/deploy-check.sh, which runs the same way locally.
 #
-# A workflow of its own until #5 adds ci.yml: then this job moves into ci.yml as job 9
-# (docs/CSHARP_SETUP_TODO.md section 10) and this file is deleted.
+# It stays a workflow of its own: the group has not decided to move the job into ci.yml, and doing so
+# is a separate change that must keep the required check name (#283).
 # Make "deploy-check" a required check on develop and main (repo ruleset, done by hand).
 name: deploy-check
 
+# One run per PR update: "push" is only a backstop for direct pushes and merges to the shared
+# branches, "pull_request" checks the PR's own commits.
 on:
   push:
+    branches: [develop, main]
   pull_request:
+
+# A new push to a PR cancels its run in progress. Runs on develop and main are never cancelled (issue #602).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read

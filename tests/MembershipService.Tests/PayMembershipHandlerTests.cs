@@ -100,15 +100,51 @@ public sealed class PayMembershipHandlerTests
         Assert.That(_payments.Charges, Is.Empty);
     }
 
+    [Test]
+    public async Task HandleAsync_WhenTheRequestIsCancelledDuringTheCharge_StillSavesTheMembershipAsActive()
+    {
+        // Arrange: the caller goes away after the provider has taken the charge (#544)
+        GivenAMembership(MembershipStatus.PaymentMissing);
+        using var request = new CancellationTokenSource();
+        _payments.DuringCharge = request.Cancel;
+
+        // Act
+        PayMembershipResult result = await Handler().HandleAsync(new PayMembershipCommand(AccountId), request.Token);
+
+        // Assert
+        Assert.That(result, Is.EqualTo(PayMembershipResult.Paid));
+        Assert.That(_memberships.Stored.Single().Status, Is.EqualTo(MembershipStatus.Active));
+    }
+
+    [Test]
+    public async Task HandleAsync_WhenTheRequestIsCancelledBeforeTheCharge_ChargesNothing()
+    {
+        // Arrange
+        GivenAMembership(MembershipStatus.PaymentMissing);
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync().ConfigureAwait(false);
+
+        // Act
+        Func<Task> act = () => Handler().HandleAsync(new PayMembershipCommand(AccountId), request.Token);
+
+        // Assert
+        await Assert.ThatAsync(act, Throws.InstanceOf<OperationCanceledException>()).ConfigureAwait(false);
+        Assert.That(_payments.Charges, Is.Empty);
+    }
+
     private sealed class FakePaymentProvider : IPaymentProvider
     {
         public bool Paid { get; set; } = true;
+
+        /// <summary>Runs while the charge is being made, before the provider answers.</summary>
+        public Action? DuringCharge { get; set; }
 
         public List<(Guid MemberId, decimal AmountDkk)> Charges { get; } = [];
 
         public Task<bool> ChargeMembershipFeeAsync(Guid memberId, decimal amountDkk, CancellationToken cancellationToken)
         {
             Charges.Add((memberId, amountDkk));
+            DuringCharge?.Invoke();
             return Task.FromResult(Paid);
         }
     }
@@ -152,6 +188,8 @@ public sealed class PayMembershipHandlerTests
 
         public Task SaveAsync(Membership membership, CancellationToken cancellationToken)
         {
+            // As the MongoDB driver: a cancelled token stops the save
+            cancellationToken.ThrowIfCancellationRequested();
             Saves++;
             Stored.RemoveAll(stored => stored.Id == membership.Id);
             Stored.Add(Copy(membership));

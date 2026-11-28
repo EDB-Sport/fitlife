@@ -1,6 +1,6 @@
 # Postman collections
 
-Run by Newman (`docs/METHODOLOGY.md` section 7). Layout from `docs/CSHARP_SETUP_TODO.md` section 6:
+Run by Newman (`docs/METHODOLOGY.md` section 7). Layout from `docs/TECHNICAL_REFERENCE.md` section 6:
 
 ```
 services/<service>.postman_collection.json         API tests, one per service: happy path + at least one error case per endpoint
@@ -8,7 +8,7 @@ integration/<a>-<b>.postman_collection.json         two or more services working
 mocks/<system>.mock.postman_collection.json         saved examples that back a Postman Mock Server
 mocks/<system>.mock-tests.postman_collection.json   API tests against that mock server
 e2e/booking-flow.postman_collection.json            log in → find a class session → reserve → see it → cancel
-smoke/thin-slice.postman_collection.json            after each Azure deploy: HTTPS gateway, the service, the member portal (skipped while it has no release)
+smoke/thin-slice.postman_collection.json            after each Azure deploy: HTTPS gateway, Booking, Membership and Identity, the log-in of the Medlem demo account, Booking's class schedule (a read from its database), the member portal (skipped while it has no release)
 environments/local|ci|azure.postman_environment.json
 ```
 

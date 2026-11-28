@@ -1,5 +1,6 @@
 using BookingService.Application;
 using BookingService.Domain;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 
@@ -149,6 +150,7 @@ public sealed class ReserveSeatCommandHandlerTests
 
     private ReserveSeatCommandHandler Handler()
     {
-        return new ReserveSeatCommandHandler(_membership.Object, _classSessions.Object, _clock);
+        // The publisher is new in #192; ReservationMadePublishingTests checks what it publishes
+        return new ReserveSeatCommandHandler(_membership.Object, _classSessions.Object, new BookingEventPublisher(new RecordingEventPublisher(), NullLogger<BookingEventPublisher>.Instance), _clock);
     }
 }

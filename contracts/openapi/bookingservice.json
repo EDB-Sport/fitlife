@@ -157,7 +157,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
       }
     },
     "/class-sessions/{id}/cancellation": {
@@ -233,7 +238,7 @@
             }
           },
           "409": {
-            "description": "The class session is already cancelled (code ClassSessionAlreadyCancelled), or another request changed it at the same time (code ChangedMeanwhile).",
+            "description": "The class session is already cancelled (code ClassSessionAlreadyCancelled), has started (code ClassSessionStarted), or another request changed it at the same time (code ChangedMeanwhile).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -242,7 +247,118 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/class-sessions/{id}/start": {
+      "put": {
+        "tags": [
+          "ClassSchedule"
+        ],
+        "summary": "Moves a class session to a new start time (#241). Its reservations and waitlist entries are kept, and the members who had a\nreservation can cancel free. The members are not told yet (#242, #222).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The class session.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Stops the request.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeStartRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeStartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token has neither the role Træner nor Admin.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such class session (code ClassSessionNotFound).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The class session is cancelled (code ClassSessionCancelled), has started (code ClassSessionStarted), the new start is not after now (code StartNotInTheFuture), or another request changed it at the same time (code ChangedMeanwhile).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
       }
     },
     "/class-sessions/{id}/reservations": {
@@ -344,7 +460,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
       }
     },
     "/class-sessions/{id}/reservations/{memberId}": {
@@ -399,7 +520,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
       }
     },
     "/class-sessions/{id}/waitlist": {
@@ -477,12 +603,31 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
       }
     }
   },
   "components": {
     "schemas": {
+      "ChangeStartRequest": {
+        "required": [
+          "startsAt"
+        ],
+        "type": "object",
+        "properties": {
+          "startsAt": {
+            "type": "string",
+            "description": "The class session's new start time; after now.",
+            "format": "date-time"
+          }
+        },
+        "description": "The body of `PUT /class-sessions/{id}/start` (#241)."
+      },
       "ClassSessionResponse": {
         "required": [
           "id",
@@ -707,6 +852,14 @@
           }
         },
         "description": "A member's place on the waitlist of a class session."
+      }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "description": "The token from POST /api/identity/tokens.",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
       }
     }
   },

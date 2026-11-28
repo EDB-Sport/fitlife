@@ -22,7 +22,7 @@ public sealed class ControllerActionContractAnalyzer : DiagnosticAnalyzer
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "The generated OpenAPI contract stays accurate only when every action names its HTTP verb and its result type, so the breaking-change check means something.",
-        helpLinkUri: "https://github.com/EDB-Sport/fitlife/blob/develop/docs/CSHARP_SETUP_TODO.md#4-project-specific-roslyn-analyzers-toolsanalyzers");
+        helpLinkUri: "https://github.com/EDB-Sport/fitlife/blob/develop/docs/TECHNICAL_REFERENCE.md#4-project-specific-roslyn-analyzers-toolsanalyzers");
 
     private const string VerbFix = "add [HttpGet], [HttpPost], [HttpPut], [HttpPatch] or [HttpDelete] to it";
     private const string ResultFix = "return ActionResult<T> or a typed result (Ok<T>, NotFound, Results<...>) instead";

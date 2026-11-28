@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "6d3c1901-7713-547e-9421-2135aca962c8",
     "name": "FitLife thin-slice smoke test",
-    "description": "Run by .github/workflows/deploy.yml right after a deploy to Azure (docs/CSHARP_SETUP_TODO.md section 9a). Checks every hop of the thin slice: Caddy (HTTPS) -> Nginx -> the service and the member portal. baseUrl and serviceBasePath come from the Bicep outputs. memberPortal is false while the portal has no release, and then its checks are skipped (#198).",
+    "description": "Run by .github/workflows/deploy.yml right after a deploy to Azure (docs/TECHNICAL_REFERENCE.md section 9a). Checks every hop: Caddy (HTTPS) -> Nginx -> Booking, Membership and Identity and the member portal, logs in as the Medlem demo account (#371) and reads Booking's class schedule, a request that needs its database (#519). baseUrl comes from the Bicep output, medlemPassword from the secret DEMO_MEDLEM_PASSWORD (a globals file that deploy.yml writes at run time, never a committed file). memberPortal is false while the portal has no release, and then its checks are skipped (#198).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -70,7 +70,7 @@
       "response": []
     },
     {
-      "name": "Service is healthy through the gateway",
+      "name": "Booking is healthy through the gateway",
       "event": [
         {
           "listen": "test",
@@ -86,12 +86,154 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{baseUrl}}{{serviceBasePath}}/health",
+          "raw": "{{baseUrl}}/api/booking/health",
           "host": [
-            "{{baseUrl}}{{serviceBasePath}}"
+            "{{baseUrl}}"
           ],
           "path": [
+            "api",
+            "booking",
             "health"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Membership is healthy through the gateway",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status is 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/membership/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "membership",
+            "health"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Identity is healthy through the gateway",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status is 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/identity/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "identity",
+            "health"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "The Medlem demo account logs in",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Identity answers /health only after its seed has run (#237), so the account exists by now.",
+              "pm.test('status is 200', () => pm.response.to.have.status(200));",
+              "const accessToken = pm.response.code === 200 ? pm.response.json().accessToken : undefined;",
+              "pm.test('the response has an access token', () => pm.expect(accessToken).to.be.a('string').and.not.empty);",
+              "pm.test('the token has the role Medlem', () => {",
+              "  const payload = accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');",
+              "  const claims = JSON.parse(atob(payload));",
+              "  pm.expect([].concat(claims.role)).to.eql(['Medlem']);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\": \"{{medlemEmail}}\", \"password\": \"{{medlemPassword}}\"}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/identity/tokens",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "identity",
+            "tokens"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Booking reads the class schedule from its database",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// The one data request (#519): GET /class-sessions reads MongoDB. Booking seeds the next 4 weeks on every start (#386),",
+              "// so right after a deploy the schedule is never empty. A service that can't reach its database answers 500 here.",
+              "pm.test('status is 200', () => pm.response.to.have.status(200));",
+              "pm.test('the class schedule has class sessions', () => pm.expect(pm.response.json()).to.be.an('array').and.not.empty);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/booking/class-sessions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "booking",
+            "class-sessions"
           ]
         }
       },

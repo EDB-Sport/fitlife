@@ -1,5 +1,5 @@
 # Infrastructure group: MongoDB, RabbitMQ and Vault.
-# Image versions are pinned, never :latest (docs/CSHARP_SETUP_TODO.md section 7).
+# Image versions are pinned, never :latest (docs/TECHNICAL_REFERENCE.md section 7).
 # Passwords come from .env (copy .env.example); none are written here.
 
 # The services' databases and secrets. MongoDB creates a user per database from them, and Vault is

@@ -3,7 +3,7 @@
 # image-scan-plan: tools/ci/image-scan-plan.sh picks the services whose Dockerfile copies a changed path.
 # image-scan: per picked service, one build (tools/ci/check-service-image.sh --build-only, its usual tag),
 #   then Trivy on that tag. No /health run: that stays a local check. A PR that changes no image skips it.
-# Not a required check (yet); making it one is the owner's decision. Run it locally: docs/CSHARP_SETUP_TODO.md section 8.
+# Not a required check (yet); making it one is the owner's decision. Run it locally: docs/TECHNICAL_REFERENCE.md section 8.
 # No "paths:" filter: the plan job decides, so the workflow always reports. Checked by tools/ci/image-scan.test.sh.
 name: image-scan
 
@@ -68,3 +68,4 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
+          version: v0.76.2 # the Trivy binary; the action's default is v0.70.0, and Dependabot bumps only the action (#526)

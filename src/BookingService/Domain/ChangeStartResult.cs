@@ -11,4 +11,7 @@ public enum ChangeStartResult
 
     /// <summary>The new start is now or in the past.</summary>
     StartNotInTheFuture,
+
+    /// <summary>The class session has started, so its start can't change (#538).</summary>
+    ClassSessionStarted,
 }

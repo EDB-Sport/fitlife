@@ -1,4 +1,5 @@
 using DotNet.Testcontainers.Containers;
+using Microsoft.Extensions.Configuration;
 using Testcontainers.MongoDb;
 
 namespace MembershipService.IntegrationTests;
@@ -12,9 +13,27 @@ public sealed class MongoDbFixture : IAsyncDisposable
     /// <summary>The password of the test database user.</summary>
     public const string ServicePassword = "membership-test-password";
 
-    // 7.0, not compose's 8.0: MongoDB 8 won't start on Linux kernels 6.19 to 7.0.13 (some Docker Desktop
-    // versions, deploy/compose/README.md), and the tests need only what both versions do.
-    private readonly MongoDbContainer _container = new MongoDbBuilder("mongo:8.0.38").Build();
+    private readonly MongoDbContainer _container;
+
+    /// <summary>A MongoDB with compose's image, unless the environment variable MONGO_IMAGE names another.</summary>
+    public MongoDbFixture()
+        : this(new ConfigurationBuilder().AddEnvironmentVariables().Build())
+    {
+    }
+
+    /// <summary>
+    /// A MongoDB with the image compose uses (deploy/compose/infrastructure.yml). MONGO_IMAGE overrides it the same way, for a
+    /// Docker whose kernel MongoDB 8 refuses (deploy/compose/README.md), as in the other services' fixtures (#588).
+    /// </summary>
+    /// <param name="environment">Where MONGO_IMAGE is read from.</param>
+    public MongoDbFixture(IConfiguration environment)
+    {
+        ArgumentNullException.ThrowIfNull(environment);
+        _container = new MongoDbBuilder(environment["MONGO_IMAGE"] ?? "mongo:8.0.38").Build();
+    }
+
+    /// <summary>The image the container runs, e.g. <c>mongo:8.0.38</c>.</summary>
+    public string Image => _container.Image.FullName;
 
     /// <summary>The host the container is reached on.</summary>
     public string Host => _container.Hostname;

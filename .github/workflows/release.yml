@@ -1,4 +1,4 @@
-# Releases (issues #94 and #95, docs/CSHARP_SETUP_TODO.md sections 9 and 10, METHODOLOGY section 2.1).
+# Releases (issues #94 and #95, docs/TECHNICAL_REFERENCE.md sections 9 and 10, METHODOLOGY section 2.1).
 #
 # release-gate: on every PR into main (release/x.y.z or hotfix/<service>-x.y.z), each service that changed since
 #   its last <service>/vX.Y.Z tag has a higher version, a breaking API change is a new MAJOR, and a hotfix
@@ -100,6 +100,7 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
+          version: v0.76.2 # the Trivy binary; the action's default is v0.70.0, and Dependabot bumps only the action (#526)
       - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}

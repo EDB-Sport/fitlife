@@ -72,7 +72,10 @@ red='[{"name":"tdd-check","state":"SUCCESS","link":"https://example.test/1"},
       {"name":"CI","state":"PENDING","link":"https://example.test/3"}]'
 
 run "$green"
-[ "$out" = "all checks green" ] && [ "$code" -eq 0 ]; expect "all green: prints 'all checks green' and exits 0" $?
+[ "$out" = "all checks green" ] && [ "$code" -eq 0 ]
+# The status of the test above is what expect checks, as on every other expect line.
+# shellcheck disable=SC2319
+expect "all green: prints 'all checks green' and exits 0" $?
 grep -q -- "--watch" "$tmp/log" && grep -q -- "-R EDB-Sport/fitlife" "$tmp/log"; expect "all green: waits with --watch and passes -R" $?
 case $out in *NOISE*) false ;; esac; expect "all green: the --watch output is discarded" $?
 
@@ -99,6 +102,16 @@ expect "no checks yet (right after a push): waits and reads again" $?
 run "$green"
 [ "$out" = "all checks green" ] && [ "$code" -eq 0 ]
 expect "no checks yet, as real gh reports it (exit 1, 'no checks reported'): waits and reads again" $?
+
+# #633: the first --watch ran before any check was registered, so it returned at once; the next read shows queued checks.
+printf '[{"name":"tdd-check","state":"QUEUED","link":"https://example.test/1"}]' >"$tmp/checks.json.first"
+run "$green"
+[ "$out" = "all checks green" ] && [ "$code" -eq 0 ] && [ "$(grep -c -- --watch "$tmp/log")" -eq 2 ]
+expect "queued checks (watch returned before they were registered): watches again, then judges" $?
+
+printf '[{"name":"CI","state":"IN_PROGRESS","link":"https://example.test/3"}]' >"$tmp/checks.json.first"
+run "$red"
+case $out in *IN_PROGRESS*) false ;; *) true ;; esac; expect "a check in progress on an early read is not printed as a result" $?
 
 : >"$tmp/checks.json.error"
 run "$green"

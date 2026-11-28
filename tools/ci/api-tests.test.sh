@@ -38,8 +38,8 @@ fixture() {
   echo "PASSWORD=made-up" > "$repo/deploy/compose/.env.example"
   touch "$repo/deploy/compose/compose.yaml" "$repo/tests/postman/environments/ci.postman_environment.json"
   touch "$repo/tests/postman/services/.gitkeep" "$repo/tests/postman/integration/.gitkeep" "$repo/tests/postman/e2e/.gitkeep"
-  echo '{}' > "$repo/tests/postman/mocks/user-registration.mock.postman_collection.json"
-  echo '{}' > "$repo/tests/postman/mocks/user-registration.mock-tests.postman_collection.json"
+  echo '{}' > "$repo/tests/postman/mocks/account-registration.mock.postman_collection.json"
+  echo '{}' > "$repo/tests/postman/mocks/account-registration.mock-tests.postman_collection.json"
   echo "$repo"
 }
 
@@ -87,8 +87,8 @@ check "uses .env.example as .env" cmp -s "$repo/deploy/compose/.env.example" "$r
 check "runs services/" has_call '^newman run tests/postman/services/booking\.postman_collection\.json '
 check "runs integration/" has_call '^newman run tests/postman/integration/booking-membership\.postman_collection\.json '
 check "runs e2e/" has_call '^newman run tests/postman/e2e/booking-flow\.postman_collection\.json '
-check "runs the mock tests" has_call '^newman run tests/postman/mocks/user-registration\.mock-tests\.postman_collection\.json '
-check "doesn't run the collection behind the mock server" no_call 'user-registration\.mock\.postman_collection'
+check "runs the mock tests" has_call '^newman run tests/postman/mocks/account-registration\.mock-tests\.postman_collection\.json '
+check "doesn't run the collection behind the mock server" no_call 'account-registration\.mock\.postman_collection'
 check "runs 4 collections, skipping .gitkeep" call_count '^newman run' 4
 check "every run uses environments/ci" call_count '^newman run .* -e tests/postman/environments/ci\.postman_environment\.json( |$)' 4
 check "every run uses the cli, junit and htmlextra reporters" call_count '^newman run .* -r cli,junit,htmlextra( |$)' 4
@@ -127,5 +127,10 @@ check "API_TESTS_BUILD=0 doesn't build" has_call '^docker compose up -d --wait \
 #    assertion against a mock server on the internet depends on the network, not on the code (#135)
 timed=$(grep -rlE 'responseTime' "$here/../../tests/postman" --include='*.postman_collection.json' || true)
 check "no collection asserts a response time" [ -z "$timed" ]
+
+# 7. The collections use the glossary's names: sign-up creates an Account (Konto), and "User" is in its
+#    Avoid column (GLOSSARY.md, #128). A technical name such as the User-Agent header is fine.
+avoided=$(grep -rniE 'user' "$here/../../tests/postman" | grep -viE 'user-agent' || true)
+check "no collection or README uses \"user\" for an account" [ -z "$avoided" ]
 
 exit "$failures"

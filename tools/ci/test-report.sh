@@ -7,6 +7,21 @@
 #   - One summary line ends the run: "N cases, M failed".
 # The exit code is the script's own. A script that stops non-zero without a FAIL line gets one, naming the exit code.
 # A *.test.sh that another test runs (TEST_REPORT_RAW is set) prints its raw lines, for that test to check.
+# Under a FAIL line a case shows what it got (issue #477), with two helpers:
+#   test_report_got <command...>       the command the case ran, its arguments expanded (cut at 500 characters)
+#   test_report_tail <label> <text>    the last 20 lines of what the case captured, each line starting with "<label>: "
+
+test_report_got() {
+  local ran
+  ran=$(printf ' %q' "$@")
+  echo "      ran:${ran:0:500}"
+}
+
+test_report_tail() {
+  [ -n "$2" ] || return 0
+  tail -n 20 <<<"$2" | sed "s/^/      $1: /"
+}
+
 if [ -z "${TEST_REPORT_RAW:-}" ]; then
   export TEST_REPORT_RAW=1
   test_report_counts=$(mktemp)

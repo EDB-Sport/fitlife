@@ -12,7 +12,15 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 check() { # check <description> <command...>
-  if "${@:2}"; then echo "PASS  $1"; else echo "FAIL  $1"; failures=$((failures + 1)); fi
+  if "${@:2}"; then
+    echo "PASS  $1"
+  else
+    echo "FAIL  $1"
+    test_report_got "${@:2}"
+    test_report_tail out "${out:-}"
+    test_report_tail summary "${summary:-}"
+    failures=$((failures + 1))
+  fi
 }
 
 # run <command...>: summarize.sh around the command, with a fresh summary file. Sets out, status and summary.

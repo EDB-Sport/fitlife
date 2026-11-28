@@ -564,6 +564,7 @@
           "FitLife.Authentication": "[0.3.0, )",
           "FitLife.Configuration": "[0.1.0, )",
           "FitLife.Correlation": "[0.1.0, )",
+          "FitLife.Messaging": "[0.2.0, )",
           "Microsoft.AspNetCore.OpenApi": "[10.0.15, )",
           "Microsoft.Extensions.Http.Resilience": "[10.11.1, )",
           "MongoDB.Driver": "[3.14.1, )",
@@ -589,6 +590,13 @@
       },
       "fitlife.correlation": {
         "type": "Project"
+      },
+      "fitlife.messaging": {
+        "type": "Project",
+        "dependencies": {
+          "FitLife.Correlation": "[0.1.0, )",
+          "RabbitMQ.Client": "[7.2.2, )"
+        }
       },
       "JsonSchema.Net": {
         "type": "CentralTransitive",
@@ -658,6 +666,15 @@
         "contentHash": "37r7FrgeTDdhTq1TA/T+XB+vAqeKZLyXItnw5LV2O8mpkRKATh4m+AhG6A9tFj2K3dsN1WTqIZHySmM8gP5UPw==",
         "dependencies": {
           "NLog.Extensions.Logging": "6.2.2"
+        }
+      },
+      "RabbitMQ.Client": {
+        "type": "CentralTransitive",
+        "requested": "[7.2.2, )",
+        "resolved": "7.2.2",
+        "contentHash": "k4b6RnTXpLbsF96V93ooNYxgPMnoA2tEm24B6AXNJr1mG8wwNYdA1XJtgU66L5xqeGyveS7SJriRzlX3cbqQNA==",
+        "dependencies": {
+          "System.Threading.RateLimiting": "8.0.0"
         }
       },
       "Scalar.AspNetCore": {

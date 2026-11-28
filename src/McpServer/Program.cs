@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Reflection;
 using FitLife.Correlation;
 using McpServer.Booking;
+using McpServer.Guardrails;
 using McpServer.Tools;
 using NLog;
 using NLog.Web;
@@ -20,15 +21,21 @@ try
     builder.Services.AddBookingClient();
     builder.Services.AddMcpServer()
         .WithHttpTransport()
-        .WithTools<ClassScheduleTools>();
+        .WithTools<ClassScheduleTools>()
+        .WithToolCallLog(); // one log line per tool call (#216)
+
+    // At most Mcp:CallsPerMinute requests to /mcp per account (#216)
+    builder.Services.AddMcpRateLimit();
 
     WebApplication app = builder.Build();
 
     // First, so every log line of the request carries its X-Correlation-ID
     app.UseMiddleware<CorrelationIdMiddleware>();
 
-    app.MapHealthChecks("/health");
-    app.MapMcp("/mcp"); // the gateway routes /mcp here (#213)
+    app.UseRateLimiter();
+
+    app.MapHealthChecks("/health"); // not limited: docker compose up --wait and the Azure probes use it
+    app.MapMcp("/mcp").RequireRateLimiting(GuardrailRegistration.RateLimitPolicy); // the gateway routes /mcp here (#213)
 
     // The startup line: which service and which release is running (the version is also a Loki label)
     if (app.Logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information))

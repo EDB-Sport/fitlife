@@ -27,7 +27,7 @@ This table is a reference, not a second spec. When an issue and the table disagr
 | `GET /reservations/mine` (planned) | BookingService | – | yes | – | – | [#265](https://github.com/EDB-Sport/fitlife/issues/265) |
 | `POST /class-sessions` | BookingService | – | – | yes | yes | [#238](https://github.com/EDB-Sport/fitlife/issues/238) |
 | `POST /class-sessions/{id}/cancellation` | BookingService | – | – | yes | yes | [#239](https://github.com/EDB-Sport/fitlife/issues/239) |
-| `PUT /class-sessions/{id}/start` (planned) | BookingService | – | – | yes | yes | [#241](https://github.com/EDB-Sport/fitlife/issues/241) |
+| `PUT /class-sessions/{id}/start` | BookingService | – | – | yes | yes | [#241](https://github.com/EDB-Sport/fitlife/issues/241) |
 | `POST /members` | MembershipService | – | yes | yes | yes | [#170](https://github.com/EDB-Sport/fitlife/issues/170), any role in [#368](https://github.com/EDB-Sport/fitlife/issues/368) |
 | `GET /members/me` | MembershipService | – | yes | yes | yes | [#247](https://github.com/EDB-Sport/fitlife/issues/247), any role in [#368](https://github.com/EDB-Sport/fitlife/issues/368) |
 | `GET /members/by-account/{accountId}` | MembershipService | – | yes | yes | yes | [#170](https://github.com/EDB-Sport/fitlife/issues/170), any role in [#368](https://github.com/EDB-Sport/fitlife/issues/368) |
@@ -41,10 +41,10 @@ This table is a reference, not a second spec. When an issue and the table disagr
 | `/` (Home) | MemberPortal.Web | yes | yes | yes | yes | [#8](https://github.com/EDB-Sport/fitlife/issues/8) |
 | `/Error` | MemberPortal.Web | yes | yes | yes | yes | [#8](https://github.com/EDB-Sport/fitlife/issues/8) |
 | `/hold` (planned) | MemberPortal.Web | yes | yes | yes | yes | [#205](https://github.com/EDB-Sport/fitlife/issues/205) |
-| `/log-ind` (planned) | MemberPortal.Web | yes | yes | yes | yes | [#206](https://github.com/EDB-Sport/fitlife/issues/206) |
-| `/log-ud` (planned) | MemberPortal.Web | not decided | not decided | not decided | not decided | [#206](https://github.com/EDB-Sport/fitlife/issues/206) |
+| `/log-ind` | MemberPortal.Web | yes | yes | yes | yes | [#206](https://github.com/EDB-Sport/fitlife/issues/206) |
+| `/log-ud` | MemberPortal.Web | yes | yes | yes | yes | [#206](https://github.com/EDB-Sport/fitlife/issues/206) |
 | `/bliv-medlem` | MemberPortal.Web | yes | yes | yes | yes | [#209](https://github.com/EDB-Sport/fitlife/issues/209) |
 | `/mine-bookinger` (planned) | MemberPortal.Web | – | not decided | not decided | not decided | [#208](https://github.com/EDB-Sport/fitlife/issues/208) |
-| `/mit-medlemskab` (planned) | MemberPortal.Web | – | not decided | not decided | not decided | [#210](https://github.com/EDB-Sport/fitlife/issues/210), [#211](https://github.com/EDB-Sport/fitlife/issues/211) |
+| `/mit-medlemskab` | MemberPortal.Web | – | yes | yes | yes | [#624](https://github.com/EDB-Sport/fitlife/issues/624) (status), [#210](https://github.com/EDB-Sport/fitlife/issues/210), [#211](https://github.com/EDB-Sport/fitlife/issues/211), [#535](https://github.com/EDB-Sport/fitlife/issues/535) |
 | `GET /health` | every service, the portal and the gateway | yes | yes | yes | yes | – |
 | The OpenAPI document and Scalar, in Development only | BookingService, IdentityService, MembershipService, NotificationService | yes | yes | yes | yes | – |

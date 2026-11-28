@@ -1,0 +1,27 @@
+@page "/mit-medlemskab"
+
+<PageTitle>Mit medlemskab - FitLife Digital</PageTitle>
+
+<div class="container py-4" style="max-width: 36rem;">
+    <h1 class="mb-4">Mit medlemskab</h1>
+
+    @if (ErrorSentence is not null)
+    {
+        <div class="alert alert-danger" role="alert">@ErrorSentence</div>
+    }
+    else if (Membership is null)
+    {
+        <p class="not-a-member">@NotAMemberSentence <a href="/bliv-medlem">Bliv medlem</a></p>
+    }
+    else
+    {
+        <dl class="row">
+            <dt class="col-sm-4">Medlemstype</dt>
+            <dd class="col-sm-8" id="membership-type">@Membership.MembershipType</dd>
+            <dt class="col-sm-4">Startdato</dt>
+            <dd class="col-sm-8" id="membership-start-date">@StartDate(Membership)</dd>
+            <dt class="col-sm-4">Status</dt>
+            <dd class="col-sm-8" id="membership-status">@Status(Membership)</dd>
+        </dl>
+    }
+</div>

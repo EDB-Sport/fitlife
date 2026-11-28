@@ -7,6 +7,7 @@
 #     (memberPortal, which deploy.yml also sets, is read with pm.variables.get, not as {{memberPortal}}.)
 # The password is never in the environment file, and the file's account is one main.bicepparam's Identity seeds.
 # The services are the ones in main.bicepparam: the collection asks /api/<context>/health of each.
+# One request reads data: Booking's class schedule, which needs its database (#519).
 # Usage: tools/ci/postman-azure-environment.test.sh   (from the repo root, or anywhere in the repo; exit 0 = all pass)
 . "$(dirname "${BASH_SOURCE[0]}")/test-report.sh"
 set -uo pipefail
@@ -61,6 +62,17 @@ for context in contexts:
 medlem_email = (values.get("medlemEmail") or {}).get("value")
 check(medlem_email == "medlem@fitlife.example", "the azure environment file has the Medlem demo account's e-mail address")
 check("/api/identity/tokens" in collection_text, "the smoke collection logs in with POST /api/identity/tokens")
+
+# A data request (#519): a read that needs Booking's database, so a deploy whose service can't reach MongoDB fails.
+collection = json.loads(collection_text)
+schedule = [item for item in collection.get("item", [])
+            if item.get("request", {}).get("method") == "GET"
+            and item.get("request", {}).get("url", {}).get("raw") == "{{baseUrl}}/api/booking/class-sessions"]
+check(len(schedule) == 1, "the smoke collection reads the class schedule: GET /api/booking/class-sessions")
+tests = "\n".join(line for item in schedule for event in item.get("event", []) if event.get("listen") == "test"
+                  for line in event.get("script", {}).get("exec", []))
+check("status(200)" in tests and "not.empty" in tests,
+      "the class schedule request asserts status 200 and a non-empty list (the demo schedule Booking seeds, #386)")
 
 sys.exit(1 if failures else 0)
 PY

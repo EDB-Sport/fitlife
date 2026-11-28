@@ -16,6 +16,8 @@
   <ItemGroup>
     <!-- Shared code: correlation ID middleware and handler (docs/TECHNICAL_REFERENCE.md section 7) -->
     <ProjectReference Include="$(RepoRoot)libs/FitLife.Correlation/FitLife.Correlation.csproj" />
+    <!-- FitLifeJwt.AccountIdClaim, and the token reader the rate limit and the call log read the account id with (#216) -->
+    <ProjectReference Include="$(RepoRoot)libs/FitLife.Authentication/FitLife.Authentication.csproj" />
   </ItemGroup>
 
   <ItemGroup>

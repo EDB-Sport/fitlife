@@ -104,7 +104,7 @@ Without `BOOKING_URL` in the shell, the gateway gets its default `http://booking
 
 A local build uses the base images already on your machine. The cheapest source comes first:
 
-- **(a)** pull the published `:develop` images from Docker Hub instead of building (#340, not usable on `develop` until it lands);
+- **(a)** pull the published `:develop` images from Docker Hub instead of building (`compose.develop.yml`, #340; see "Pull the images of `develop` instead of building them" above);
 - **(b)** build with the base images in your local cache. This is what `docker compose up --build` does, and the compose files never force a pull (no `--pull`, no `pull: true`);
 - **(c)** download the base images from MCR (`mcr.microsoft.com`) only as a last resort.
 

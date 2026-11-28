@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Flow tests (#192): two services in one test, over the real RabbitMQ and MongoDB. Every service has a global Program
+    class, so each service reference gets its own extern alias (booking::Program, notification::Program).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Testcontainers.MongoDb" />
+    <PackageReference Include="Testcontainers.RabbitMq" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\BookingService\BookingService.csproj" Aliases="booking" />
+    <ProjectReference Include="..\..\src\NotificationService\NotificationService.csproj" Aliases="notification" />
+    <ProjectReference Include="..\..\libs\FitLife.Authentication\FitLife.Authentication.csproj" />
+    <ProjectReference Include="..\..\libs\FitLife.Messaging\FitLife.Messaging.csproj" />
+  </ItemGroup>
+
+</Project>

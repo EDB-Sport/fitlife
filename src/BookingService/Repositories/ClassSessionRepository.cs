@@ -114,13 +114,14 @@ public sealed class ClassSessionRepository : IClassSessionRepository
 
     private static Reservation ReadReservation(ReservationDocument document)
     {
-        var reservation = new Reservation(document.MemberId, document.IsFromWaitlist);
-        if (document.IsFromBeforeAChangedStart)
+        // A reservation stored before #192 has no id: it gets one here, which the next save stores
+        Guid id = document.Id;
+        if (id == Guid.Empty)
         {
-            return reservation.FromBeforeAChangedStart();
+            id = Guid.NewGuid();
         }
 
-        return reservation;
+        return new Reservation(id, document.MemberId, document.IsFromWaitlist, document.IsFromBeforeAChangedStart);
     }
 
     private static ClassSessionDocument Write(ClassSession classSession, int version)
@@ -138,6 +139,7 @@ public sealed class ClassSessionRepository : IClassSessionRepository
             Reservations = classSession.Reservations
                 .Select(reservation => new ReservationDocument
                 {
+                    Id = reservation.Id,
                     MemberId = reservation.MemberId,
                     IsFromWaitlist = reservation.IsFromWaitlist,
                     IsFromBeforeAChangedStart = reservation.IsFromBeforeAChangedStart,

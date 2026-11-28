@@ -10,6 +10,8 @@ One JSON Schema per RabbitMQ event that crosses a context boundary (`docs/domain
 
 Tests: `tests/FitLife.Contracts.Tests` checks each schema against a sample in the test. Producer and consumer tests validate with `EventSchemas.Validate` from `tests/FitLife.Contracts.Testing`.
 
+An event is done when a flow test in `FitLife.Flows.IntegrationTests` passes: the publisher's service and the consumer's, in one test, over the real RabbitMQ (#192). The consumer may merge first (#493).
+
 ## Handled once on
 
 RabbitMQ can deliver an event more than once, so each consumer handles it only once on these fields (#231):

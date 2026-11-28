@@ -152,6 +152,15 @@ var serviceSettings = {
       name: 'Seed__Enabled'
       value: 'true'
     }
+    {
+      // Publishes ReservationMade after the save (#192); a failed publish is only logged
+      name: 'RabbitMq__HostName'
+      value: '127.0.0.1'
+    }
+    {
+      name: 'RabbitMq__Port'
+      value: string(rabbitmqPort)
+    }
   ]
   membership: [
     {

@@ -181,6 +181,12 @@ public sealed class BecomeMemberTests : IDisposable
 
             return Task.FromResult(Answer);
         }
+
+        public Task<MyMembershipResponse?> GetMyMembershipAsync(CancellationToken cancellationToken)
+        {
+            calls.Add("GET api/membership/members/me");
+            return Task.FromResult<MyMembershipResponse?>(null);
+        }
     }
 
     private sealed class PortalFactory : WebApplicationFactory<Program>

@@ -5,7 +5,8 @@
 #   otherwise: prints only the other checks as "name state link", exit 1
 #   cannot read the checks, jq fails, or still no checks after the retries: message on stderr, exit 2
 # Right after a push GitHub may not have registered any check yet: the script then waits
-# WAIT_CI_DELAY seconds (default 20) and tries again, WAIT_CI_TRIES times in all (default 15).
+# WAIT_CI_DELAY seconds (default 20) and tries again, WAIT_CI_TRIES times in all (default 15). The same when a check
+# is still QUEUED, PENDING or IN_PROGRESS after the watch (#633); on the last try such a check is printed as not green.
 # gh is found as `gh`, or `gh.exe` on WSL; set GH to override (the test stubs it). Needs jq.
 set -uo pipefail
 
@@ -38,7 +39,15 @@ for ((try = 1; ; try++)); do
     echo "jq failed (is it installed?): cannot judge the checks of PR $pr" >&2
     exit 2
   }
-  [ "$count" -gt 0 ] && break
+  # A --watch that ran before any check was registered returns at once, so a check can still be waiting (#633):
+  # it is not a result yet, so watch again. On the last try it is printed like any other check that isn't green.
+  waiting=$(jq '[.[] | select(.state == "QUEUED" or .state == "PENDING" or .state == "IN_PROGRESS")] | length' <<<"$checks") || {
+    echo "jq failed: cannot judge the checks of PR $pr" >&2
+    exit 2
+  }
+  if [ "$count" -gt 0 ] && { [ "$waiting" -eq 0 ] || [ "$try" -ge "$tries" ]; }; then
+    break
+  fi
   if [ "$try" -ge "$tries" ]; then
     echo "no checks reported for PR $pr after $tries tries" >&2
     exit 2
